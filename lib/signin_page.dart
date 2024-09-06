@@ -31,11 +31,11 @@ class SigninPage extends StatelessWidget {
             ),
             // Logo
             Positioned(
-              left: MediaQuery.of(context).size.width * 0.378,
-              top: MediaQuery.of(context).size.height * 0.076,
+              left: (MediaQuery.of(context).size.width - (MediaQuery.of(context).size.width * 0.35)) / 2, 
+              top: MediaQuery.of(context).size.height * 0.05, 
               child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.241,
-                height: MediaQuery.of(context).size.height * 0.097,
+                width: MediaQuery.of(context).size.width * 0.35,
+                height: MediaQuery.of(context).size.height * 0.15, 
                 child: Image.asset(
                   'lib/assets/images/cassette_name_logo.png',
                   fit: BoxFit.contain,

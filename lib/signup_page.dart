@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
-
+import 'signin_page.dart';
 class SignupPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -30,11 +30,11 @@ class SignupPage extends StatelessWidget {
             ),
             // Logo
             Positioned(
-              left: MediaQuery.of(context).size.width * 0.378,
-              top: MediaQuery.of(context).size.height * 0.070,
+              left: (MediaQuery.of(context).size.width - (MediaQuery.of(context).size.width * 0.35)) / 2, 
+              top: MediaQuery.of(context).size.height * 0.05, 
               child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.241,
-                height: MediaQuery.of(context).size.height * 0.091,
+                width: MediaQuery.of(context).size.width * 0.35,
+                height: MediaQuery.of(context).size.height * 0.15, 
                 child: Image.asset(
                   'lib/assets/images/cassette_name_logo.png',
                   fit: BoxFit.contain,
@@ -226,7 +226,7 @@ class SignupPage extends StatelessWidget {
               ),
             ),
             // Already have an account
-            Positioned(
+                        Positioned(
               left: MediaQuery.of(context).size.width * 0.154,
               bottom: MediaQuery.of(context).size.height * 0.05,
               child: Row(
@@ -242,7 +242,10 @@ class SignupPage extends StatelessWidget {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => SigninPage()),
+                      );
                     },
                     child: Text(
                       'Back to Sign In',
