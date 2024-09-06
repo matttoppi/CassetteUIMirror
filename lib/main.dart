@@ -3,6 +3,7 @@ import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
 import 'signup_page.dart';
 import 'signin_page.dart';
+import 'track_page.dart';
 
 void main() {
   runApp(MyApp());
@@ -41,10 +42,16 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _showBox = false;
 
   void _convertLink() {
-    // TODO: Implement API call
-    String link = _linkController.text;
-    print('Converting link: $link');
-    //
+    String link = _linkController.text.trim().toLowerCase();
+    if (link == "track") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => TrackPage()),
+      );
+    } else {
+      // TODO: Implement API call for other cases
+      print('Converting link: $link');
+    }
   }
 
   void _toggleBoxVisibility() {

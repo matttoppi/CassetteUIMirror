@@ -4,6 +4,8 @@ class AppColors {
   static const Color primary = Color(0xFFED2748);
   static const Color textPrimary = Color(0xFF1F2327);
   static const Color hintText = Color(0xFFC4C4C4);
+  static const Color artistNameColor = Color(0xFF5C5C5C);
+  static const Color textSecondary = Color(0xFF757575);
 }
 
 class AppSizes {
@@ -32,4 +34,7 @@ class AppStrings {
   static const String createNewAccountText = 'Create new account';
   static const String alreadyHaveAccountText = 'Already have an account?';
   static const String backToSignInText = 'Back to Sign In';
+  static const String cassetteTitle = 'Cassette';
+  static const String trackText = 'Track';
+  static const String createFreeAccountText = 'Create Free Account';
 }
