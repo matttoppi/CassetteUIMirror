@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
+import 'main.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -35,106 +36,156 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = profileData['user'];
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Cassette', style: TextStyle(color: Colors.white, fontSize: 20, fontFamily: 'Teko', fontWeight: FontWeight.w600)),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              width: MediaQuery.of(context).size.width,
-              height: 383,
-              color: const Color(0xFF1F2327),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: 127,
-                    top: 87,
-                    child: Column(
-                      children: [
-                        Text(
-                          user['name'],
-                          style: const TextStyle(color: Colors.white, fontSize: 20, fontFamily: 'Roboto', fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          user['username'],
-                          style: const TextStyle(color: Color(0xCCB4B4B4), fontSize: 14, fontFamily: 'Teko', fontWeight: FontWeight.w400, letterSpacing: 1.26),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: 23,
-                    top: 182,
-                    child: SizedBox(
-                      width: 323,
-                      height: 64, // Increased from 32 to 64 to accommodate two lines
-                      child: Text(
-                        user['bio'],
-                        style: const TextStyle(
+      body: Column(
+        children: [
+          Container(
+            width: MediaQuery.of(context).size.width,
+            height: 383,
+            color: const Color(0xFF1F2327),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 8,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                              builder: (context) => MyHomePage(title: '')),
+                          (Route<dynamic> route) => false,
+                        );
+                      },
+                      child: const Text(
+                        'Cassette',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w400,
-                          height: 1.4, // Added line height for better readability
+                          fontSize: 20,
+                          fontFamily: 'Teko',
+                          fontWeight: FontWeight.w600,
+                          height: 1,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 3, // Allow up to 3 lines for the bio
                       ),
                     ),
                   ),
-                  Positioned(
-                    left: 22,
-                    right: 22,
-                    bottom: 66, // Maintained position
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Expanded(child: _buildActionButton('Share Profile')),
-                        const SizedBox(width: 24),
-                        Expanded(child: _buildActionButton('Add Music')),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: 13,
-                    right: 13,
-                    bottom: 50, // Maintained position
-                    child: Divider(
-                      color: Colors.grey[400],
-                      thickness: 1,
-                    ),
-                  ),
-                  Positioned(
-                    left: 13,
-                    right: 13,
-                    bottom: 8,
-                    child: SizedBox(
-                      height: 42, // Increased height to 42 (50 - 8 = 42)
-                      child: Row(
+                ),
+                Positioned(
+                  left: 23,
+                  top: 87,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.grey[300],
+                        child: Icon(
+                          Icons.person,
+                          size: 40,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildTab('Playlists'),
-                          const SizedBox(width: 8),
-                          _buildTab('Songs'),
-                          const SizedBox(width: 8),
-                          _buildTab('Artists'),
-                          const SizedBox(width: 8),
-                          _buildTab('Albums'),
+                          Text(
+                            user['name'],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontFamily: 'Roboto',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            user['username'],
+                            style: const TextStyle(
+                              color: Color(0xCCB4B4B4),
+                              fontSize: 14,
+                              fontFamily: 'Teko',
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 1.26,
+                            ),
+                          ),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  left: 23,
+                  top: 182,
+                  child: SizedBox(
+                    width: 323,
+                    height: 64,
+                    child: Text(
+                      user['bio'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w400,
+                        height: 1.4,
+                      ),
                     ),
                   ),
-                ],
+                ),
+                Positioned(
+                  left: 22,
+                  right: 22,
+                  bottom: 66,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(child: _buildActionButton('Share Profile')),
+                      const SizedBox(width: 24),
+                      Expanded(child: _buildActionButton('Add Music')),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  left: 13,
+                  right: 13,
+                  bottom: 50,
+                  child: Divider(
+                    color: Colors.grey[400],
+                    thickness: 1,
+                  ),
+                ),
+                Positioned(
+                  left: 13,
+                  right: 13,
+                  bottom: 8,
+                  child: SizedBox(
+                    height: 42,
+                    child: Row(
+                      children: [
+                        _buildTab('Playlists'),
+                        const SizedBox(width: 8),
+                        _buildTab('Songs'),
+                        const SizedBox(width: 8),
+                        _buildTab('Artists'),
+                        const SizedBox(width: 8),
+                        _buildTab('Albums'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _buildTabContent(),
               ),
             ),
-            _buildContentList(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -169,7 +220,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: GestureDetector(
         onTap: () => setState(() => currentTab = text),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 5),
+          padding: const EdgeInsets.symmetric(vertical: 5), 
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary : const Color(0xFFC4C4C4),
             borderRadius: BorderRadius.circular(5),
@@ -187,40 +238,75 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildContentList() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8), // Add 8 pixels of top padding
+      child: Column(
+        children: [
+          _buildTabContent(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabContent() {
     switch (currentTab) {
       case 'Playlists':
         return Column(
-          children: profileData['playlists'].map<Widget>((playlist) => 
-            _buildPlaylistItem(playlist['title'], playlist['details'], playlist['description'])
-          ).toList(),
+          children: (profileData['playlists'] as List<dynamic>?)?.map<Widget>((playlist) => 
+            _buildListItem(
+              title: playlist['title'] ?? 'Untitled Playlist',
+              subtitle: '${playlist['songCount'] ?? 0} songs | ${playlist['duration'] ?? 'Unknown'}',
+              description: playlist['description'] ?? 'No description available',
+              trailing: 'Playlist'
+            )
+          ).toList() ?? [const Text('No playlists available')],
         );
       case 'Songs':
         return Column(
-          children: profileData['songs'].map<Widget>((song) => 
-            _buildSongItem(song['title'], song['artist'], song['album'], song['duration'])
-          ).toList(),
+          children: (profileData['songs'] as List<dynamic>?)?.map<Widget>((song) => 
+            _buildListItem(
+              title: song['title'] ?? 'Untitled Song',
+              subtitle: '${song['artist'] ?? 'Unknown Artist'} - ${song['album'] ?? 'Unknown Album'}',
+              trailing: song['duration'] ?? '--:--'
+            )
+          ).toList() ?? [const Text('No songs available')],
         );
       case 'Artists':
         return Column(
-          children: profileData['artists'].map<Widget>((artist) => 
-            _buildArtistItem(artist['name'], artist['followers'], artist['topSong'])
-          ).toList(),
+          children: (profileData['artists'] as List<dynamic>?)?.map<Widget>((artist) => 
+            _buildListItem(
+              title: artist['name'] ?? 'Unknown Artist',
+              subtitle: '${artist['followers'] ?? '0'} followers',
+              description: 'Top song: ${artist['topSong'] ?? 'Unknown'}',
+              trailing: 'Artist'
+            )
+          ).toList() ?? [const Text('No artists available')],
         );
       case 'Albums':
         return Column(
-          children: profileData['albums'].map<Widget>((album) => 
-            _buildAlbumItem(album['title'], album['artist'], album['year'], album['tracks'])
-          ).toList(),
+          children: (profileData['albums'] as List<dynamic>?)?.map<Widget>((album) => 
+            _buildListItem(
+              title: album['title'] ?? 'Untitled Album',
+              subtitle: album['artist'] ?? 'Unknown Artist',
+              description: '${album['year'] ?? 'Unknown'} • ${album['tracks'] ?? '0'} tracks',
+              trailing: 'Album'
+            )
+          ).toList() ?? [const Text('No albums available')],
         );
       default:
         return Container();
     }
   }
 
-  Widget _buildPlaylistItem(String title, String details, String description) {
+  Widget _buildListItem({
+    required String title,
+    required String subtitle,
+    String? description,
+    required String trailing
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 10), // space between items in post lists
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -238,52 +324,48 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: AppStyles.playlistTitleStyle),
-              const Text('Playlist', style: AppStyles.playlistLabelStyle),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(text: details.split(' | ')[0], style: AppStyles.songCountStyle),
-                    const TextSpan(text: ' songs', style: AppStyles.songCountTextStyle),
-                  ],
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(' | ${details.split(' | ')[1]}', style: AppStyles.durationStyle),
+              Text(
+                trailing,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(description, style: AppStyles.playlistDescriptionStyle),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+          ),
+          if (description != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
-    );
-  }
-
-  Widget _buildSongItem(String title, String artist, String album, String duration) {
-    return ListTile(
-      title: Text(title),
-      subtitle: Text('$artist - $album'),
-      trailing: Text(duration),
-    );
-  }
-
-  Widget _buildArtistItem(String name, String followers, String topSong) {
-    return ListTile(
-      title: Text(name),
-      subtitle: Text('Top song: $topSong'),
-      trailing: Text('$followers followers'),
-    );
-  }
-
-  Widget _buildAlbumItem(String title, String artist, String year, String tracks) {
-    return ListTile(
-      title: Text(title),
-      subtitle: Text(artist),
-      trailing: Text('$year • $tracks tracks'),
     );
   }
 }

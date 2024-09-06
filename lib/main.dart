@@ -47,12 +47,12 @@ class _MyHomePageState extends State<MyHomePage> {
     if (link.isEmpty || link == "track2") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => TrackPage(trackId: "USUM71207190")),
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USUM71207190")),
       );
     } else if (link == "track1") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => TrackPage(trackId: "AUAP07600012")),
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "AUAP07600012")),
       );
     } else {
       // TODO: Implement API call for other cases
@@ -70,6 +70,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -207,12 +208,23 @@ class _MyHomePageState extends State<MyHomePage> {
             // Sign In Button
             Positioned(
               left: MediaQuery.of(context).size.width * 0.255,
-              top: MediaQuery.of(context).size.height * 0.1, // Adjusted position
+              top: MediaQuery.of(context).size.height * 0.1,
               child: TextButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SigninPage()),
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => SigninPage(),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(0.0, 1.0);
+                        const end = Offset.zero;
+                        const curve = Curves.easeInOut;
+                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                        return SlideTransition(
+                          position: animation.drive(tween),
+                          child: child,
+                        );
+                      },
+                    ),
                   );
                 },
                 child: const Text(
@@ -224,12 +236,23 @@ class _MyHomePageState extends State<MyHomePage> {
             // Sign Up Button
             Positioned(
               left: MediaQuery.of(context).size.width * 0.530,
-              top: MediaQuery.of(context).size.height * 0.093, // Adjusted position
+              top: MediaQuery.of(context).size.height * 0.093,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SignupPage()),
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => SignupPage(returnToTrack: false),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(0.0, 1.0);
+                        const end = Offset.zero;
+                        const curve = Curves.easeInOut;
+                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                        return SlideTransition(
+                          position: animation.drive(tween),
+                          child: child,
+                        );
+                      },
+                    ),
                   );
                 },
                 style: AppStyles.elevatedButtonStyle.copyWith(
