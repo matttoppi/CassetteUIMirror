@@ -43,10 +43,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _convertLink() {
     String link = _linkController.text.trim().toLowerCase();
-    if (link == "track") {
+    if (link.isEmpty || link == "track2") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => TrackPage()),
+        MaterialPageRoute(builder: (context) => TrackPage(trackId: "USUM71207190")),
+      );
+    } else if (link == "track1") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => TrackPage(trackId: "AUAP07600012")),
       );
     } else {
       // TODO: Implement API call for other cases
@@ -76,8 +81,8 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Container(
                 margin: EdgeInsets.only(
                     top: MediaQuery.of(context).size.height * 0.245),
-                width: MediaQuery.of(context).size.width * 0.306 * 1.55,
-                height: MediaQuery.of(context).size.height * 0.120 * 1.55,
+                width: MediaQuery.of(context).size.width * AppSizes.cassetteNameLogoWidth,
+                height: MediaQuery.of(context).size.height * AppSizes.cassetteNameLogoHeight,
                 child: Image.asset(
                   'lib/assets/images/cassette_name_logo.png',
                   fit: BoxFit.contain,
@@ -130,7 +135,7 @@ class _MyHomePageState extends State<MyHomePage> {
               visible: _showBox,
               child: Positioned(
                 left: MediaQuery.of(context).size.width * 0.1,
-                top: MediaQuery.of(context).size.height * 0.6,
+                top: MediaQuery.of(context).size.height * 0.625,
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.8,
                   padding: const EdgeInsets.all(16.0),

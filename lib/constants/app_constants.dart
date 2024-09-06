@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFFED2748);
+  static const Color primary = Color(0xFFFF0054); 
   static const Color textPrimary = Color(0xFF1F2327);
   static const Color hintText = Color(0xFFC4C4C4);
   static const Color artistNameColor = Color(0xFF5C5C5C);
@@ -11,6 +11,20 @@ class AppColors {
 class AppSizes {
   static const double borderRadius = 8.0;
   static const double buttonBorderRadius = 5.0;
+
+  static const double trackTextSpacing = 0.01; 
+  static const double albumCoverSize = 0.46;
+  static const double textContainerWidth = 0.636;
+  static const double createAccountButtonWidth = 0.533;
+  static const double createAccountButtonHeight = 0.058;
+
+  // Includes Logo and Text
+  static const double cassetteNameLogoWidth = 0.8; 
+  static const double cassetteNameLogoHeight = 0.2;
+
+  // Incudes just the text
+  static const double cassetteNameWidth = 0.35;
+  static const double cassetteNameHeight = 0.04;
 }
 
 class AppStrings {
@@ -37,4 +51,5 @@ class AppStrings {
   static const String cassetteTitle = 'Cassette';
   static const String trackText = 'Track';
   static const String createFreeAccountText = 'Create Free Account';
+  static const String homeTitle = 'Home';
 }

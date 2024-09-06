@@ -109,11 +109,9 @@ class AppStyles {
   );
 
   static const TextStyle trackTextStyle = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w900,
     color: AppColors.primary,
-    fontSize: 20,
-    fontFamily: 'Teko',
-    fontWeight: FontWeight.w600,
-    height: 0,
   );
 
   static BoxDecoration gradientBackgroundDecoration = const BoxDecoration(
@@ -225,4 +223,38 @@ class AppStyles {
     fontFamily: 'Roboto',
     fontWeight: FontWeight.w400,
   );
+
+  static BoxDecoration createAccountButtonDecoration = BoxDecoration(
+    color: AppColors.primary,
+    borderRadius: BorderRadius.circular(100),
+  );
+
+  static EdgeInsets trackPagePadding(BuildContext context) => EdgeInsets.symmetric(
+    horizontal: MediaQuery.of(context).size.width * 0.182,
+  );
+
+  static TextStyle trackIdentifierStyle(Color backgroundColor) {
+    return TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: backgroundColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white,
+      letterSpacing: 1.5,
+    );
+  }
+
+  static BoxDecoration trackIdentifierDecoration(Color backgroundColor) {
+    return BoxDecoration(
+      color: backgroundColor.computeLuminance() > 0.5 
+          ? Colors.black.withOpacity(0.1) 
+          : Colors.white.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(
+        color: backgroundColor.computeLuminance() > 0.5 
+            ? Colors.black.withOpacity(0.2) 
+            : Colors.white.withOpacity(0.2),
+        width: 1,
+      ),
+    );
+  }
+
 }
