@@ -73,31 +73,7 @@ class _MyHomePageState extends State<MyHomePage> {
         automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ProfilePage()),
-                );
-              },
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
+        toolbarHeight: 0, // Set to 0 as we'll manually position the profile icon
       ),
       extendBodyBehindAppBar: true,
       body: Container(
@@ -205,68 +181,99 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            // Sign In Button
+            // Centered Sign In and Sign Up buttons
             Positioned(
-              left: MediaQuery.of(context).size.width * 0.255,
-              top: MediaQuery.of(context).size.height * 0.1,
-              child: TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => SigninPage(),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        const begin = Offset(0.0, 1.0);
-                        const end = Offset.zero;
-                        const curve = Curves.easeInOut;
-                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                        return SlideTransition(
-                          position: animation.drive(tween),
-                          child: child,
-                        );
-                      },
+              top: 35,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => SigninPage(),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(120, 45), // Increased height to 45
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
+                    child: const Text(
+                      AppStrings.signInText,
+                      style: AppStyles.signInTextStyle,
+                    ),
+                  ),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.05), // Adjust this value to change the space between buttons
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => const SignupPage(returnToTrack: false),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    style: AppStyles.elevatedButtonStyle.copyWith(
+                      minimumSize: WidgetStateProperty.all(const Size(120, 45)), // Increased height to 45
+                      padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16)),
+                    ),
+                    child: const Text(
+                      AppStrings.signUpText,
+                      style: AppStyles.signUpTextStyle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Profile Icon
+            Positioned(
+              right: 35,
+              top: 35,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProfilePage()),
                   );
                 },
-                child: const Text(
-                  AppStrings.signInText,
-                  style: AppStyles.signInTextStyle,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary,
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
-            // Sign Up Button
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.530,
-              top: MediaQuery.of(context).size.height * 0.093,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => SignupPage(returnToTrack: false),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        const begin = Offset(0.0, 1.0);
-                        const end = Offset.zero;
-                        const curve = Curves.easeInOut;
-                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                        return SlideTransition(
-                          position: animation.drive(tween),
-                          child: child,
-                        );
-                      },
-                    ),
-                  );
-                },
-                style: AppStyles.elevatedButtonStyle.copyWith(
-                  fixedSize: WidgetStateProperty.all(Size(
-                    MediaQuery.of(context).size.width * 0.255,
-                    MediaQuery.of(context).size.height * 0.039,
-                  )),
-                ),
-                child: const Text(
-                  AppStrings.signUpText,
-                  style: AppStyles.signUpTextStyle,
-                ),
-              ),
-            ),
+            // Existing content...
           ],
         ),
       ),

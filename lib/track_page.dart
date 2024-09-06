@@ -247,6 +247,7 @@ class _TrackPageState extends State<TrackPage> {
         child: GestureDetector(
           onTap: () async {
             final url = data['url'];
+            //TODO: need to fix this depreceation
             if (await canLaunch(url)) {
               await launch(url);
             } else {

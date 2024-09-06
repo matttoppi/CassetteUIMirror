@@ -41,11 +41,11 @@ class _ProfilePageState extends State<ProfilePage> {
           Container(
             width: MediaQuery.of(context).size.width,
             height: 383,
-            color: const Color(0xFF1F2327),
+            color: AppColors.profileBackground,
             child: Stack(
               children: [
                 Positioned(
-                  top: 8,
+                  top: 18,
                   left: 0,
                   right: 0,
                   child: Center(
@@ -92,23 +92,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           Text(
                             user['name'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontFamily: 'Roboto',
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: AppStyles.profileNameStyle,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             user['username'],
-                            style: const TextStyle(
-                              color: Color(0xCCB4B4B4),
-                              fontSize: 14,
-                              fontFamily: 'Teko',
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: 1.26,
-                            ),
+                            style: AppStyles.profileUsernameStyle,
                           ),
                         ],
                       ),
@@ -123,13 +112,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     height: 64,
                     child: Text(
                       user['bio'],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontFamily: 'Roboto',
-                        fontWeight: FontWeight.w400,
-                        height: 1.4,
-                      ),
+                      style: AppStyles.profileBioStyle,
                     ),
                   ),
                 ),
@@ -193,23 +176,10 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildActionButton(String text) {
     return ElevatedButton(
       onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFED2748),
-        minimumSize: const Size(0, 40), // Maintained original height
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5),
-        ),
-      ),
+      style: AppStyles.profileActionButtonStyle,
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontFamily: 'Teko',
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.12,
-        ),
+        style: AppStyles.profileActionButtonTextStyle,
       ),
     );
   }
@@ -222,13 +192,13 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 5), 
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : const Color(0xFFC4C4C4),
+            color: isSelected ? AppColors.primary : AppColors.profileTabBackground,
             borderRadius: BorderRadius.circular(5),
           ),
-          child: Center( // Added to ensure vertical centering
+          child: Center( 
             child: Text(
               text,
-              style: isSelected ? AppStyles.selectedTabLabelStyle : AppStyles.tabLabelStyle,
+              style: isSelected ? AppStyles.profileSelectedTabStyle : AppStyles.profileTabStyle,
               textAlign: TextAlign.center,
             ),
           ),

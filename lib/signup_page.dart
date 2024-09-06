@@ -291,7 +291,7 @@ class SignupPage extends StatelessWidget {
     if (returnToTrack) {
       Navigator.of(context).pop(true);
     } else {
-      Navigator.of(context).pop(); // This line is changed
+      Navigator.of(context).pop();
     }
   }
 
