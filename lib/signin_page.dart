@@ -59,7 +59,7 @@ class SigninPage extends StatelessWidget {
             Positioned(
               left: MediaQuery.of(context).size.width * 0.056,
               top: MediaQuery.of(context).size.height * 0.267,
-              child: const Text(
+              child: Text(
                 AppStrings.emailAddressText,
                 style: AppStyles.bodyStyle,
               ),
@@ -82,7 +82,7 @@ class SigninPage extends StatelessWidget {
             Positioned(
               left: MediaQuery.of(context).size.width * 0.056,
               top: MediaQuery.of(context).size.height * 0.377,
-              child: const Text(
+              child: Text(
                 AppStrings.passwordText,
                 style: AppStyles.bodyStyle,
               ),

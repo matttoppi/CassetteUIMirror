@@ -1,0 +1,82 @@
+{
+  "user": {
+    "name": "Matt Toppi",
+    "username": "@MattToppi",
+    "bio": "Founder of Cassette. Lead developer and Music-lover at heart.",
+    "profilePicture": "https://example.com/matt_toppi.jpg"
+  },
+  "playlists": [
+    {
+      "title": "Push Yourself - Gym tunes",
+      "details": "132 songs | 6h",
+      "description": "My daily motivation at the gym. Filled with upbeat songs that you need to turn to 11."
+    },
+    {
+      "title": "The 50 States",
+      "details": "50 songs | 3h",
+      "description": "A culture-rich creation made during my 3 month road-trip to every US state."
+    },
+    {
+      "title": "Chill Vibes",
+      "details": "80 songs | 4h 30m",
+      "description": "Perfect for relaxing after a long day or during a lazy weekend."
+    }
+  ],
+  "songs": [
+    {
+      "title": "Uptown Funk",
+      "artist": "Mark Ronson ft. Bruno Mars",
+      "album": "Uptown Special",
+      "duration": "4:30"
+    },
+    {
+      "title": "Shape of You",
+      "artist": "Ed Sheeran",
+      "album": "÷ (Divide)",
+      "duration": "3:53"
+    },
+    {
+      "title": "Blinding Lights",
+      "artist": "The Weeknd",
+      "album": "After Hours",
+      "duration": "3:20"
+    }
+  ],
+  "artists": [
+    {
+      "name": "Taylor Swift",
+      "followers": "85M",
+      "topSong": "Shake It Off"
+    },
+    {
+      "name": "Drake",
+      "followers": "65M",
+      "topSong": "One Dance"
+    },
+    {
+      "name": "Ariana Grande",
+      "followers": "80M",
+      "topSong": "7 Rings"
+    }
+  ],
+  "albums": [
+    {
+      "title": "21",
+      "artist": "Adele",
+      "year": "2011",
+      "tracks": "11"
+    },
+    {
+      "title": "Thriller",
+      "artist": "Michael Jackson",
+      "year": "1982",
+      "tracks": "9"
+    },
+    {
+      "title": "Back in Black",
+      "artist": "AC/DC",
+      "year": "1980",
+      "tracks": "10"
+    }
+  ]
+}

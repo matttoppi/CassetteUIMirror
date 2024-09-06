@@ -4,6 +4,7 @@ import 'constants/app_constants.dart';
 import 'signup_page.dart';
 import 'signin_page.dart';
 import 'track_page.dart';
+import 'profile_page.dart'; // Add this import
 
 void main() {
   runApp(MyApp());
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.red,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        textTheme: const TextTheme(
+        textTheme: TextTheme(
           headlineMedium: AppStyles.headlineStyle,
           bodyLarge: AppStyles.bodyStyle,
           bodyMedium: AppStyles.bodyStyle,
@@ -68,6 +69,36 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ProfilePage()),
+                );
+              },
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary,
+                ),
+                child: const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      extendBodyBehindAppBar: true,
       body: Container(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
@@ -146,7 +177,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         AppStrings.infoBoxTitle,
                         style: AppStyles.headlineStyle,
                         textAlign: TextAlign.center,
@@ -176,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
             // Sign In Button
             Positioned(
               left: MediaQuery.of(context).size.width * 0.255,
-              top: MediaQuery.of(context).size.height * 0.054,
+              top: MediaQuery.of(context).size.height * 0.1, // Adjusted position
               child: TextButton(
                 onPressed: () {
                   Navigator.push(
@@ -193,7 +224,7 @@ class _MyHomePageState extends State<MyHomePage> {
             // Sign Up Button
             Positioned(
               left: MediaQuery.of(context).size.width * 0.530,
-              top: MediaQuery.of(context).size.height * 0.047,
+              top: MediaQuery.of(context).size.height * 0.093, // Adjusted position
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(
