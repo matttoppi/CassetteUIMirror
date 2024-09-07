@@ -54,7 +54,14 @@ class _MyHomePageState extends State<MyHomePage> {
         context,
         MaterialPageRoute(builder: (context) => const TrackPage(trackId: "AUAP07600012")),
       );
-    } else {
+      } 
+    else if (link == "track3") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USDHM1908454")),
+      );
+    }
+    else {
       // TODO: Implement API call for other cases
       print('Converting link: $link');
     }
