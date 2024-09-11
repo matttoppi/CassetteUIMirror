@@ -43,6 +43,7 @@ class _TrackPageState extends State<TrackPage> {
             return const Center(child: Text('No data available'));
           }
 
+
           final trackData = snapshot.data!;
           final dominantColor = Color(trackData['dominantColor']);
 
