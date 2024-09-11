@@ -7,7 +7,7 @@ import 'track_page.dart';
 import 'profile_page.dart'; // Add this import
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: AppStyles.bodyStyle,
         ),
       ),
-      home: MyHomePage(title: AppStrings.appTitle),
+      home: const MyHomePage(title: AppStrings.appTitle),
     );
   }
 }
@@ -202,7 +202,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       Navigator.of(context).push(
                         PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => SigninPage(),
+                          pageBuilder: (context, animation, secondaryAnimation) => const SigninPage(),
                           transitionsBuilder: (context, animation, secondaryAnimation, child) {
                             const begin = Offset(0.0, 1.0);
                             const end = Offset.zero;
@@ -264,7 +264,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => ProfilePage()),
+                    MaterialPageRoute(builder: (context) => const ProfilePage()),
                   );
                 },
                 child: Container(

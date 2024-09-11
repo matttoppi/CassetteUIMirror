@@ -81,7 +81,7 @@ class _TrackPageState extends State<TrackPage> {
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (context) => MyHomePage(title: AppStrings.homeTitle)),
+                          MaterialPageRoute(builder: (context) => const MyHomePage(title: AppStrings.homeTitle)),
                         ),
                         child: Image.asset(
                           'lib/assets/images/cassette_name.png',
