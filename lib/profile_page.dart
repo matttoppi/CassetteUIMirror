@@ -55,7 +55,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: () {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
-                              builder: (context) => const MyHomePage(title: '')),
+                              builder: (context) => MyHomePage(title: '')),
                           (Route<dynamic> route) => false,
                         );
                       },

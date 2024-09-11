@@ -15,9 +15,9 @@ class TrackPage extends StatefulWidget {
   _TrackPageState createState() => _TrackPageState();
 }
 
-
 class _TrackPageState extends State<TrackPage> {
   late Future<Map<String, dynamic>> _trackDataFuture;
+  final TrackService _trackService = TrackService();
 
   @override
   void initState() {
@@ -26,7 +26,7 @@ class _TrackPageState extends State<TrackPage> {
   }
 
   void _loadTrackData() {
-    _trackDataFuture = TrackService().getTrackData(widget.trackId);
+    _trackDataFuture = _trackService.getTrackData(widget.trackId);
   }
 
   @override
@@ -38,11 +38,25 @@ class _TrackPageState extends State<TrackPage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Error: ${snapshot.error}'),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _loadTrackData(); // Retry loading the data
+                      });
+                    },
+                    child: Text('Retry'),
+                  ),
+                ],
+              ),
+            );
           } else if (!snapshot.hasData) {
             return const Center(child: Text('No data available'));
           }
-
 
           final trackData = snapshot.data!;
           final dominantColor = Color(trackData['dominantColor']);
@@ -83,7 +97,7 @@ class _TrackPageState extends State<TrackPage> {
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (context) => const MyHomePage(title: AppStrings.homeTitle)),
+                          MaterialPageRoute(builder: (context) => MyHomePage(title: AppStrings.homeTitle)),
                         ),
                         child: Image.asset(
                           'lib/assets/images/cassette_name.png',

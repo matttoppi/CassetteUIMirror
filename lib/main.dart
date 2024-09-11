@@ -4,7 +4,8 @@ import 'constants/app_constants.dart';
 import 'signup_page.dart';
 import 'signin_page.dart';
 import 'track_page.dart';
-import 'profile_page.dart'; // Add this import
+import 'profile_page.dart'; 
+import 'services/track_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -44,28 +45,29 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _linkController = TextEditingController();
   bool _showBox = false;
 
-  void _convertLink() {
+  void _convertLink() async {
     String link = _linkController.text.trim().toLowerCase();
     if (link.isEmpty || link == "track2") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USUM71207190")),
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "track1")),
       );
     } else if (link == "track1") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "AUAP07600012")),
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "track2")),
       );
-      } 
-    else if (link == "track3") {
+    } else if (link == "track3") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USDHM1908454")),
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "track3")),
       );
-    }
-    else {
-      // TODO: Implement API call for other cases
-      print('Converting link: $link');
+    } else {
+      // Navigate to TrackPage for all non-default tracks
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => TrackPage(trackId: link)),
+      );
     }
   }
 
