@@ -95,5 +95,53 @@
     "metadata": {
       "data_added": 1725597367
     }
+  },
+  "track3": {
+    "track": {
+      "id": "USDHM1908454",
+      "name": "Mona Lisa Lamborghini",
+      "isrc": "USDHM1908454",
+      "explicit": false,
+      "popularity": 32
+    },
+    "artist": {
+      "name": ["The Grinns"]
+    },
+    "album": {
+      "name": "Let the Daze Go",
+      "release_type": "album"
+    },
+    "genres": [
+      "Alternative",
+      "Indie Rock"
+    ],
+    "platforms": {
+      "spotify": {
+        "track_id": "2exwW9sBSBia0jt9O8wA8W",
+        "uri": "spotify:track:2exwW9sBSBia0jt9O8wA8W",
+        "url": "https://open.spotify.com/track/2exwW9sBSBia0jt9O8wA8W",
+        "art_url": "https://i.scdn.co/image/ab67616d0000b273d210e04451fa807b83c108f7",
+        "preview_url": "https://p.scdn.co/mp3-preview/21982fd431f15cdc9fc8699040a874c29d5ab5be?cid=268623fdff7a4b1cb13bcae2c3c3a74c"
+      },
+      "apple_music": {
+        "track_id": "1470521844",
+        "url": "https://music.apple.com/us/album/mona-lisa-lamborghini/1470521838?i=1470521844"
+      },
+      "deezer": {
+        "track_id": "682744212",
+        "url": "https://www.deezer.com/track/682744212"
+      },
+      "youtube_music": {
+        "video_id": "1Ft8ikooNCQ",
+        "url": "https://music.youtube.com/watch?v=1Ft8ikooNCQ"
+      },
+      "tidal": {
+        "track_id": "112283024",
+        "url": "https://tidal.com/browse/track/112283024"
+      }
+    },
+    "metadata": {
+      "data_added": 1725744252
+    }
   }
 }

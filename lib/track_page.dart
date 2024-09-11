@@ -9,7 +9,7 @@ import 'main.dart';
 class TrackPage extends StatefulWidget {
   final String trackId;
 
-  TrackPage({Key? key, required this.trackId}) : super(key: key);
+  const TrackPage({Key? key, required this.trackId}) : super(key: key);
 
   @override
   _TrackPageState createState() => _TrackPageState();
@@ -21,6 +21,10 @@ class _TrackPageState extends State<TrackPage> {
   @override
   void initState() {
     super.initState();
+    _loadTrackData();
+  }
+
+  void _loadTrackData() {
     _trackDataFuture = TrackService().getTrackData(widget.trackId);
   }
 
@@ -166,9 +170,27 @@ class _TrackPageState extends State<TrackPage> {
                   left: MediaQuery.of(context).size.width * 0.248,
                   top: MediaQuery.of(context).size.height * 0.6125, 
                   child: GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => SignupPage()),
-                    ),
+                    onTap: () async {
+                      final result = await Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => SignupPage(returnToTrack: true),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 1),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                      if (result == true) {
+                        setState(() {
+                          _loadTrackData(); // Refresh the track data
+                        });
+                      }
+                    },
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.533,
                       height: MediaQuery.of(context).size.height * 0.058,
@@ -225,6 +247,7 @@ class _TrackPageState extends State<TrackPage> {
         child: GestureDetector(
           onTap: () async {
             final url = data['url'];
+            //TODO: need to fix this depreceation
             if (await canLaunch(url)) {
               await launch(url);
             } else {

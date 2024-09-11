@@ -4,6 +4,7 @@ import 'constants/app_constants.dart';
 import 'signup_page.dart';
 import 'signin_page.dart';
 import 'track_page.dart';
+import 'profile_page.dart'; // Add this import
 
 void main() {
   runApp(MyApp());
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.red,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        textTheme: const TextTheme(
+        textTheme: TextTheme(
           headlineMedium: AppStyles.headlineStyle,
           bodyLarge: AppStyles.bodyStyle,
           bodyMedium: AppStyles.bodyStyle,
@@ -46,14 +47,21 @@ class _MyHomePageState extends State<MyHomePage> {
     if (link.isEmpty || link == "track2") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => TrackPage(trackId: "USUM71207190")),
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USUM71207190")),
       );
     } else if (link == "track1") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => TrackPage(trackId: "AUAP07600012")),
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "AUAP07600012")),
       );
-    } else {
+      } 
+    else if (link == "track3") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USDHM1908454")),
+      );
+    }
+    else {
       // TODO: Implement API call for other cases
       print('Converting link: $link');
     }
@@ -68,6 +76,13 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 0, // Set to 0 as we'll manually position the profile icon
+      ),
+      extendBodyBehindAppBar: true,
       body: Container(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
@@ -146,7 +161,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         AppStrings.infoBoxTitle,
                         style: AppStyles.headlineStyle,
                         textAlign: TextAlign.center,
@@ -173,46 +188,99 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            // Sign In Button
+            // Centered Sign In and Sign Up buttons
             Positioned(
-              left: MediaQuery.of(context).size.width * 0.255,
-              top: MediaQuery.of(context).size.height * 0.054,
-              child: TextButton(
-                onPressed: () {
+              top: 35,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => SigninPage(),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(120, 45), // Increased height to 45
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: const Text(
+                      AppStrings.signInText,
+                      style: AppStyles.signInTextStyle,
+                    ),
+                  ),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.05), // Adjust this value to change the space between buttons
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => const SignupPage(returnToTrack: false),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    style: AppStyles.elevatedButtonStyle.copyWith(
+                      minimumSize: WidgetStateProperty.all(const Size(120, 45)), // Increased height to 45
+                      padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16)),
+                    ),
+                    child: const Text(
+                      AppStrings.signUpText,
+                      style: AppStyles.signUpTextStyle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Profile Icon
+            Positioned(
+              right: 35,
+              top: 35,
+              child: GestureDetector(
+                onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => SigninPage()),
+                    MaterialPageRoute(builder: (context) => ProfilePage()),
                   );
                 },
-                child: const Text(
-                  AppStrings.signInText,
-                  style: AppStyles.signInTextStyle,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary,
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
-            // Sign Up Button
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.530,
-              top: MediaQuery.of(context).size.height * 0.047,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SignupPage()),
-                  );
-                },
-                style: AppStyles.elevatedButtonStyle.copyWith(
-                  fixedSize: WidgetStateProperty.all(Size(
-                    MediaQuery.of(context).size.width * 0.255,
-                    MediaQuery.of(context).size.height * 0.039,
-                  )),
-                ),
-                child: const Text(
-                  AppStrings.signUpText,
-                  style: AppStyles.signUpTextStyle,
-                ),
-              ),
-            ),
+            // Existing content...
           ],
         ),
       ),

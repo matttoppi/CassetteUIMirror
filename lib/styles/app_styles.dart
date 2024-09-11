@@ -1,25 +1,23 @@
 import 'package:cassettefrontend/constants/app_constants.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppStyles {
-  static const TextStyle headlineStyle = TextStyle(
+  static TextStyle headlineStyle = GoogleFonts.teko(
     color: AppColors.textPrimary,
     fontSize: 24,
-    fontFamily: 'Teko',
     fontWeight: FontWeight.w700,
   );
 
-  static const TextStyle bodyStyleBold = TextStyle(
+  static TextStyle bodyStyleBold = GoogleFonts.robotoFlex(
     color: AppColors.textPrimary,
     fontSize: 20,
-    fontFamily: 'Roboto Flex',
     fontWeight: FontWeight.w700,
   );
 
-  static const TextStyle bodyStyle = TextStyle(
+  static TextStyle bodyStyle = GoogleFonts.robotoFlex(
     color: AppColors.textPrimary,
     fontSize: 20,
-    fontFamily: 'Roboto Flex',
     fontWeight: FontWeight.w400,
   );
 
@@ -256,5 +254,161 @@ class AppStyles {
       ),
     );
   }
+
+  static const TextStyle profileNameStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle profileUsernameStyle = TextStyle(
+    color: Color(0xCCB4B4B4),
+    fontSize: 14,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w400,
+    letterSpacing: 1.26,
+  );
+
+  static const TextStyle profileBioStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w400,
+    height: 1.4,
+  );
+
+  static const TextStyle profileActionButtonTextStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 14,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+    letterSpacing: 1.12,
+  );
+
+  static const TextStyle profileTabStyle = TextStyle(
+    color: Color(0xFF1F2327),
+    fontSize: 16,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.96,
+  );
+
+  static const TextStyle profileSelectedTabStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 15,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.45,
+  );
+
+  static const TextStyle playlistLabelStyle = TextStyle(
+    color: AppColors.primary,
+    fontSize: 18,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+    height: 0,
+  );
+
+  static const TextStyle playlistTitleStyle = TextStyle(
+    color: Color(0xCC353535),
+    fontSize: 20,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+    height: 0,
+  );
+
+  static const TextStyle songCountStyle = TextStyle(
+    color: AppColors.primary,
+    fontSize: 14,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w300,
+    height: 0,
+  );
+
+  static const TextStyle songCountTextStyle = TextStyle(
+    color: Color(0xCC353535),
+    fontSize: 14,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w300,
+    height: 0,
+  );
+
+  static const TextStyle playlistDescriptionStyle = TextStyle(
+    color: Colors.black,
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w400,
+    height: 0.07,
+  );
+
+  static const TextStyle durationStyle = TextStyle(
+    color: Color(0xCC353535),
+    fontSize: 14,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w300,
+    height: 0,
+  );
+
+  static const TextStyle bioStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w400,
+    height: 0,
+  );
+
+  static const TextStyle usernameStyle = TextStyle(
+    color: Color(0xCCB4B4B4),
+    fontSize: 14,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w400,
+    height: 0.08,
+    letterSpacing: 1.26,
+  );
+
+  static const TextStyle websiteStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 12,
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w400,
+    height: 0.08,
+  );
+
+  static const TextStyle tabLabelStyle = TextStyle(
+    color: Color(0xFF1F2327),
+    fontSize: 16,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w400,
+    height: 0.06,
+    letterSpacing: 0.96,
+  );
+
+  static const TextStyle selectedTabLabelStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 15,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+    height: 0.06,
+    letterSpacing: 0.45,
+  );
+
+  static const TextStyle appBarTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+    height: 0,
+  );
+
+  static final ButtonStyle profileActionButtonStyle = ElevatedButton.styleFrom(
+    backgroundColor: AppColors.primary,
+    minimumSize: const Size(0, 40),
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(5),
+    ),
+  );
+
 
 }
