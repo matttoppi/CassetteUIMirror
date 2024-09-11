@@ -4,6 +4,8 @@ import 'constants/app_constants.dart';
 import 'signup_page.dart';
 
 class SigninPage extends StatelessWidget {
+  const SigninPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -164,7 +166,7 @@ class SigninPage extends StatelessWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => SignupPage()),
+                          MaterialPageRoute(builder: (context) => const SignupPage()),
                         );
                       },
                       child: const Text(

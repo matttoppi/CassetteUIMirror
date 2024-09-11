@@ -35,7 +35,7 @@ class TrackService {
   Future<Color> getDominantColor(String imageUrl) async {
     final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(
       NetworkImage(imageUrl),
-      size: Size(200, 200),   // This is the size of the image that is sampled for the palette
+      size: const Size(200, 200),   // This is the size of the image that is sampled for the palette
       maximumColorCount: 32,  // This is the number of colors that are sampled for the palette
     );
 

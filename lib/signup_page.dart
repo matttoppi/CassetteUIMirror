@@ -7,7 +7,7 @@ import 'signin_page.dart';
 class SignupPage extends StatelessWidget {
   final bool returnToTrack;
 
-  const SignupPage({Key? key, this.returnToTrack = false}) : super(key: key);
+  const SignupPage({super.key, this.returnToTrack = false});
 
   @override
   Widget build(BuildContext context) {

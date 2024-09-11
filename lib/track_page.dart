@@ -9,7 +9,7 @@ import 'main.dart';
 class TrackPage extends StatefulWidget {
   final String trackId;
 
-  const TrackPage({Key? key, required this.trackId}) : super(key: key);
+  const TrackPage({super.key, required this.trackId});
 
   @override
   _TrackPageState createState() => _TrackPageState();
@@ -173,7 +173,7 @@ class _TrackPageState extends State<TrackPage> {
                     onTap: () async {
                       final result = await Navigator.of(context).push(
                         PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => SignupPage(returnToTrack: true),
+                          pageBuilder: (context, animation, secondaryAnimation) => const SignupPage(returnToTrack: true),
                           transitionsBuilder: (context, animation, secondaryAnimation, child) {
                             return SlideTransition(
                               position: Tween<Offset>(

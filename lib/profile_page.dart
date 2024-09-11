@@ -6,6 +6,8 @@ import 'constants/app_constants.dart';
 import 'main.dart';
 
 class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
