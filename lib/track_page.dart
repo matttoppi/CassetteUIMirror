@@ -5,7 +5,7 @@ import 'constants/app_constants.dart';
 import 'services/track_service.dart';
 import 'signup_page.dart'; 
 import 'main.dart';
-
+import 'package:go_router/go_router.dart';
 class TrackPage extends StatefulWidget {
   final String trackId;
 
@@ -189,7 +189,9 @@ class _TrackPageState extends State<TrackPage> {
                     onTap: () async {
                       final result = await Navigator.of(context).push(
                         PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => const SignupPage(returnToTrack: true),
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  const SignupPage(),
                           transitionsBuilder: (context, animation, secondaryAnimation, child) {
                             return SlideTransition(
                               position: Tween<Offset>(
@@ -261,16 +263,9 @@ class _TrackPageState extends State<TrackPage> {
         left: MediaQuery.of(context).size.width * (0.14 + 0.15 * index),
         top: MediaQuery.of(context).size.height * 0.745,
         child: GestureDetector(
-          onTap: () async {
+          onTap: () {
             final url = data['url'];
-            //TODO: need to fix this depreceation
-            if (await canLaunch(url)) {
-              await launch(url);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Could not launch $url')),
-              );
-            }
+            context.go('/track/$url');
           },
           child: Container(
             width: 44,

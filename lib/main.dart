@@ -1,36 +1,70 @@
+import 'package:cassettefrontend/profile_page.dart';
+import 'package:cassettefrontend/signin_page.dart';
+import 'package:cassettefrontend/signup_page.dart';
+import 'package:cassettefrontend/track_page.dart';
 import 'package:flutter/material.dart';
+import 'package:app_links/app_links.dart';
+import 'package:go_router/go_router.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
-import 'signup_page.dart';
-import 'signin_page.dart';
-import 'track_page.dart';
-import 'profile_page.dart'; 
-import 'services/track_service.dart';
+import 'services/router.dart';
+
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _appLinks = AppLinks();
 
   @override
+  void initState() {
+    super.initState();
+    initAppLinks();
+  }
+
+  void initAppLinks() {
+    _appLinks.uriLinkStream.listen((Uri? uri) {
+      if (uri != null) {
+        print('AppLinks: Received URI: $uri');
+        handleIncomingLink(uri);
+      }
+    }, onError: (err) {
+      print('AppLinks Error: $err');
+    });
+  }
+
+  void handleIncomingLink(Uri uri) {
+    print('Main: Handling incoming link: $uri');
+    if (uri.path == '/spotify_callback') {
+      final code = uri.queryParameters['code'];
+      final error = uri.queryParameters['error'];
+      print('Main: Spotify callback detected. Code: $code, Error: $error');
+
+      // Navigate to SpotifyCallbackPage
+      router.go('/spotify_callback', extra: {'code': code, 'error': error});
+    } else {
+      print('Main: Unknown deep link path: ${uri.path}');
+    }
+  }
+  
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppStrings.appTitle,
+    return MaterialApp.router(
+      routerConfig: router,
+      title: 'Cassette App',
       theme: ThemeData(
-        primarySwatch: Colors.red,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        textTheme: TextTheme(
-          headlineMedium: AppStyles.headlineStyle,
-          bodyLarge: AppStyles.bodyStyle,
-          bodyMedium: AppStyles.bodyStyle,
-        ),
+        primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: AppStrings.appTitle),
     );
   }
 }
+
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -232,7 +266,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       Navigator.of(context).push(
                         PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => const SignupPage(returnToTrack: false),
+                            pageBuilder:
+                            (context, animation, secondaryAnimation) =>
+                                const SignupPage(),
                           transitionsBuilder: (context, animation, secondaryAnimation, child) {
                             const begin = Offset(0.0, 1.0);
                             const end = Offset.zero;
@@ -284,7 +320,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            // Existing content...
           ],
         ),
       ),

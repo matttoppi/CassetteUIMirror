@@ -1,12 +1,17 @@
 import 'dart:convert';
+import 'package:cassettefrontend/edit_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
 import 'main.dart';
+import 'package:cassettefrontend/services/spotify_service.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String? code;
+  final String? error;
+
+  const ProfilePage({Key? key, this.code, this.error}) : super(key: key);
 
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -19,7 +24,19 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _handleSpotifyCallback();
     loadProfileData();
+  }
+
+  void _handleSpotifyCallback() {
+    if (widget.code != null) {
+      print('ProfilePage: Received Spotify auth code: ${widget.code}');
+      // Handle successful authentication
+      SpotifyService.exchangeCodeForToken(widget.code!);
+    } else if (widget.error != null) {
+      print('ProfilePage: Received Spotify auth error: ${widget.error}');
+      // Handle authentication error
+    }
   }
 
   Future<void> loadProfileData() async {
@@ -55,7 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: () {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
-                              builder: (context) => MyHomePage(title: '')),
+                              builder: (context) => const MyHomePage(title: '')),
                           (Route<dynamic> route) => false,
                         );
                       },
@@ -157,6 +174,22 @@ class _ProfilePageState extends State<ProfilePage> {
                         _buildTab('Albums'),
                       ],
                     ),
+                  ),
+                ),
+                Positioned(
+                  right: 20,
+                  top: 20,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white, backgroundColor: AppColors.primary,
+                    ),
+                    child: const Text('Edit Profile'),
                   ),
                 ),
               ],
