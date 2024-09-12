@@ -6,6 +6,7 @@ import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
 import 'main.dart';
 import 'package:cassettefrontend/services/spotify_service.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfilePage extends StatefulWidget {
   final String? code;
@@ -69,13 +70,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   right: 0,
                   child: Center(
                     child: GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                              builder: (context) => const MyHomePage(title: '')),
-                          (Route<dynamic> route) => false,
-                        );
-                      },
+                      onTap: () => context.go('/'),
                       child: const Text(
                         'Cassette',
                         textAlign: TextAlign.center,
@@ -180,12 +175,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   right: 20,
                   top: 20,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const EditProfilePage()),
-                      );
-                    },
+                    onPressed: () => context.push('/edit_profile'),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white, backgroundColor: AppColors.primary,
                     ),

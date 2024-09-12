@@ -8,9 +8,11 @@ import 'package:go_router/go_router.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
 import 'services/router.dart';
-
+import 'package:url_strategy/url_strategy.dart';
+import 'package:cassettefrontend/services/spotify_service.dart';
 
 void main() {
+  setPathUrlStrategy(); // removes the '#' from the URL
   runApp(MyApp());
 }
 
@@ -20,39 +22,38 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final _appLinks = AppLinks();
-
   @override
   void initState() {
     super.initState();
-    initAppLinks();
+    _handleInitialUri();
   }
 
-  void initAppLinks() {
-    _appLinks.uriLinkStream.listen((Uri? uri) {
-      if (uri != null) {
-        print('AppLinks: Received URI: $uri');
-        handleIncomingLink(uri);
-      }
-    }, onError: (err) {
-      print('AppLinks Error: $err');
-    });
-  }
-
-  void handleIncomingLink(Uri uri) {
-    print('Main: Handling incoming link: $uri');
+  void _handleInitialUri() {
+    final uri = Uri.base;
     if (uri.path == '/spotify_callback') {
       final code = uri.queryParameters['code'];
       final error = uri.queryParameters['error'];
-      print('Main: Spotify callback detected. Code: $code, Error: $error');
-
-      // Navigate to SpotifyCallbackPage
-      router.go('/spotify_callback', extra: {'code': code, 'error': error});
-    } else {
-      print('Main: Unknown deep link path: ${uri.path}');
+      print('Initial URI is a Spotify callback. Code: $code, Error: $error');
+      // Handle the Spotify callback
+      _handleSpotifyCallback(code, error);
     }
   }
-  
+
+  void _handleSpotifyCallback(String? code, String? error) async {
+    if (code != null) {
+      try {
+        await SpotifyService.exchangeCodeForToken(code);
+        print('Successfully exchanged code for token');
+      } catch (e) {
+        print('Error exchanging code for token: $e');
+      }
+    } else if (error != null) {
+      print('Spotify auth error: $error');
+    }
+    // Navigate to profile page
+    router.go('/profile');
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
@@ -64,7 +65,6 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
-
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -264,23 +264,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   SizedBox(width: MediaQuery.of(context).size.width * 0.05), // Adjust this value to change the space between buttons
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                            pageBuilder:
-                            (context, animation, secondaryAnimation) =>
-                                const SignupPage(),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(0.0, 1.0);
-                            const end = Offset.zero;
-                            const curve = Curves.easeInOut;
-                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                            return SlideTransition(
-                              position: animation.drive(tween),
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
+                      context.push('/signin');
                     },
                     style: AppStyles.elevatedButtonStyle.copyWith(
                       minimumSize: WidgetStateProperty.all(const Size(120, 45)), // Increased height to 45

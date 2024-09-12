@@ -96,9 +96,7 @@ class _TrackPageState extends State<TrackPage> {
                   child: Column(
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (context) => MyHomePage(title: AppStrings.homeTitle)),
-                        ),
+                        onTap: () => context.go('/'),
                         child: Image.asset(
                           'lib/assets/images/cassette_name.png',
                           width: MediaQuery.of(context).size.width * AppSizes.cassetteNameWidth,
@@ -186,29 +184,7 @@ class _TrackPageState extends State<TrackPage> {
                   left: MediaQuery.of(context).size.width * 0.248,
                   top: MediaQuery.of(context).size.height * 0.6125, 
                   child: GestureDetector(
-                    onTap: () async {
-                      final result = await Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  const SignupPage(),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 1),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
-                      if (result == true) {
-                        setState(() {
-                          _loadTrackData(); // Refresh the track data
-                        });
-                      }
-                    },
+                    onTap: () => context.push('/signup'),
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.533,
                       height: MediaQuery.of(context).size.height * 0.058,
@@ -265,7 +241,7 @@ class _TrackPageState extends State<TrackPage> {
         child: GestureDetector(
           onTap: () {
             final url = data['url'];
-            context.go('/track/$url');
+            launchUrl(Uri.parse(url));  // Use url_launcher to open the link
           },
           child: Container(
             width: 44,

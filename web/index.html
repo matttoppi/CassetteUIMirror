@@ -33,6 +33,15 @@
       var loading = document.createElement('div');
       loading.innerText = "Loading...";
       document.body.appendChild(loading);
+
+      // Handle Spotify callback
+      var uri = new URL(window.location.href);
+      if (uri.pathname === '/spotify_callback') {
+        var code = uri.searchParams.get('code');
+        var error = uri.searchParams.get('error');
+        console.log('Spotify callback detected. Code:', code, 'Error:', error);
+        window.flutterWebRenderer.didReceiveSpotifyCallback(code, error);
+      }
     });
   </script>
 </body>

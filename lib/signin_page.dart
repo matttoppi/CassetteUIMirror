@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
 import 'signup_page.dart';
@@ -185,6 +186,6 @@ class SigninPage extends StatelessWidget {
   }
 
   void _handleBackNavigation(BuildContext context) {
-    Navigator.of(context).pop();
+    context.go('/');
   }
 }

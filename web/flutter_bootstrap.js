@@ -11,9 +11,9 @@ window.addEventListener('load', function(ev) {
       console.log('Flutter entrypoint loaded');
       const appRunner = await engineInitializer.initializeEngine();
       console.log('Flutter engine initialized');
+      
       await appRunner.runApp();
       console.log('Flutter app running');
     }
   });
 });
-

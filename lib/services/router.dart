@@ -5,6 +5,7 @@ import 'package:cassettefrontend/track_page.dart';
 import 'package:cassettefrontend/profile_page.dart';
 import 'package:cassettefrontend/signup_page.dart';
 import 'package:cassettefrontend/signin_page.dart';
+import 'package:cassettefrontend/edit_profile_page.dart';
 import 'package:cassettefrontend/spotify_callback_page.dart';
 
 final GoRouter router = GoRouter(
@@ -18,15 +19,8 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/spotify_callback',
       builder: (context, state) {
-        final code = state.extra != null
-            ? (state.extra as Map)['code'] as String?
-            : null;
-        final error = state.extra != null
-            ? (state.extra as Map)['error'] as String?
-            : null;
-        print(
-            'Router: Navigating to SpotifyCallbackPage with code: $code, error: $error');
-        return SpotifyCallbackPage(code: code, error: error);
+        // This route is now handled in the main.dart file
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
       },
     ),
     GoRoute(
@@ -34,16 +28,12 @@ final GoRouter router = GoRouter(
       builder: (context, state) {
         final code = state.uri.queryParameters['code'];
         final error = state.uri.queryParameters['error'];
-        return ProfilePage(
-          code: code,
-          error: error,
-        );
+        return ProfilePage(code: code, error: error);
       },
     ),
     GoRoute(
       path: '/track/:trackId',
-      builder: (context, state) =>
-          TrackPage(trackId: state.pathParameters['trackId']!),
+      builder: (context, state) => TrackPage(trackId: state.pathParameters['trackId']!),
     ),
     GoRoute(
       path: '/signup',
@@ -52,6 +42,10 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/signin',
       builder: (context, state) => const SigninPage(),
+    ),
+    GoRoute(
+      path: '/edit_profile',
+      builder: (context, state) => const EditProfilePage(),
     ),
   ],
   redirect: (BuildContext context, GoRouterState state) {

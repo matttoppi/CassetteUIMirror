@@ -20,8 +20,8 @@ class SpotifyService {
     print('Launching Spotify auth URL: $authUrl');
 
     if (kIsWeb) {
-      // For web, open in a new tab
-      await launchUrl(Uri.parse(authUrl), webOnlyWindowName: '_blank');
+      // For web, open in the same tab
+      await launchUrl(Uri.parse(authUrl), webOnlyWindowName: '_self');
     } else {
       // For mobile platforms
       if (await canLaunchUrl(Uri.parse(authUrl))) {
