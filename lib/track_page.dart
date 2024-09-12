@@ -93,24 +93,14 @@ class _TrackPageState extends State<TrackPage> {
                   left: 0,
                   right: 0,
                   top: MediaQuery.of(context).size.height * 0.03,
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () => context.go('/'),
-                        child: Image.asset(
-                          'lib/assets/images/cassette_name.png',
-                          width: MediaQuery.of(context).size.width * AppSizes.cassetteNameWidth,
-                          height: MediaQuery.of(context).size.height * AppSizes.cassetteNameHeight,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      SizedBox(height: MediaQuery.of(context).size.height * AppSizes.trackTextSpacing),
-                      Text(
-                        AppStrings.trackText,
-                        textAlign: TextAlign.center,
-                        style: AppStyles.trackIdentifierStyle(dominantColor),
-                      ),
-                    ],
+                  child: GestureDetector(
+                    onTap: () => context.go('/'),
+                    child: Image.asset(
+                      'lib/assets/images/cassette_name.png',
+                      width: MediaQuery.of(context).size.width * AppSizes.cassetteNameWidth,
+                      height: MediaQuery.of(context).size.height * AppSizes.cassetteNameHeight,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 // Album cover

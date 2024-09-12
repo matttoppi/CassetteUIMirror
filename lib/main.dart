@@ -82,26 +82,13 @@ class _MyHomePageState extends State<MyHomePage> {
   void _convertLink() async {
     String link = _linkController.text.trim().toLowerCase();
     if (link.isEmpty || link == "track2") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "track1")),
-      );
+      context.push('/track/track1');
     } else if (link == "track1") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "track2")),
-      );
+      context.push('/track/track2');
     } else if (link == "track3") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "track3")),
-      );
+      context.push('/track/track3');
     } else {
-      // Navigate to TrackPage for all non-default tracks
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => TrackPage(trackId: link)),
-      );
+      context.push('/track/$link');
     }
   }
 
@@ -235,25 +222,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => const SigninPage(),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(0.0, 1.0);
-                            const end = Offset.zero;
-                            const curve = Curves.easeInOut;
-                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                            return SlideTransition(
-                              position: animation.drive(tween),
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
-                    },
+                    onPressed: () => context.push('/signin'),
                     style: TextButton.styleFrom(
-                      minimumSize: const Size(120, 45), // Increased height to 45
+                      minimumSize: const Size(120, 45),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     child: const Text(
@@ -261,13 +232,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       style: AppStyles.signInTextStyle,
                     ),
                   ),
-                  SizedBox(width: MediaQuery.of(context).size.width * 0.05), // Adjust this value to change the space between buttons
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.05),
                   ElevatedButton(
-                    onPressed: () {
-                      context.push('/signin');
-                    },
+                    onPressed: () => context.push('/signup'),
                     style: AppStyles.elevatedButtonStyle.copyWith(
-                      minimumSize: WidgetStateProperty.all(const Size(120, 45)), // Increased height to 45
+                      minimumSize: WidgetStateProperty.all(const Size(120, 45)),
                       padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16)),
                     ),
                     child: const Text(
@@ -284,10 +253,7 @@ class _MyHomePageState extends State<MyHomePage> {
               top: 35,
               child: GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage()),
-                  );
+                  context.push('/profile');
                 },
                 child: Container(
                   width: 36,

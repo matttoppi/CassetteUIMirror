@@ -6,6 +6,8 @@ import 'package:cassettefrontend/profile_page.dart';
 import 'package:cassettefrontend/signup_page.dart';
 import 'package:cassettefrontend/signin_page.dart';
 import 'package:cassettefrontend/edit_profile_page.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/spotify_callback_page.dart';
 
 final GoRouter router = GoRouter(
@@ -37,11 +39,41 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/signup',
-      builder: (context, state) => const SignupPage(),
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const SignupPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(0.0, 1.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOut;
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            return SlideTransition(
+              position: animation.drive(tween),
+              child: child,
+            );
+          },
+        );
+      },
     ),
     GoRoute(
       path: '/signin',
-      builder: (context, state) => const SigninPage(),
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const SigninPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(0.0, 1.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOut;
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            return SlideTransition(
+              position: animation.drive(tween),
+              child: child,
+            );
+          },
+        );
+      },
     ),
     GoRoute(
       path: '/edit_profile',

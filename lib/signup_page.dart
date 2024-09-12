@@ -24,7 +24,7 @@ class SignupPage extends StatelessWidget {
               left: MediaQuery.of(context).size.width * 0.05,
               top: MediaQuery.of(context).size.height * 0.05,
               child: GestureDetector(
-                onTap: () => context.go('/'),
+                onTap: () => context.pop(),
                 child: const Icon(
                   Icons.close,
                   color: AppColors.textPrimary,

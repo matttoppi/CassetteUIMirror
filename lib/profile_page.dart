@@ -68,18 +68,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   top: 18,
                   left: 0,
                   right: 0,
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: () => context.go('/'),
-                      child: const Text(
+                  child: GestureDetector(
+                    onTap: () => context.go('/'),
+                    child: const Center(
+                      child: Text(
                         'Cassette',
-                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 32,
                           fontFamily: 'Teko',
                           fontWeight: FontWeight.w600,
-                          height: 1,
                         ),
                       ),
                     ),
@@ -234,7 +232,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildContentList() {
     return Padding(
-      padding: const EdgeInsets.only(top: 8), // Add 8 pixels of top padding
+      padding: const EdgeInsets.only(top: 8), 
       child: Column(
         children: [
           _buildTabContent(),
