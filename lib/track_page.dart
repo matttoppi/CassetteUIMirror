@@ -5,7 +5,7 @@ import 'constants/app_constants.dart';
 import 'services/track_service.dart';
 import 'signup_page.dart'; 
 import 'main.dart';
-
+import 'package:go_router/go_router.dart';
 class TrackPage extends StatefulWidget {
   final String trackId;
 
@@ -17,6 +17,7 @@ class TrackPage extends StatefulWidget {
 
 class _TrackPageState extends State<TrackPage> {
   late Future<Map<String, dynamic>> _trackDataFuture;
+  final TrackService _trackService = TrackService();
 
   @override
   void initState() {
@@ -25,7 +26,7 @@ class _TrackPageState extends State<TrackPage> {
   }
 
   void _loadTrackData() {
-    _trackDataFuture = TrackService().getTrackData(widget.trackId);
+    _trackDataFuture = _trackService.getTrackData(widget.trackId);
   }
 
   @override
@@ -37,7 +38,22 @@ class _TrackPageState extends State<TrackPage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Error: ${snapshot.error}'),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _loadTrackData(); // Retry loading the data
+                      });
+                    },
+                    child: Text('Retry'),
+                  ),
+                ],
+              ),
+            );
           } else if (!snapshot.hasData) {
             return const Center(child: Text('No data available'));
           }
@@ -77,26 +93,14 @@ class _TrackPageState extends State<TrackPage> {
                   left: 0,
                   right: 0,
                   top: MediaQuery.of(context).size.height * 0.03,
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (context) => const MyHomePage(title: AppStrings.homeTitle)),
-                        ),
-                        child: Image.asset(
-                          'lib/assets/images/cassette_name.png',
-                          width: MediaQuery.of(context).size.width * AppSizes.cassetteNameWidth,
-                          height: MediaQuery.of(context).size.height * AppSizes.cassetteNameHeight,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      SizedBox(height: MediaQuery.of(context).size.height * AppSizes.trackTextSpacing),
-                      Text(
-                        AppStrings.trackText,
-                        textAlign: TextAlign.center,
-                        style: AppStyles.trackIdentifierStyle(dominantColor),
-                      ),
-                    ],
+                  child: GestureDetector(
+                    onTap: () => context.go('/'),
+                    child: Image.asset(
+                      'lib/assets/images/cassette_name.png',
+                      width: MediaQuery.of(context).size.width * AppSizes.cassetteNameWidth,
+                      height: MediaQuery.of(context).size.height * AppSizes.cassetteNameHeight,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 // Album cover
@@ -170,27 +174,7 @@ class _TrackPageState extends State<TrackPage> {
                   left: MediaQuery.of(context).size.width * 0.248,
                   top: MediaQuery.of(context).size.height * 0.6125, 
                   child: GestureDetector(
-                    onTap: () async {
-                      final result = await Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => const SignupPage(returnToTrack: true),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 1),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
-                      if (result == true) {
-                        setState(() {
-                          _loadTrackData(); // Refresh the track data
-                        });
-                      }
-                    },
+                    onTap: () => context.push('/signup'),
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.533,
                       height: MediaQuery.of(context).size.height * 0.058,
@@ -245,16 +229,9 @@ class _TrackPageState extends State<TrackPage> {
         left: MediaQuery.of(context).size.width * (0.14 + 0.15 * index),
         top: MediaQuery.of(context).size.height * 0.745,
         child: GestureDetector(
-          onTap: () async {
+          onTap: () {
             final url = data['url'];
-            //TODO: need to fix this depreceation
-            if (await canLaunch(url)) {
-              await launch(url);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Could not launch $url')),
-              );
-            }
+            launchUrl(Uri.parse(url));  // Use url_launcher to open the link
           },
           child: Container(
             width: 44,

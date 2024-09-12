@@ -1,7 +1,7 @@
 {
   "track1": {
     "track": {
-      "id": "AUAP07600012",
+      "id": "track1",
       "name": "T.N.T.",
       "isrc": "AUAP07600012",
       "explicit": false,
@@ -53,7 +53,7 @@
   },
   "track2": {
     "track": {
-      "id": "USUM71207190",
+      "id": "track2",
       "name": "Pink Matter",
       "isrc": "USUM71207190",
       "explicit": true,
@@ -98,7 +98,7 @@
   },
   "track3": {
     "track": {
-      "id": "USDHM1908454",
+      "id": "track3",
       "name": "Mona Lisa Lamborghini",
       "isrc": "USDHM1908454",
       "explicit": false,

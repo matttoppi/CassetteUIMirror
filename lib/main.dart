@@ -1,32 +1,67 @@
+import 'package:cassettefrontend/profile_page.dart';
+import 'package:cassettefrontend/signin_page.dart';
+import 'package:cassettefrontend/signup_page.dart';
+import 'package:cassettefrontend/track_page.dart';
 import 'package:flutter/material.dart';
+import 'package:app_links/app_links.dart';
+import 'package:go_router/go_router.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
-import 'signup_page.dart';
-import 'signin_page.dart';
-import 'track_page.dart';
-import 'profile_page.dart'; // Add this import
+import 'services/router.dart';
+import 'package:url_strategy/url_strategy.dart';
+import 'package:cassettefrontend/services/spotify_service.dart';
 
 void main() {
-  runApp(const MyApp());
+  setPathUrlStrategy(); // removes the '#' from the URL
+  runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _handleInitialUri();
+  }
+
+  void _handleInitialUri() {
+    final uri = Uri.base;
+    if (uri.path == '/spotify_callback') {
+      final code = uri.queryParameters['code'];
+      final error = uri.queryParameters['error'];
+      print('Initial URI is a Spotify callback. Code: $code, Error: $error');
+      // Handle the Spotify callback
+      _handleSpotifyCallback(code, error);
+    }
+  }
+
+  void _handleSpotifyCallback(String? code, String? error) async {
+    if (code != null) {
+      try {
+        await SpotifyService.exchangeCodeForToken(code);
+        print('Successfully exchanged code for token');
+      } catch (e) {
+        print('Error exchanging code for token: $e');
+      }
+    } else if (error != null) {
+      print('Spotify auth error: $error');
+    }
+    // Navigate to profile page
+    router.go('/profile');
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppStrings.appTitle,
+    return MaterialApp.router(
+      routerConfig: router,
+      title: 'Cassette App',
       theme: ThemeData(
-        primarySwatch: Colors.red,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        textTheme: TextTheme(
-          headlineMedium: AppStyles.headlineStyle,
-          bodyLarge: AppStyles.bodyStyle,
-          bodyMedium: AppStyles.bodyStyle,
-        ),
+        primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: AppStrings.appTitle),
     );
   }
 }
@@ -44,28 +79,16 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _linkController = TextEditingController();
   bool _showBox = false;
 
-  void _convertLink() {
+  void _convertLink() async {
     String link = _linkController.text.trim().toLowerCase();
     if (link.isEmpty || link == "track2") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USUM71207190")),
-      );
+      context.push('/track/track1');
     } else if (link == "track1") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "AUAP07600012")),
-      );
-      } 
-    else if (link == "track3") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackPage(trackId: "USDHM1908454")),
-      );
-    }
-    else {
-      // TODO: Implement API call for other cases
-      print('Converting link: $link');
+      context.push('/track/track2');
+    } else if (link == "track3") {
+      context.push('/track/track3');
+    } else {
+      context.push('/track/$link');
     }
   }
 
@@ -199,25 +222,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => const SigninPage(),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(0.0, 1.0);
-                            const end = Offset.zero;
-                            const curve = Curves.easeInOut;
-                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                            return SlideTransition(
-                              position: animation.drive(tween),
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
-                    },
+                    onPressed: () => context.push('/signin'),
                     style: TextButton.styleFrom(
-                      minimumSize: const Size(120, 45), // Increased height to 45
+                      minimumSize: const Size(120, 45),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     child: const Text(
@@ -225,27 +232,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       style: AppStyles.signInTextStyle,
                     ),
                   ),
-                  SizedBox(width: MediaQuery.of(context).size.width * 0.05), // Adjust this value to change the space between buttons
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.05),
                   ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => const SignupPage(returnToTrack: false),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(0.0, 1.0);
-                            const end = Offset.zero;
-                            const curve = Curves.easeInOut;
-                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                            return SlideTransition(
-                              position: animation.drive(tween),
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
-                    },
+                    onPressed: () => context.push('/signup'),
                     style: AppStyles.elevatedButtonStyle.copyWith(
-                      minimumSize: WidgetStateProperty.all(const Size(120, 45)), // Increased height to 45
+                      minimumSize: WidgetStateProperty.all(const Size(120, 45)),
                       padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16)),
                     ),
                     child: const Text(
@@ -262,10 +253,7 @@ class _MyHomePageState extends State<MyHomePage> {
               top: 35,
               child: GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage()),
-                  );
+                  context.push('/profile');
                 },
                 child: Container(
                   width: 36,
@@ -282,7 +270,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            // Existing content...
           ],
         ),
       ),

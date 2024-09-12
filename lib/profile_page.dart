@@ -1,12 +1,18 @@
 import 'dart:convert';
+import 'package:cassettefrontend/edit_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
 import 'main.dart';
+import 'package:cassettefrontend/services/spotify_service.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String? code;
+  final String? error;
+
+  const ProfilePage({Key? key, this.code, this.error}) : super(key: key);
 
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -19,7 +25,19 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _handleSpotifyCallback();
     loadProfileData();
+  }
+
+  void _handleSpotifyCallback() {
+    if (widget.code != null) {
+      print('ProfilePage: Received Spotify auth code: ${widget.code}');
+      // Handle successful authentication
+      SpotifyService.exchangeCodeForToken(widget.code!);
+    } else if (widget.error != null) {
+      print('ProfilePage: Received Spotify auth error: ${widget.error}');
+      // Handle authentication error
+    }
   }
 
   Future<void> loadProfileData() async {
@@ -50,24 +68,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   top: 18,
                   left: 0,
                   right: 0,
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                              builder: (context) => const MyHomePage(title: '')),
-                          (Route<dynamic> route) => false,
-                        );
-                      },
-                      child: const Text(
+                  child: GestureDetector(
+                    onTap: () => context.go('/'),
+                    child: const Center(
+                      child: Text(
                         'Cassette',
-                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 32,
                           fontFamily: 'Teko',
                           fontWeight: FontWeight.w600,
-                          height: 1,
                         ),
                       ),
                     ),
@@ -159,6 +169,17 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
+                Positioned(
+                  right: 20,
+                  top: 20,
+                  child: ElevatedButton(
+                    onPressed: () => context.push('/edit_profile'),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white, backgroundColor: AppColors.primary,
+                    ),
+                    child: const Text('Edit Profile'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -211,7 +232,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildContentList() {
     return Padding(
-      padding: const EdgeInsets.only(top: 8), // Add 8 pixels of top padding
+      padding: const EdgeInsets.only(top: 8), 
       child: Column(
         children: [
           _buildTabContent(),
