@@ -12,6 +12,10 @@ class EditProfilePage extends StatefulWidget {
   _EditProfilePageState createState() => _EditProfilePageState();
 }
 
+
+// EditProfilePage state management
+// Tracks whether Spotify is connected (will be used for other streaming services later)
+// This affects the display and functionality of streaming service connection
 class _EditProfilePageState extends State<EditProfilePage> {
   bool isSpotifyConnected = false;
 
@@ -34,12 +38,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     child: Center(
                       child: Text(
                         'Edit Profile',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontFamily: 'Teko',
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppStyles.editProfileTitleStyle,
                       ),
                     ),
                   ),
@@ -63,9 +62,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           onPressed: () {
                             // Add functionality to change profile picture
                           },
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white, backgroundColor: AppColors.primary,
-                          ),
+                          style: AppStyles.changePictureButtonStyle,
                           child: const Text('Change Picture'),
                         ),
                       ],
@@ -79,7 +76,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTextField('Name', 'Enter your name'),
+                  TextField(
+                    decoration: AppStyles.editProfileTextFieldDecoration('Name', 'Enter your name'),
+                  ),
                   const SizedBox(height: 16),
                   _buildTextField('Username', 'Enter your username'),
                   const SizedBox(height: 16),
@@ -97,10 +96,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         // Add save functionality
                         Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white, backgroundColor: AppColors.primary,
-                        minimumSize: const Size(200, 50),
-                      ),
+                      style: AppStyles.saveChangesButtonStyle,
                       child: const Text('Save Changes'),
                     ),
                   ),
@@ -127,10 +123,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget _buildConnectStreamingService() {
     return ElevatedButton(
       onPressed: _connectSpotify,
-      style: ElevatedButton.styleFrom(
-        foregroundColor: Colors.white, backgroundColor: AppColors.primary,
-        minimumSize: const Size(double.infinity, 50),
-      ),
+      style: AppStyles.connectStreamingButtonStyle,
       child: const Text('Connect Streaming Service'),
     );
   }
@@ -141,7 +134,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       children: [
         const Text(
           'Connected Streaming Services',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: AppStyles.connectedServicesHeaderStyle,
         ),
         const SizedBox(height: 8),
         if (isSpotifyConnected)

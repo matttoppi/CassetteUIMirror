@@ -18,6 +18,11 @@ class ProfilePage extends StatefulWidget {
   _ProfilePageState createState() => _ProfilePageState();
 }
 
+
+// ProfilePage state management
+// Handles loading of profile data and Spotify callback
+// The currentTab state determines which tab is currently active
+
 class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic> profileData = {};
   String currentTab = 'Playlists';
