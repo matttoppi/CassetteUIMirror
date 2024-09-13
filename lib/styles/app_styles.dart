@@ -1,8 +1,17 @@
+// This file contains all the styles used throughout the app.
+// It centralizes styling to maintain consistency and ease of maintenance.
+// The AppStyles class provides static members for various UI elements.
+
+
+
 import 'package:cassettefrontend/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+
 class AppStyles {
+
+  // TEXT STYLES --------------------------------
   static TextStyle headlineStyle = GoogleFonts.teko(
     color: AppColors.textPrimary,
     fontSize: 24,
@@ -51,6 +60,10 @@ class AppStyles {
     fontWeight: FontWeight.w900,
     letterSpacing: 1.44,
   );
+
+  // BOX DECORATION STYLES ----------------------------
+  // Main container decoration used across multiple pages
+  // It provides a white background with rounded corners and a subtle shadow effect
 
   static BoxDecoration mainContainerDecoration = BoxDecoration(
     color: Colors.white,
@@ -227,6 +240,10 @@ class AppStyles {
     borderRadius: BorderRadius.circular(100),
   );
 
+  // DYNAMIC STYLING FOR TRACK PAGE ----------------------------
+  // Dynamic styling for track identifier
+  // This adjusts the text color based on the background color's luminance
+  // ensuring readability on both light and dark backgrounds
   static EdgeInsets trackPagePadding(BuildContext context) => EdgeInsets.symmetric(
     horizontal: MediaQuery.of(context).size.width * 0.182,
   );
@@ -254,6 +271,9 @@ class AppStyles {
       ),
     );
   }
+
+  // PROFILE PAGE STYLES ----------------------------
+  // Styles for the profile page components
 
   static const TextStyle profileNameStyle = TextStyle(
     color: Colors.white,
@@ -411,4 +431,103 @@ class AppStyles {
   );
 
 
+  // For the Cassette text in ProfilePage
+  static const TextStyle profileCassetteStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 32,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+  );
+
+  // EDIT PROFILE PAGE STYLES ----------------------------
+  // Styles for the edit profile page components
+
+  // For the Edit Profile text in EditProfilePage
+  static const TextStyle editProfileTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w600,
+  );
+
+  // For the Change Picture button in EditProfilePage
+  static ButtonStyle changePictureButtonStyle = ElevatedButton.styleFrom(
+    foregroundColor: Colors.white,
+    backgroundColor: AppColors.primary,
+  );
+
+  // For text fields in EditProfilePage
+  static InputDecoration editProfileTextFieldDecoration(String label, String hint) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: const OutlineInputBorder(),
+    );
+  }
+
+  // For the Connect Streaming Service button in EditProfilePage
+  static ButtonStyle connectStreamingButtonStyle = ElevatedButton.styleFrom(
+    foregroundColor: Colors.white,
+    backgroundColor: AppColors.primary,
+    minimumSize: const Size(double.infinity, 50),
+  );
+
+  // For the Connected Streaming Services text in EditProfilePage
+  static const TextStyle connectedServicesHeaderStyle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  );
+
+  // For the Save Changes button in EditProfilePage
+  static ButtonStyle saveChangesButtonStyle = ElevatedButton.styleFrom(
+    foregroundColor: Colors.white,
+    backgroundColor: AppColors.primary,
+    minimumSize: const Size(200, 50),
+  );
+
+  // For the TrackPage components
+  static BoxDecoration trackPageBackgroundDecoration(Color color) {
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color,
+          Colors.white,
+        ],
+      ),
+    );
+  }
+
+  static const TextStyle trackPageSongTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 36,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.08,
+  );
+
+  static const TextStyle trackPageArtistNameStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 24,
+    fontFamily: 'Teko',
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.72,
+  );
+
+  static const TextStyle trackPageAlbumNameStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 18,
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w500,
+  );
+
+  static const TextStyle trackPageGenresStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w400,
+  );
+
+  // Add more styles as needed for other components
 }

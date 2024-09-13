@@ -112,6 +112,10 @@ class _MyHomePageState extends State<MyHomePage> {
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
         clipBehavior: Clip.antiAlias,
+
+        // Main container for the home page
+        // Includes the Cassette logo and name
+        // The logo size is responsive based on screen dimensions
         decoration: AppStyles.mainContainerDecoration,
         child: Stack(
           children: [
