@@ -2,15 +2,11 @@
 // It centralizes styling to maintain consistency and ease of maintenance.
 // The AppStyles class provides static members for various UI elements.
 
-
-
 import 'package:cassettefrontend/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-
 class AppStyles {
-
   // TEXT STYLES --------------------------------
   static TextStyle headlineStyle = GoogleFonts.teko(
     color: AppColors.textPrimary,
@@ -529,5 +525,37 @@ class AppStyles {
     fontWeight: FontWeight.w400,
   );
 
-  // Add more styles as needed for other components
+  // Custom TextStyle for Auth UI Buttons
+  static TextStyle authButtonTextStyle = const TextStyle(
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+  );
+
+  // Custom InputDecorationTheme for Auth UI TextFields
+  static InputDecorationTheme authInputDecorationTheme = InputDecorationTheme(
+    filled: true,
+    fillColor: AppColors.inputBackground, 
+    hintStyle: hintTextStyle,
+    labelStyle: const TextStyle(color: AppColors.textPrimary),
+    enabledBorder: OutlineInputBorder(
+      borderSide: const BorderSide(color: AppColors.textSecondary, width: 1.0),
+      borderRadius: BorderRadius.circular(AppSizes.borderRadius),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderSide: const BorderSide(color: AppColors.primary, width: 2.0),
+      borderRadius: BorderRadius.circular(AppSizes.borderRadius),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      borderRadius: BorderRadius.circular(AppSizes.borderRadius),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      borderRadius: BorderRadius.circular(AppSizes.borderRadius),
+    ),
+    // Additional decoration properties if needed
+  );
+
+  
 }

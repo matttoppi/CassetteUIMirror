@@ -6,8 +6,6 @@ import 'package:cassettefrontend/profile_page.dart';
 import 'package:cassettefrontend/signup_page.dart';
 import 'package:cassettefrontend/signin_page.dart';
 import 'package:cassettefrontend/edit_profile_page.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/spotify_callback_page.dart';
 
 final GoRouter router = GoRouter(
@@ -21,8 +19,9 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/spotify_callback',
       builder: (context, state) {
-        // This route is now handled in the main.dart file
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        final code = state.uri.queryParameters['code'];
+        final error = state.uri.queryParameters['error'];
+        return SpotifyCallbackPage(code: code, error: error);
       },
     ),
     GoRoute(

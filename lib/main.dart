@@ -10,8 +10,32 @@ import 'constants/app_constants.dart';
 import 'services/router.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:cassettefrontend/services/spotify_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: "lib/assets/.env");
+
+  print('dotenv: $dotenv');
+
+
+  print('SUPABASE_URL: ${dotenv.env['SUPABASE_URL']}');
+  print('SUPABASE_ANON_KEY: ${dotenv.env['SUPABASE_ANON_KEY']}');
+  
+
+
+  try {
+    await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL']!,
+      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    );
+  } catch (e) {
+    print('Supabase initialization error: $e');
+  }
+
+  final supabase = Supabase.instance.client;
+
   setPathUrlStrategy(); // removes the '#' from the URL
   runApp(MyApp());
 }
@@ -22,9 +46,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  late final GoRouter _router;
+
   @override
   void initState() {
     super.initState();
+    _router = router; 
     _handleInitialUri();
   }
 
@@ -33,8 +60,6 @@ class _MyAppState extends State<MyApp> {
     if (uri.path == '/spotify_callback') {
       final code = uri.queryParameters['code'];
       final error = uri.queryParameters['error'];
-      print('Initial URI is a Spotify callback. Code: $code, Error: $error');
-      // Handle the Spotify callback
       _handleSpotifyCallback(code, error);
     }
   }
@@ -51,13 +76,13 @@ class _MyAppState extends State<MyApp> {
       print('Spotify auth error: $error');
     }
     // Navigate to profile page
-    router.go('/profile');
+    _router.go('/profile');
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      routerConfig: router,
+      routerConfig: _router,
       title: 'Cassette App',
       theme: ThemeData(
         primarySwatch: Colors.blue,

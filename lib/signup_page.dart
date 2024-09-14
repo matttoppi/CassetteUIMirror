@@ -1,264 +1,138 @@
-import 'package:cassettefrontend/main.dart';
-import 'package:cassettefrontend/track_page.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
-import 'signin_page.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
-class SignupPage extends StatelessWidget {
+class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
+
+  @override
+  _SignupPageState createState() => _SignupPageState();
+}
+
+class _SignupPageState extends State<SignupPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _usernameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signUp() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final response = await Supabase.instance.client.auth.signUp(
+          email: _emailController.text,
+          password: _passwordController.text,
+          data: {'username': _usernameController.text},
+        );
+
+        if (response.user != null) {
+          if (response.session != null) {
+            // Email confirmation is disabled
+            context.go('/profile'); // Redirect to profile page
+          } else {
+            // Email confirmation is enabled
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please check your email to confirm your account')),
+            );
+            // If we want to make users confirm account in email we can make a page that tells them and directs them to that page here
+            // context.go('/check-email');
+          }
+        } else {
+          throw Exception('Signup failed');
+        }
+      } catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        clipBehavior: Clip.antiAlias,
-        decoration: AppStyles.mainContainerDecoration,
-        child: Stack(
-          children: [
-            // X icon to go back to home page
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.05,
-              top: MediaQuery.of(context).size.height * 0.05,
-              child: GestureDetector(
-                onTap: () => context.pop(),
-                child: const Icon(
-                  Icons.close,
-                  color: AppColors.textPrimary,
-                  size: 24,
-                ),
-              ),
-            ),
-            // Logo
-            Positioned(
-              left: (MediaQuery.of(context).size.width - (MediaQuery.of(context).size.width * 0.35)) / 2,
-              top: MediaQuery.of(context).size.height * 0.05,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.35,
-                height: MediaQuery.of(context).size.height * 0.15,
-                child: Image.asset(
-                  'lib/assets/images/cassette_name_logo.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            // Create new account text
-            Positioned(
-              left: 0,
-              right: 0,
-              top: MediaQuery.of(context).size.height * 0.192,
-              child: const Center(
-                child: Text(
-                  AppStrings.createNewAccountText,
-                  style: AppStyles.signInToAccountStyle,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            // Email Address input
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.056,
-              top: MediaQuery.of(context).size.height * 0.250,
-              child: Text(
-                'Email Address',
-                style: AppStyles.bodyStyle.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.136,
-              top: MediaQuery.of(context).size.height * 0.278,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.729,
-                height: MediaQuery.of(context).size.height * 0.054,
-                child: TextField(
-                  decoration: AppStyles.textFieldDecoration.copyWith(
-                    hintText: 'Enter your email address',
-                  ),
-                ),
-              ),
-            ),
-            // Password input
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.056,
-              top: MediaQuery.of(context).size.height * 0.352,
-              child: Text(
-                'Password',
-                style: AppStyles.bodyStyle.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.136,
-              top: MediaQuery.of(context).size.height * 0.382,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.729,
-                height: MediaQuery.of(context).size.height * 0.054,
-                child: TextField(
-                  obscureText: true,
-                  decoration: AppStyles.textFieldDecoration.copyWith(
-                    hintText: 'Enter your password',
-                    suffixIcon: const Icon(Icons.visibility_off),
-                  ),
-                ),
-              ),
-            ),
-            // Confirm Password input
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.056,
-              top: MediaQuery.of(context).size.height * 0.454,
-              child: Text(
-                'Confirm Password',
-                style: AppStyles.bodyStyle.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.136,
-              top: MediaQuery.of(context).size.height * 0.485,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.729,
-                height: MediaQuery.of(context).size.height * 0.054,
-                child: TextField(
-                  obscureText: true,
-                  decoration: AppStyles.textFieldDecoration.copyWith(
-                    hintText: 'Confirm your password',
-                    suffixIcon: const Icon(Icons.visibility_off),
-                  ),
-                ),
-              ),
-            ),
-            // Sign up button
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.136,
-              top: MediaQuery.of(context).size.height * 0.726,
-              child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Implement sign up functionality
-                  // After successful signup, navigate to the home page
-                  context.go('/');
+      appBar: AppBar(
+        title: const Text(AppStrings.createNewAccountText),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  return null;
                 },
-                style: AppStyles.elevatedButtonStyle.copyWith(
-                  shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                  ),
-                  minimumSize: WidgetStateProperty.all(
-                    Size(
-                      MediaQuery.of(context).size.width * 0.729,
-                      MediaQuery.of(context).size.height * 0.054,
-                    ),
-                  ),
-                ),
-                child: const Text(
-                  AppStrings.signUpText,
-                  style: AppStyles.buttonTextStyle,
-                ),
               ),
-            ),
-            // Terms and conditions
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.131,
-              top: MediaQuery.of(context).size.height * 0.639,
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: false,
-                    onChanged: (value) {
-                      // TODO: Implement checkbox functionality
-                    },
-                  ),
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'I\'ve read and agreed to ',
-                          style: AppStyles.bodyStyle.copyWith(
-                            color: const Color(0xFF757575),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'User Agreement\n',
-                          style: AppStyles.bodyStyle.copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'and ',
-                          style: AppStyles.bodyStyle.copyWith(
-                            color: const Color(0xFF757575),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'Privacy Policy',
-                          style: AppStyles.bodyStyle.copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your password';
+                  }
+                  return null;
+                },
               ),
-            ),
-            // Other sign up options
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.374,
-              top: MediaQuery.of(context).size.height * 0.798,
-              child: Text(
-                'other way to sign up',
-                textAlign: TextAlign.center,
-                style: AppStyles.bodyStyle.copyWith(
-                  color: const Color(0xFF757575),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _usernameController,
+                decoration: const InputDecoration(labelText: 'Username'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a username';
+                  }
+                  return null;
+                },
               ),
-            ),
-            // Already have an account
-            Positioned(
-              left: MediaQuery.of(context).size.width * 0.154,
-              bottom: MediaQuery.of(context).size.height * 0.05,
-              child: Row(
-                children: [
-                  Text(
-                    'Already have an account?',
-                    style: AppStyles.bodyStyle.copyWith(
-                      color: const Color(0xFF757575),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => context.go('/signin'),
-                    child: Text(
-                      'Back to Sign In',
-                      style: AppStyles.bodyStyle.copyWith(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _signUp,
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Sign Up'),
               ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(AppStrings.alreadyHaveAccountText),
+            TextButton(
+              onPressed: () => context.go('/signin'),
+              child: const Text(AppStrings.signInText),
             ),
           ],
         ),
