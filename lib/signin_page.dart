@@ -50,6 +50,7 @@ class SigninPage extends StatelessWidget {
   }
 }
 
+
 extension on AuthResponse {
   get error => null;
 }
