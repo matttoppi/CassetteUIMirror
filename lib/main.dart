@@ -27,8 +27,6 @@ void main() async {
     print('Supabase initialization error: $e');
   }
 
-
-
   final supabase = Supabase.instance.client;
 
   setPathUrlStrategy(); // removes the '#' from the URL
