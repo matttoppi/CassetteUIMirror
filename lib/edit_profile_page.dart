@@ -72,7 +72,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'website': _websiteController.text,
         'updated_at': DateTime.now().toIso8601String(),
       });
-      context.go('/profile');
+      Navigator.pop(context, true);
     }
   }
 
@@ -83,95 +83,53 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        backgroundColor: AppColors.primary,
+      ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: MediaQuery.of(context).size.width,
-              height: 383,
-              color: AppColors.profileBackground,
-              child: Stack(
-                children: [
-                  const Positioned(
-                    top: 18,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Text(
-                        'Edit Profile',
-                        style: AppStyles.editProfileTitleStyle,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 23,
-                    top: 87,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.grey[300],
-                          backgroundImage: _nameController.text.isNotEmpty
-                              ? NetworkImage('https://example.com/${_nameController.text}.jpg')
-                              : null,
-                          child: _nameController.text.isNotEmpty
-                              ? null
-                              : Icon(Icons.person, size: 40, color: Colors.grey[600]),
-                        ),
-                        const SizedBox(width: 24),
-                        ElevatedButton(
-                          onPressed: () {
-                            // Add functionality to change profile picture
-                          },
-                          style: AppStyles.changePictureButtonStyle,
-                          child: const Text('Change Picture'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            TextField(
+              controller: _nameController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Name', 'Enter your name'),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _nameController,
-                    decoration: AppStyles.editProfileTextFieldDecoration('Name', 'Enter your name'),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _usernameController,
-                    decoration: AppStyles.editProfileTextFieldDecoration('Username', 'Enter your username'),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _bioController,
-                    decoration: AppStyles.editProfileTextFieldDecoration('Bio', 'Tell us about yourself'),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _websiteController,
-                    decoration: AppStyles.editProfileTextFieldDecoration('Website', 'Add a link'),
-                  ),
-                  const SizedBox(height: 32),
-                  _buildConnectStreamingService(),
-                  const SizedBox(height: 16),
-                  _buildConnectedServices(),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: _saveChanges,
-                      style: AppStyles.saveChangesButtonStyle,
-                      child: const Text('Save Changes'),
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _usernameController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Username', 'Enter your username'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _bioController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Bio', 'Tell us about yourself'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _websiteController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Website', 'Add a link'),
+            ),
+            const SizedBox(height: 32),
+            _buildConnectStreamingService(),
+            const SizedBox(height: 16),
+            _buildConnectedServices(),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _saveChanges,
+              style: AppStyles.saveChangesButtonStyle,
+              child: const Text('Save Changes'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _signOut,
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.red,
               ),
+              child: const Text('Sign Out'),
             ),
           ],
         ),
@@ -256,6 +214,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() {
         isSpotifyConnected = false;
       });
+    }
+  }
+
+  void _signOut() async {
+    await Supabase.instance.client.auth.signOut();
+    if (mounted) {
+      context.go('/');
     }
   }
 }

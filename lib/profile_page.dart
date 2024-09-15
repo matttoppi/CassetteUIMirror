@@ -99,153 +99,172 @@ class _ProfilePageState extends State<ProfilePage> with AuthRequiredState<Profil
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return Focus(
+      onFocusChange: (hasFocus) {
+        if (hasFocus) {
+          _loadProfileData();
+        }
+      },
+      child: Builder(
+        builder: (BuildContext context) {
+          if (isLoading) {
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            width: MediaQuery.of(context).size.width,
-            height: 383,
-            color: AppColors.profileBackground,
-            child: Stack(
+          return Scaffold(
+            body: Column(
               children: [
-                Positioned(
-                  top: 18,
-                  left: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: () => context.go('/'),
-                    child: const Center(
-                      child: Text(
-                        'Cassette',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontFamily: 'Teko',
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 23,
-                  top: 87,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                Container(
+                  width: MediaQuery.of(context).size.width,
+                  height: 383,
+                  color: AppColors.profileBackground,
+                  child: Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.grey[300],
-                        child: Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            profileData['name'] ?? 'No Name',
-                            style: AppStyles.profileNameStyle,
+                      Positioned(
+                        top: 18,
+                        left: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () => context.go('/'),
+                          child: const Center(
+                            child: Text(
+                              'Cassette',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontFamily: 'Teko',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            profileData['username'] ?? 'No Username',
-                            style: AppStyles.profileUsernameStyle,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 23,
-                  top: 182,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 323,
-                        height: 64,
-                        child: Text(
-                          profileData['bio'] ?? 'No bio available',
-                          style: AppStyles.profileBioStyle,
                         ),
                       ),
-                      _buildSpotifyLogo(),
+                      Positioned(
+                        left: 23,
+                        top: 87,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 40,
+                              backgroundColor: Colors.grey[300],
+                              child: Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profileData['name'] ?? 'No Name',
+                                  style: AppStyles.profileNameStyle,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  profileData['username'] ?? 'No Username',
+                                  style: AppStyles.profileUsernameStyle,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        left: 23,
+                        top: 182,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 323,
+                              height: 64,
+                              child: Text(
+                                profileData['bio'] ?? 'No bio available',
+                                style: AppStyles.profileBioStyle,
+                              ),
+                            ),
+                            _buildSpotifyLogo(),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        left: 22,
+                        right: 22,
+                        bottom: 66,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(child: _buildActionButton('Share Profile')),
+                            const SizedBox(width: 24),
+                            Expanded(child: _buildActionButton('Add Music')),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        left: 13,
+                        right: 13,
+                        bottom: 50,
+                        child: Divider(
+                          color: Colors.grey[400],
+                          thickness: 1,
+                        ),
+                      ),
+                      Positioned(
+                        left: 13,
+                        right: 13,
+                        bottom: 8,
+                        child: SizedBox(
+                          height: 42,
+                          child: Row(
+                            children: [
+                              _buildTab('Playlists'),
+                              const SizedBox(width: 8),
+                              _buildTab('Songs'),
+                              const SizedBox(width: 8),
+                              _buildTab('Artists'),
+                              const SizedBox(width: 8),
+                              _buildTab('Albums'),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 20,
+                        top: 20,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                            );
+                            if (result == true) {
+                              _loadProfileData();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white, backgroundColor: AppColors.primary,
+                          ),
+                          child: const Text('Edit Profile'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Positioned(
-                  left: 22,
-                  right: 22,
-                  bottom: 66,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(child: _buildActionButton('Share Profile')),
-                      const SizedBox(width: 24),
-                      Expanded(child: _buildActionButton('Add Music')),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 13,
-                  right: 13,
-                  bottom: 50,
-                  child: Divider(
-                    color: Colors.grey[400],
-                    thickness: 1,
-                  ),
-                ),
-                Positioned(
-                  left: 13,
-                  right: 13,
-                  bottom: 8,
-                  child: SizedBox(
-                    height: 42,
-                    child: Row(
-                      children: [
-                        _buildTab('Playlists'),
-                        const SizedBox(width: 8),
-                        _buildTab('Songs'),
-                        const SizedBox(width: 8),
-                        _buildTab('Artists'),
-                        const SizedBox(width: 8),
-                        _buildTab('Albums'),
-                      ],
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: _buildTabContent(),
                     ),
-                  ),
-                ),
-                Positioned(
-                  right: 20,
-                  top: 20,
-                  child: ElevatedButton(
-                    onPressed: () => context.push('/edit_profile').then((_) => _loadProfileData()),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white, backgroundColor: AppColors.primary,
-                    ),
-                    child: const Text('Edit Profile'),
                   ),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: _buildTabContent(),
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

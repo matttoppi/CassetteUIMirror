@@ -17,7 +17,7 @@ class SigninPage extends StatelessWidget {
         redirectTo: kIsWeb ? null : 'http://localhost:56752/spotify_callback',
         onSignInComplete: (response) {
           if (response.session != null) {
-            context.go('/');
+            context.go('/profile');
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(response.error?.message ?? 'Sign in failed')),
