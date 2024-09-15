@@ -19,7 +19,6 @@ class _SpotifyCallbackPageState extends State<SpotifyCallbackPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleCallback();
     });
-
   }
 
 
