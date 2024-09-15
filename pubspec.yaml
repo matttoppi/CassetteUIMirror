@@ -82,6 +82,8 @@ flutter:
     - lib/data/dummy_track_data.json
     - lib/data//dummy_profile_data.json
     - lib/assets/
+    - lib/assets/images/spotify_logo.png
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

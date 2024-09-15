@@ -37,10 +37,19 @@ class _SignupPageState extends State<SignupPage> {
         final response = await Supabase.instance.client.auth.signUp(
           email: _emailController.text,
           password: _passwordController.text,
-          data: {'username': _usernameController.text},
         );
 
         if (response.user != null) {
+          // Create user profile
+          await Supabase.instance.client.from('user_profiles').upsert({
+            'id': response.user!.id,
+            'username': _usernameController.text,
+            'name': _usernameController.text,
+            'bio': '',
+            'website': '',
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+
           if (response.session != null) {
             // Email confirmation is disabled
             context.go('/profile'); // Redirect to profile page
@@ -49,8 +58,6 @@ class _SignupPageState extends State<SignupPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Please check your email to confirm your account')),
             );
-            // If we want to make users confirm account in email we can make a page that tells them and directs them to that page here
-            // context.go('/check-email');
           }
         } else {
           throw Exception('Signup failed');

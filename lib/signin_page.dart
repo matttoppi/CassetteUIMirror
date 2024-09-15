@@ -24,7 +24,7 @@ class SigninPage extends StatelessWidget {
             );
           }
         },
-        onSignUpComplete: (response) { // Added this callback
+        onSignUpComplete: (response) {
           if (response.session != null) {
             context.go('/');
           } else {

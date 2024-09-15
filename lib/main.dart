@@ -17,22 +17,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "lib/assets/.env");
 
-  print('dotenv: $dotenv');
-
-
-  print('SUPABASE_URL: ${dotenv.env['SUPABASE_URL']}');
-  print('SUPABASE_ANON_KEY: ${dotenv.env['SUPABASE_ANON_KEY']}');
-  
-
-
   try {
     await Supabase.initialize(
       url: dotenv.env['SUPABASE_URL']!,
       anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+      debug: true,
     );
   } catch (e) {
     print('Supabase initialization error: $e');
   }
+
+
 
   final supabase = Supabase.instance.client;
 
