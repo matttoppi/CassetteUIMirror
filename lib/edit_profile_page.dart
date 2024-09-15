@@ -4,6 +4,7 @@ import 'styles/app_styles.dart';
 import 'constants/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({Key? key}) : super(key: key);
@@ -12,96 +13,123 @@ class EditProfilePage extends StatefulWidget {
   _EditProfilePageState createState() => _EditProfilePageState();
 }
 
-
 // EditProfilePage state management
 // Tracks whether Spotify is connected (will be used for other streaming services later)
 // This affects the display and functionality of streaming service connection
 class _EditProfilePageState extends State<EditProfilePage> {
+  final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _bioController = TextEditingController();
+  final _websiteController = TextEditingController();
   bool isSpotifyConnected = false;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfileData();
+  }
+
+  Future<void> loadProfileData() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      try {
+        final response = await Supabase.instance.client
+            .from('user_profiles')
+            .select()
+            .eq('id', user.id)
+            .single();
+        
+        setState(() {
+          _nameController.text = response['name'] ?? '';
+          _usernameController.text = response['username'] ?? '';
+          _bioController.text = response['bio'] ?? '';
+          _websiteController.text = response['website'] ?? '';
+          isSpotifyConnected = response['spotify_refresh_token'] != null;
+          isLoading = false;
+        });
+      } catch (e) {
+        print('Error loading profile data: $e');
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      await Supabase.instance.client.from('user_profiles').upsert({
+        'id': user.id,
+        'name': _nameController.text,
+        'username': _usernameController.text,
+        'bio': _bioController.text,
+        'website': _websiteController.text,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      Navigator.pop(context, true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        backgroundColor: AppColors.primary,
+      ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: MediaQuery.of(context).size.width,
-              height: 383,
-              color: AppColors.profileBackground,
-              child: Stack(
-                children: [
-                  const Positioned(
-                    top: 18,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Text(
-                        'Edit Profile',
-                        style: AppStyles.editProfileTitleStyle,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 23,
-                    top: 87,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.grey[300],
-                          child: Icon(
-                            Icons.person,
-                            size: 40,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        ElevatedButton(
-                          onPressed: () {
-                            // Add functionality to change profile picture
-                          },
-                          style: AppStyles.changePictureButtonStyle,
-                          child: const Text('Change Picture'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            TextField(
+              controller: _nameController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Name', 'Enter your name'),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    decoration: AppStyles.editProfileTextFieldDecoration('Name', 'Enter your name'),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField('Username', 'Enter your username'),
-                  const SizedBox(height: 16),
-                  _buildTextField('Bio', 'Tell us about yourself', maxLines: 3),
-                  const SizedBox(height: 16),
-                  _buildTextField('Link', 'Add a link'),
-                  const SizedBox(height: 32),
-                  _buildConnectStreamingService(),
-                  const SizedBox(height: 16),
-                  _buildConnectedServices(),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Add save functionality
-                        Navigator.pop(context);
-                      },
-                      style: AppStyles.saveChangesButtonStyle,
-                      child: const Text('Save Changes'),
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _usernameController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Username', 'Enter your username'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _bioController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Bio', 'Tell us about yourself'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _websiteController,
+              decoration: AppStyles.editProfileTextFieldDecoration('Website', 'Add a link'),
+            ),
+            const SizedBox(height: 32),
+            _buildConnectStreamingService(),
+            const SizedBox(height: 16),
+            _buildConnectedServices(),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _saveChanges,
+              style: AppStyles.saveChangesButtonStyle,
+              child: const Text('Save Changes'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _signOut,
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.red,
               ),
+              child: const Text('Sign Out'),
             ),
           ],
         ),
@@ -137,29 +165,62 @@ class _EditProfilePageState extends State<EditProfilePage> {
           style: AppStyles.connectedServicesHeaderStyle,
         ),
         const SizedBox(height: 8),
-        if (isSpotifyConnected)
-          ListTile(
-            leading: Image.asset('assets/spotify_logo.png', width: 24, height: 24),
-            title: const Text('Spotify'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: _disconnectSpotify,
-            ),
-          )
-        else
-          const Text('No streaming services connected'),
+        _buildSpotifyLogo(),
       ],
     );
   }
 
-  void _connectSpotify() {
-    SpotifyService.initiateSpotifyAuth(context);
+  Widget _buildSpotifyLogo() {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: isSpotifyConnected
+          ? Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Row(
+                children: [
+                  Image.asset(
+                    'lib/assets/images/spotify_logo.png',
+                    width: 24,
+                    height: 24,
+                    key: const ValueKey('spotify_logo'),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Spotify'),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: _disconnectSpotify,
+                  ),
+                ],
+              ),
+            )
+          : const SizedBox(height: 32, key: ValueKey('empty_space')),
+    );
   }
 
-  void _disconnectSpotify() {
+  void _connectSpotify() async {
+    await SpotifyService.initiateSpotifyAuth(context);
+    loadProfileData(); // Reload profile data after connecting
+  }
+
+  void _disconnectSpotify() async {
     // Here you would typically call an API to revoke the Spotify tokens
-    setState(() {
-      isSpotifyConnected = false;
-    });
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      await Supabase.instance.client.from('user_profiles').update({
+        'spotify_refresh_token': null,
+      }).eq('id', user.id);
+      
+      setState(() {
+        isSpotifyConnected = false;
+      });
+    }
+  }
+
+  void _signOut() async {
+    await Supabase.instance.client.auth.signOut();
+    if (mounted) {
+      context.go('/');
+    }
   }
 }

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SpotifyService {
   static const String _clientId = '352a874dee3c4b46b27f1a96df70aa0b';
@@ -53,19 +54,30 @@ class SpotifyService {
       print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final String accessToken = data['access_token'];
-        final String refreshToken = data['refresh_token'];
-        // Store these tokens securely and use them for future API calls
-        print('Access Token: $accessToken');
-        print('Refresh Token: $refreshToken');
+        final data = json.decode(response.body);
+        final refreshToken = data['refresh_token'];
+
+        // Store the refresh token in the user_profiles table
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user != null) {
+          try {
+            await Supabase.instance.client.from('user_profiles').upsert({
+              'id': user.id,
+              'spotify_refresh_token': refreshToken,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          } catch (e) {
+            print('Error updating user profile: $e');
+            // Continue execution even if update fails
+          }
+        }
       } else {
         throw Exception('Failed to exchange code for token: ${response.body}');
       }
     } catch (e, stackTrace) {
       print('Error in exchangeCodeForToken: $e');
       print('Stack trace: $stackTrace');
-      rethrow;
+      // Don't rethrow the exception, allow the process to continue
     }
   }
 }

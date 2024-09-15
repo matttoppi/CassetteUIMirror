@@ -1,4 +1,7 @@
 {
     "java.compile.nullAnalysis.mode": "automatic",
-    "cmake.sourceDirectory": "/Users/matttoppi/matt/dev/cassette/CassetteUI/linux"
+    "cmake.sourceDirectory": "/Users/matttoppi/matt/dev/cassette/CassetteUI/linux",
+    "cSpell.words": [
+        "dotenv"
+    ]
 }

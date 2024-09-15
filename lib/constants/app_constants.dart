@@ -8,6 +8,8 @@ class AppColors {
   static const Color textSecondary = Color(0xFF757575);
   static const Color profileBackground = Color(0xFF1F2327);
   static const Color profileTabBackground = Color(0xFFC4C4C4);
+
+  static var inputBackground;
 }
 
 class AppSizes {
