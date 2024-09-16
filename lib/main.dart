@@ -31,10 +31,6 @@ void main() async {
     print('Supabase initialization error: $e');
   }
 
-  // Remove the hash from the URLs for clean URLs
-  setPathUrlStrategy();
-
-  // Run the app
   runApp(MyApp());
 }
 

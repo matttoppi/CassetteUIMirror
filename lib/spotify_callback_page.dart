@@ -21,9 +21,6 @@ class _SpotifyCallbackPageState extends State<SpotifyCallbackPage> {
     });
   }
 
-  
-
-
   void _handleCallback() async {
     print('SpotifyCallbackPage: _handleCallback called');
     print('Spotify Callback Code: ${widget.code}');
@@ -36,16 +33,20 @@ class _SpotifyCallbackPageState extends State<SpotifyCallbackPage> {
 
     if (widget.code != null) {
       try {
-        await SpotifyService.exchangeCodeForToken(widget.code!);
-        print('Successfully exchanged code for token');
+        bool success = await SpotifyService.exchangeCodeForToken(widget.code!);
+        if (success) {
+          print('Successfully exchanged code for token and updated user profile');
+        } else {
+          print('Failed to exchange code for token or update user profile');
+        }
       } catch (e) {
         print('Error exchanging code for token: $e');
       }
+    } else if (widget.error != null) {
+      print('Spotify authentication error: ${widget.error}');
     }
 
-    // Delay the redirection to ensure logs are printed
-    await Future.delayed(const Duration(seconds: 5));
-    print('SpotifyCallbackPage: Redirecting to profile page');
+    // Navigate to the profile page
     if (mounted) {
       context.go('/profile');
     }

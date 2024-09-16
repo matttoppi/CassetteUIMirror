@@ -33,7 +33,7 @@ class SpotifyService {
     }
   }
 
-  static Future<void> exchangeCodeForToken(String code) async {
+  static Future<bool> exchangeCodeForToken(String code) async {
     try {
       print('Exchanging code for token...');
       final response = await http.post(
@@ -57,7 +57,6 @@ class SpotifyService {
         final data = json.decode(response.body);
         final refreshToken = data['refresh_token'];
 
-        // Store the refresh token in the user_profiles table
         final user = Supabase.instance.client.auth.currentUser;
         if (user != null) {
           try {
@@ -66,18 +65,22 @@ class SpotifyService {
               'spotify_refresh_token': refreshToken,
               'updated_at': DateTime.now().toIso8601String(),
             });
+            return true; // Return true if successful
           } catch (e) {
             print('Error updating user profile: $e');
-            // Continue execution even if update fails
+            return false; // Return false if there's an error updating the profile
           }
+        } else {
+          print('No current user found');
+          return false; // Return false if there's no current user
         }
       } else {
-        throw Exception('Failed to exchange code for token: ${response.body}');
+        print('Failed to exchange code for token: ${response.body}');
+        return false; // Return false if the API call was not successful
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('Error in exchangeCodeForToken: $e');
-      print('Stack trace: $stackTrace');
-      // Don't rethrow the exception, allow the process to continue
+      return false; // Return false if there's an exception
     }
   }
 }
