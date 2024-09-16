@@ -17,5 +17,5 @@
      ],
      "buildCommand": "./build.sh",
      "outputDirectory": "build/web",
-     "framework": "other"
+     "framework": "Other"
    }
