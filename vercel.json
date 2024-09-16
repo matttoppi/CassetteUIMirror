@@ -14,5 +14,8 @@
          "src": "/(.*)",
          "dest": "/index.html"
        }
-     ]
+     ],
+     "buildCommand": "./build.sh",
+     "outputDirectory": "build/web",
+     "framework": "flutter"
    }
