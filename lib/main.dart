@@ -11,28 +11,32 @@ import 'services/router.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:cassettefrontend/services/spotify_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/services.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+
+  // Fetch environment variables at build time
+  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
   try {
     await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
       debug: true,
     );
   } catch (e) {
     print('Supabase initialization error: $e');
   }
 
-  final supabase = Supabase.instance.client;
+  // Remove the hash from the URLs for clean URLs
+  setPathUrlStrategy();
 
-  setPathUrlStrategy(); // removes the '#' from the URL
+  // Run the app
   runApp(MyApp());
 }
-
 
 class MyApp extends StatefulWidget {
   @override
@@ -45,7 +49,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _router = router; 
+    _router = router;
     _handleInitialUri();
   }
 
@@ -69,7 +73,6 @@ class _MyAppState extends State<MyApp> {
     } else if (error != null) {
       print('Spotify auth error: $error');
     }
-    // Navigate to profile page
     _router.go('/profile');
   }
 

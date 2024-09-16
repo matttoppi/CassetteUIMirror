@@ -22,11 +22,11 @@ class _TrackPageState extends State<TrackPage> {
   @override
   void initState() {
     super.initState();
-    _loadTrackData();
+    _trackDataFuture = _trackService.getTrackData(widget.trackId);
   }
 
-  void _loadTrackData() {
-    _trackDataFuture = _trackService.getTrackData(widget.trackId);
+  Future<Map<String, dynamic>> _loadTrackData() async {
+    return await _trackService.getTrackData(widget.trackId);
   }
 
   @override

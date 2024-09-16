@@ -32,6 +32,7 @@ doc/api/
 .flutter-plugins-dependencies
 .packages
 build/
+local_run.sh
 flutter/
 
 
