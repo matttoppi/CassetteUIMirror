@@ -13,28 +13,34 @@ class SpotifyService {
   static const String _scope = 'user-read-private user-read-email';
 
   static String get _redirectUri {
+    String uri;
     if (kIsWeb) {
       final currentUrl = Uri.base.toString();
+      print('Current URL: $currentUrl');
       if (currentUrl.startsWith('http://localhost') || currentUrl.startsWith('http://127.0.0.1')) {
-        return _localRedirectUri;
+        uri = _localRedirectUri;
       } else {
-        return _productionRedirectUri;
+        uri = _productionRedirectUri;
       }
     } else {
-      // For non-web platforms, always use the local redirect URI
-      return _localRedirectUri;
+      uri = _localRedirectUri;
     }
+    print('Selected redirect URI: $uri');
+    return uri;
   }
 
   static Future<void> initiateSpotifyAuth(BuildContext context) async {
-    final String encodedRedirectUri = Uri.encodeComponent(_redirectUri);
+    final String redirectUri = _redirectUri;
+    final String encodedRedirectUri = Uri.encodeComponent(redirectUri);
     final String authUrl = 'https://accounts.spotify.com/authorize'
         '?client_id=$_clientId'
         '&response_type=code'
         '&redirect_uri=$encodedRedirectUri'
         '&scope=$_scope';
 
-    print('Launching Spotify auth URL: $authUrl');
+    print('Full Spotify auth URL: $authUrl');
+    print('Redirect URI (not encoded): $redirectUri');
+    print('Redirect URI (encoded): $encodedRedirectUri');
 
     if (kIsWeb) {
       // For web, open in the same tab

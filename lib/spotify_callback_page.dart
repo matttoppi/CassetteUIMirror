@@ -11,6 +11,7 @@ class SpotifyCallbackPage extends StatefulWidget {
   @override
   _SpotifyCallbackPageState createState() => _SpotifyCallbackPageState();
 }
+
 class _SpotifyCallbackPageState extends State<SpotifyCallbackPage> {
   @override
   void initState() {
