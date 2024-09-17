@@ -8,8 +8,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SpotifyService {
   static const String _clientId = '352a874dee3c4b46b27f1a96df70aa0b';
   static const String _clientSecret = '393f714172be4f00a2f68dbac3baa029'; 
-  static const String _redirectUri = 'http://localhost:56752/spotify_callback';
+  static const String _localRedirectUri = 'http://localhost:56752/spotify_callback';
+  static const String _productionRedirectUri = 'https://cassetteuimirror.vercel.app/spotify_callback';
   static const String _scope = 'user-read-private user-read-email';
+
+  static String get _redirectUri {
+    return kIsWeb && Uri.base.host != 'localhost'
+        ? _productionRedirectUri
+        : _localRedirectUri;
+  }
 
   static Future<void> initiateSpotifyAuth(BuildContext context) async {
     final String authUrl = 'https://accounts.spotify.com/authorize'
