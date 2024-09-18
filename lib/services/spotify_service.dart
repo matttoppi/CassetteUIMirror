@@ -9,7 +9,7 @@ class SpotifyService {
   static const String _clientId = '352a874dee3c4b46b27f1a96df70aa0b';
   static const String _clientSecret = '393f714172be4f00a2f68dbac3baa029'; 
   static const String _localRedirectUri = 'http://localhost:56752/spotify_callback';
-  static const String _productionRedirectUri = 'https://cassetteuimirror-7k6mr1ca6-matt-toppis-projects.vercel.app/"
+  static const String _productionRedirectUri = 'https://cassettinc.org/spotify_callback';
   static const String _scope = 'user-read-private user-read-email';
 
   static String get _redirectUri {
