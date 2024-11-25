@@ -10,23 +10,6 @@ Before you begin, ensure you have the following installed:
 - Dart SDK
 - Android Studio or VS Code with Flutter extensions
 
-## Getting Started
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/cassettefrontend.git
-   cd cassettefrontend
-   ```
-
-2. Install dependencies:
-   ```
-   flutter pub get
-   ```
-
-3. Set up your IDE:
-   - For Android Studio: Open the project folder and ensure the Flutter plugin is installed and updated.
-   - For VS Code: Install the Flutter and Dart extensions if you haven't already.
-
 ## Running the App
 
 1. Connect a device or start an emulator.
