@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'styles/app_styles.dart';
-import 'constants/app_constants.dart';
-import 'services/track_service.dart';
-import 'signup_page.dart'; 
-import 'main.dart';
+import 'core/constants/app_constants.dart';
+import 'core/services/track_service.dart';
+import 'core/styles/app_styles.dart';
 import 'package:go_router/go_router.dart';
 class TrackPage extends StatefulWidget {
   final String trackId;
