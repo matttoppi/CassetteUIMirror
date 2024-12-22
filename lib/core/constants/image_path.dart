@@ -1,7 +1,11 @@
 const basePath = "lib/assets/images";
 const appLogo = '$basePath/app_logo.png';
 const appLogoText = '$basePath/app_logo_text.png';
+const appLogoTextSmall = '$basePath/app_logo_text_small.png';
 const homeGraphics = '$basePath/home_graphics.png';
+const bgRedBlue = '$basePath/bg_red_blue.png';
+const icDelete = '$basePath/ic_delete.png';
+const icBack = '$basePath/ic_back.png';
 // const appLogoSmall = '$basePath/app_logo_small.png';
 
 
@@ -21,3 +25,9 @@ const threadsImage = '$baseSocialImagesPath/threads.png';
 const tiktokImage = '$baseSocialImagesPath/tiktok.png';
 const redditImage = '$baseSocialImagesPath/reddit.png';
 const linkedImage = '$baseSocialImagesPath/linkedin.png';
+const icApple = '$baseSocialImagesPath/ic_apple.png';
+const icSpotify = '$baseSocialImagesPath/ic_spotify.png';
+const icDeezer = '$baseSocialImagesPath/ic_deezer.png';
+const icTidal = '$baseSocialImagesPath/ic_tidal.png';
+const icYtMusic = '$baseSocialImagesPath/ic_yt_music.png';
+const authGoogle = '$baseSocialImagesPath/ic_auth_google.png';

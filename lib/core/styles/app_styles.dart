@@ -612,14 +612,21 @@ class AppStyles {
       fontWeight: FontWeight.bold,
       letterSpacing: 0.7);
 
+  static TextStyle animatedBtnAddServiceDialogTextStyle =
+  GoogleFonts.atkinsonHyperlegible(
+      color: Colors.white,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.7);
+
   static TextStyle popUpAnimatedBtnStyle = GoogleFonts.atkinsonHyperlegible(
       color: Colors.white,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: FontWeight.bold,
       letterSpacing: 0.7);
 
   static TextStyle popUpItemStyle = GoogleFonts.atkinsonHyperlegible(
-      color: Colors.white, fontSize: 16, letterSpacing: 0);
+      color: Colors.white, fontSize: 20, letterSpacing: 0);
 
   static homeTextBtnStyle() {
     return ElevatedButton.styleFrom(
@@ -630,6 +637,50 @@ class AppStyles {
       ),
     );
   }
+
+  static TextStyle bottomRichTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 18,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.5);
+
+  static TextStyle bottomRichTextStyle2 = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.blackColor,
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      decoration: TextDecoration.underline,
+      letterSpacing: 0.5);
+
+  static TextStyle tncTextStyle2 = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.blackColor,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      decoration: TextDecoration.underline,
+      letterSpacing: 0.5);
+
+  static TextStyle tncTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 14,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.5);
+
+  static TextStyle authTextFieldLabelTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.25);
+
+  static TextStyle signInSignUpCenterTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 18,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.25);
+
+  static TextStyle signInSignUpTitleTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 38,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.25);
 
   static TextStyle homeCenterTextStyle = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
@@ -643,9 +694,46 @@ class AppStyles {
       fontWeight: FontWeight.normal,
       letterSpacing: 0.5);
 
+  static TextStyle profileTitleTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 32,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+
+  static TextStyle addServiceTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.appBg,
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 1);
+
+  static TextStyle addMoreBtnTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.7);
+
+  static TextStyle editProfileServicesTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.appBg,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle dialogTitleTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.blackColor,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle dialogItemsTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.blackColor,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+
   static TextStyle popUpBottomText = GoogleFonts.teko(
     color: AppColors.animatedBtnColorToolBarTop,
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: FontWeight.w600,
   );
+
 }

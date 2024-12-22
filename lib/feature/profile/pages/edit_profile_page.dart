@@ -1,226 +1,402 @@
+import 'package:cassettefrontend/core/common_widgets/animated_primary_button.dart';
+import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
+import 'package:cassettefrontend/core/common_widgets/app_toolbar.dart';
+import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
+import 'package:cassettefrontend/core/constants/app_constants.dart';
+import 'package:cassettefrontend/core/constants/image_path.dart';
+import 'package:cassettefrontend/core/styles/app_styles.dart';
+import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../../core/constants/app_constants.dart';
-import '../../../core/services/spotify_service.dart';
-import '../../../core/styles/app_styles.dart';
 
 class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({Key? key}) : super(key: key);
+  const EditProfilePage({super.key});
 
   @override
-  _EditProfilePageState createState() => _EditProfilePageState();
+  State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-// EditProfilePage state management
-// Tracks whether Spotify is connected (will be used for other streaming services later)
-// This affects the display and functionality of streaming service connection
 class _EditProfilePageState extends State<EditProfilePage> {
-  final _nameController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _bioController = TextEditingController();
-  final _websiteController = TextEditingController();
-  bool isSpotifyConnected = false;
-  bool isLoading = true;
+  bool isMenuVisible = false;
+  int value = 0;
+  ProfileModel profileModel = ProfileModel(
+      fullName: "Matt Toppi",
+      userName: "@MattToppi280",
+      link: "instragram.com/@MattToppi280",
+      bio: "Founder of Cassette. Lead developer and music lover at heart",
+      services: [
+        Services(serviceName: "Spotify"),
+        Services(serviceName: "Apple Music"),
+      ]);
+
+  TextEditingController nameCtr = TextEditingController();
+  TextEditingController userNameCtr = TextEditingController();
+  TextEditingController linkCtr = TextEditingController();
+  TextEditingController bioCtr = TextEditingController();
+
+  List<Services> allServicesList = [];
 
   @override
   void initState() {
+    // TODO: implement initState
     super.initState();
-    loadProfileData();
+    nameCtr.text = profileModel.fullName ?? '';
+    userNameCtr.text = profileModel.userName ?? '';
+    linkCtr.text = profileModel.link ?? '';
+    bioCtr.text = profileModel.bio ?? '';
   }
 
-  Future<void> loadProfileData() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      try {
-        final response = await Supabase.instance.client
-            .from('user_profiles')
-            .select()
-            .eq('id', user.id)
-            .single();
-        
-        setState(() {
-          _nameController.text = response['name'] ?? '';
-          _usernameController.text = response['username'] ?? '';
-          _bioController.text = response['bio'] ?? '';
-          _websiteController.text = response['website'] ?? '';
-          isSpotifyConnected = response['spotify_refresh_token'] != null;
-          isLoading = false;
-        });
-      } catch (e) {
-        print('Error loading profile data: $e');
-        setState(() {
-          isLoading = false;
-        });
-      }
-    } else {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _saveChanges() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      await Supabase.instance.client.from('user_profiles').upsert({
-        'id': user.id,
-        'name': _nameController.text,
-        'username': _usernameController.text,
-        'bio': _bioController.text,
-        'website': _websiteController.text,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-      Navigator.pop(context, true);
-    }
+  fillAllServices(){
+    allServicesList.add(Services(serviceName: "Spotify"));
+    allServicesList.add(Services(serviceName: "Apple Music"));
+    allServicesList.add(Services(serviceName: "YouTube Music"));
+    allServicesList.add(Services(serviceName: "Tidal"));
+    allServicesList.add(Services(serviceName: "Deezer"));
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
-        backgroundColor: AppColors.primary,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: AppStyles.editProfileTextFieldDecoration('Name', 'Enter your name'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _usernameController,
-              decoration: AppStyles.editProfileTextFieldDecoration('Username', 'Enter your username'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _bioController,
-              decoration: AppStyles.editProfileTextFieldDecoration('Bio', 'Tell us about yourself'),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _websiteController,
-              decoration: AppStyles.editProfileTextFieldDecoration('Website', 'Add a link'),
-            ),
-            const SizedBox(height: 32),
-            _buildConnectStreamingService(),
-            const SizedBox(height: 16),
-            _buildConnectedServices(),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _saveChanges,
-              style: AppStyles.saveChangesButtonStyle,
-              child: const Text('Save Changes'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _signOut,
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.red,
+    return AppScaffold(
+        showGraphics: true,
+        onBurgerPop: () {
+          setState(() {
+            isMenuVisible = !isMenuVisible;
+          });
+        },
+        isMenuVisible: isMenuVisible,
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 18),
+              AppToolbar(burgerMenuFnc: () {
+                setState(() {
+                  isMenuVisible = !isMenuVisible;
+                });
+              }),
+              const SizedBox(height: 18),
+              profileTopView(),
+              const SizedBox(height: 38),
+              connectServiceView(),
+              const SizedBox(height: 28),
+              labelTextFieldWidget(),
+              const SizedBox(height: 56),
+              AnimatedPrimaryButton(
+                text: "Save Changes",
+                onTap: () {
+                  context.go("/profile");
+                },
+                height: 40,
+                width: MediaQuery.of(context).size.width - 46 + 16,
+                radius: 10,
+                initialPos: 6,
+                topBorderWidth: 3,
+                bottomBorderWidth: 3,
+                colorTop: AppColors.animatedBtnColorConvertTop,
+                textStyle: AppStyles.animatedBtnFreeAccTextStyle,
+                borderColorTop: AppColors.animatedBtnColorConvertTop,
+                colorBottom: AppColors.animatedBtnColorConvertBottom,
+                borderColorBottom:
+                    AppColors.animatedBtnColorConvertBottomBorder,
               ),
-              child: const Text('Sign Out'),
-            ),
-          ],
-        ),
+              const SizedBox(height: 56),
+            ],
+          ),
+        ));
+  }
+
+  profileTopView() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircleAvatar(
+            radius: 30.0,
+            backgroundImage: NetworkImage(
+                'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'),
+            backgroundColor: Colors.transparent,
+          ),
+          const SizedBox(width: 22),
+          Text("Edit Your Profile", style: AppStyles.profileTitleTextStyle),
+        ],
       ),
     );
   }
 
-  Widget _buildTextField(String label, String hint, {int maxLines = 1}) {
-    return TextField(
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
+  connectServiceView() {
+    return Container(
+      decoration: BoxDecoration(
+          color: AppColors.textPrimary,
+          borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.only(top: 8, left: 8, right: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                  child: Text("Connected Services",
+                      style: AppStyles.addServiceTextStyle)),
+              const SizedBox(width: 6),
+              AnimatedPrimaryButton(
+                  text: "Add More",
+                  onTap: () {},
+                  onTapDown: (details) {
+                    double tapY = details.globalPosition.dy;
+                    openAddServiceDialog(tapY);
+                  },
+                  width: 120,
+                  height: 22,
+                  radius: 16,
+                  textStyle: AppStyles.addMoreBtnTextStyle),
+            ],
+          ),
+          const SizedBox(height: 24),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: profileModel.services?.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: serviceRow(profileModel.services?[index].serviceName),
+              );
+            },
+          ),
+        ],
       ),
-      maxLines: maxLines,
     );
   }
 
-  Widget _buildConnectStreamingService() {
-    return ElevatedButton(
-      onPressed: _connectSpotify,
-      style: AppStyles.connectStreamingButtonStyle,
-      child: const Text('Connect Streaming Service'),
+  labelTextFieldWidget() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text("Name",
+                textAlign: TextAlign.left,
+                style: AppStyles.authTextFieldLabelTextStyle),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child:
+                TextFieldWidget(hint: "Enter your name", controller: nameCtr),
+          ),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text("Username",
+                textAlign: TextAlign.left,
+                style: AppStyles.authTextFieldLabelTextStyle),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextFieldWidget(
+                hint: "Enter your username", controller: userNameCtr),
+          ),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text("Link",
+                textAlign: TextAlign.left,
+                style: AppStyles.authTextFieldLabelTextStyle),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child:
+                TextFieldWidget(hint: "Enter your link", controller: linkCtr),
+          ),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text("Bio",
+                textAlign: TextAlign.left,
+                style: AppStyles.authTextFieldLabelTextStyle),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextFieldWidget(
+                hint: "Enter your bio",
+                controller: bioCtr,
+                maxLines: 6,
+                minLines: 6,
+                height: 160,
+                height2: 156),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildConnectedServices() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  serviceRow(serviceName) {
+    return Row(
       children: [
-        const Text(
-          'Connected Streaming Services',
-          style: AppStyles.connectedServicesHeaderStyle,
-        ),
-        const SizedBox(height: 8),
-        _buildSpotifyLogo(),
+        getServiceIcon(serviceName),
+        const SizedBox(width: 8),
+        Expanded(
+            child: Text(serviceName,
+                style: AppStyles.editProfileServicesTextStyle)),
+        InkWell(
+            onTap: () {
+              setState(() {
+                profileModel.services?.removeWhere(
+                    (element) => element.serviceName == serviceName);
+              });
+            },
+            child: Image.asset(icDelete, fit: BoxFit.scaleDown, height: 22)),
       ],
     );
   }
 
-  Widget _buildSpotifyLogo() {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: isSpotifyConnected
-          ? Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'lib/assets/images/spotify_logo.png',
-                    width: 24,
-                    height: 24,
-                    key: const ValueKey('spotify_logo'),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('Spotify'),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: _disconnectSpotify,
-                  ),
-                ],
-              ),
-            )
-          : const SizedBox(height: 32, key: ValueKey('empty_space')),
-    );
+  serviceIcon(image, color, {double? height}) {
+    return Image.asset(image,
+        height: height ?? 22, fit: BoxFit.contain, color: color);
   }
 
-  void _connectSpotify() async {
-    await SpotifyService.initiateSpotifyAuth(context);
-    loadProfileData(); // Reload profile data after connecting
-  }
-
-  void _disconnectSpotify() async {
-    // Here you would typically call an API to revoke the Spotify tokens
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      await Supabase.instance.client.from('user_profiles').update({
-        'spotify_refresh_token': null,
-      }).eq('id', user.id);
-      
-      setState(() {
-        isSpotifyConnected = false;
-      });
+  getServiceIcon(String serviceName, {double? iconHeight}) {
+    switch (serviceName) {
+      case "Spotify":
+        return serviceIcon(icSpotify, AppColors.greenAppColor,
+            height: iconHeight);
+      case "Apple Music":
+        return serviceIcon(icApple, AppColors.animatedBtnColorToolBarTop,
+            height: iconHeight);
+      case "YouTube Music":
+        return serviceIcon(icYtMusic, AppColors.animatedBtnColorToolBarTop,
+            height: iconHeight);
+      case "Tidal":
+        return serviceIcon(icTidal, AppColors.textPrimary, height: iconHeight);
+      case "Deezer":
+        return serviceIcon(icDeezer, AppColors.textPrimary, height: iconHeight);
+      default:
+        return serviceIcon(icSpotify, AppColors.greenAppColor,
+            height: iconHeight);
     }
   }
 
-  void _signOut() async {
-    await Supabase.instance.client.auth.signOut();
-    if (mounted) {
-      context.go('/');
+  openAddServiceDialog(tapY) {
+    value = 0;
+    allServicesList.clear();
+    fillAllServices();
+    if(profileModel.services?.isNotEmpty ?? false){
+      for(var i in profileModel.services!){
+        allServicesList.removeWhere((element) => element.serviceName == i.serviceName);
+      }
+    }
+    SmartDialog.show(
+      alignment:
+          Alignment(0, (tapY / MediaQuery.of(context).size.height) * 2 - 1),
+      builder: (BuildContext ctx2) {
+        return StatefulBuilder(
+            builder: (BuildContext ctx, StateSetter setState2) {
+          return Container(
+            padding: const EdgeInsets.all(10),
+            margin: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width / 6),
+            decoration: const BoxDecoration(
+              color: AppColors.colorWhite,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Select a service",
+                        style: AppStyles.dialogTitleTextStyle),
+                    const SizedBox(width: 5),
+                    InkWell(
+                      onTap: () {
+                        SmartDialog.dismiss();
+                      },
+                      child: const Icon(Icons.close,
+                          color: AppColors.blackColor, size: 18),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: allServicesList.length,
+                  itemBuilder: (context, index) {
+                    return profileModel.services
+                            ?.map((e) => e.serviceName)
+                            .toList()
+                            .contains(allServicesList[index].serviceName) ?? false
+                        ? SizedBox()
+                        : RadioListTile(
+                            contentPadding: EdgeInsets.zero,
+                            activeColor: AppColors.textPrimary,
+                            value: index,
+                            groupValue: value,
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.trailing,
+                            onChanged: (ind) {
+                              setState2(() => value = index);
+                            },
+                            title: Row(
+                              children: [
+                                getServiceIcon(
+                                    allServicesList[index].serviceName ?? '',
+                                    iconHeight: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  allServicesList[index].serviceName ?? '',
+                                  style: AppStyles.dialogItemsTextStyle,
+                                ),
+                              ],
+                            ),
+                          );
+                  },
+                ),
+                const SizedBox(height: 12),
+                AnimatedPrimaryButton(
+                  text: "Add Service",
+                  onTap: () {
+                    Future.delayed(
+                      const Duration(milliseconds: 135),
+                      () {
+                        SmartDialog.dismiss();
+                        addServiceFnc();
+                      },
+                    );
+                  },
+                  height: 35,
+                  width: MediaQuery.of(context).size.width / 1.69,
+                  radius: 12,
+                  initialPos: 4,
+                  colorTop: AppColors.animatedBtnColorConvertTop,
+                  textStyle: AppStyles.animatedBtnAddServiceDialogTextStyle,
+                  borderColorTop: AppColors.animatedBtnColorConvertTop,
+                  colorBottom: AppColors.animatedBtnColorConvertBottom,
+                  borderColorBottom:
+                      AppColors.animatedBtnColorConvertBottomBorder,
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  addServiceFnc() {
+    if(allServicesList.isNotEmpty){
+      profileModel.services
+          ?.add(Services(serviceName: allServicesList[value].serviceName));
+      setState(() {});
     }
   }
 }

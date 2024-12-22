@@ -15,6 +15,7 @@ class AnimatedPrimaryButton extends StatefulWidget {
   final double? topBorderWidth;
   final TextStyle? textStyle;
   final Function onTap;
+  final Function(TapDownDetails)? onTapDown;
 
   const AnimatedPrimaryButton(
       {super.key,
@@ -30,6 +31,7 @@ class AnimatedPrimaryButton extends StatefulWidget {
       this.initialPos,
       this.colorTop,
       this.colorBottom,
+      this.onTapDown,
       this.radius});
 
   @override
@@ -62,12 +64,14 @@ class _AnimatedPrimaryButtonState extends State<AnimatedPrimaryButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        if(!mounted) return;
         setState(() {
           _position = 0;
         });
         Future.delayed(
           const Duration(milliseconds: 125),
           () {
+            if(!mounted) return;
             setState(() {
               _position = initialPos;
             });
@@ -75,6 +79,7 @@ class _AnimatedPrimaryButtonState extends State<AnimatedPrimaryButton> {
         );
         widget.onTap();
       },
+      onTapDown: widget.onTapDown,
       child: SizedBox(
         height: height + initialPos,
         width: width + initialPos,

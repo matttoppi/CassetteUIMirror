@@ -10,6 +10,8 @@ class AppColors {
   static const Color profileTabBackground = Color(0xFFC4C4C4);
 
   static const Color appBg = Color(0xFFF8F0DE);
+  static const Color colorWhite = Color(0xFFFFFFFF);
+  static const Color greenAppColor = Color(0xFF1ED760);
   static const Color animatedBtnColorToolBarTop = Color(0xFFED2748);
   static const Color animatedBtnColorToolBarTopBorder = Color(0xFFFF002B);
   static const Color animatedBtnColorToolBarBottom = Color(0xFFE95E75);
@@ -18,6 +20,7 @@ class AppColors {
   static const Color animatedBtnColorConvertBottomBorder = Color(0xFF1F2327);
   static const Color popUpDividerColor = Color(0xFF8A8A8A);
   static const Color popBgColor = Color.fromRGBO(31, 35, 39, 0.78);
+  static const Color blackColor = Color.fromRGBO(0, 0, 0, 1);
 
   static var inputBackground;
 }

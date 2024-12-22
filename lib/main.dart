@@ -1,5 +1,6 @@
 import 'package:cassettefrontend/core/storage/preference_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -76,6 +77,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
+      builder: FlutterSmartDialog.init(),
       debugShowCheckedModeBanner: false,
     );
   }
