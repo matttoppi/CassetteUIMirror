@@ -6,6 +6,14 @@ const homeGraphics = '$basePath/home_graphics.png';
 const bgRedBlue = '$basePath/bg_red_blue.png';
 const icDelete = '$basePath/ic_delete.png';
 const icBack = '$basePath/ic_back.png';
+const icMenu = '$basePath/ic_menu.png';
+const icLink = '$basePath/ic_link.png';
+const icShare = '$basePath/ic_share.png';
+const icMusic = '$basePath/ic_music.png';
+const icEdit = '$basePath/ic_edit.png';
+const icPlay = '$basePath/ic_play.png';
+const icPrevious = '$basePath/ic_previous.png';
+const icNext = '$basePath/ic_next.png';
 // const appLogoSmall = '$basePath/app_logo_small.png';
 
 

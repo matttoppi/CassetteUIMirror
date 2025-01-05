@@ -5,6 +5,7 @@ import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
+import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -20,15 +21,6 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   bool isMenuVisible = false;
   int value = 0;
-  ProfileModel profileModel = ProfileModel(
-      fullName: "Matt Toppi",
-      userName: "@MattToppi280",
-      link: "instragram.com/@MattToppi280",
-      bio: "Founder of Cassette. Lead developer and music lover at heart",
-      services: [
-        Services(serviceName: "Spotify"),
-        Services(serviceName: "Apple Music"),
-      ]);
 
   TextEditingController nameCtr = TextEditingController();
   TextEditingController userNameCtr = TextEditingController();
@@ -41,18 +33,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    nameCtr.text = profileModel.fullName ?? '';
-    userNameCtr.text = profileModel.userName ?? '';
-    linkCtr.text = profileModel.link ?? '';
-    bioCtr.text = profileModel.bio ?? '';
+    nameCtr.text = AppUtils.profileModel.fullName ?? '';
+    userNameCtr.text = AppUtils.profileModel.userName ?? '';
+    linkCtr.text = AppUtils.profileModel.link ?? '';
+    bioCtr.text = AppUtils.profileModel.bio ?? '';
   }
 
-  fillAllServices(){
-    allServicesList.add(Services(serviceName: "Spotify"));
-    allServicesList.add(Services(serviceName: "Apple Music"));
-    allServicesList.add(Services(serviceName: "YouTube Music"));
-    allServicesList.add(Services(serviceName: "Tidal"));
-    allServicesList.add(Services(serviceName: "Deezer"));
+  fillAllServices() {
+    allServicesList
+      ..add(Services(serviceName: "Spotify"))
+      ..add(Services(serviceName: "Apple Music"))
+      ..add(Services(serviceName: "YouTube Music"))
+      ..add(Services(serviceName: "Tidal"))
+      ..add(Services(serviceName: "Deezer"));
   }
 
   @override
@@ -111,10 +104,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 30.0,
-            backgroundImage: NetworkImage(
-                'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'),
+            backgroundImage:
+                NetworkImage(AppUtils.profileModel.profilePath ?? ''),
             backgroundColor: Colors.transparent,
           ),
           const SizedBox(width: 22),
@@ -158,11 +151,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: profileModel.services?.length,
+            itemCount: AppUtils.profileModel.services?.length,
             itemBuilder: (context, index) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: serviceRow(profileModel.services?[index].serviceName),
+                child: serviceRow(
+                    AppUtils.profileModel.services?[index].serviceName),
               );
             },
           ),
@@ -249,7 +243,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         InkWell(
             onTap: () {
               setState(() {
-                profileModel.services?.removeWhere(
+                AppUtils.profileModel.services?.removeWhere(
                     (element) => element.serviceName == serviceName);
               });
             },
@@ -288,9 +282,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
     value = 0;
     allServicesList.clear();
     fillAllServices();
-    if(profileModel.services?.isNotEmpty ?? false){
-      for(var i in profileModel.services!){
-        allServicesList.removeWhere((element) => element.serviceName == i.serviceName);
+    if (AppUtils.profileModel.services?.isNotEmpty ?? false) {
+      for (var i in AppUtils.profileModel.services!) {
+        allServicesList
+            .removeWhere((element) => element.serviceName == i.serviceName);
       }
     }
     SmartDialog.show(
@@ -330,10 +325,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: allServicesList.length,
                   itemBuilder: (context, index) {
-                    return profileModel.services
-                            ?.map((e) => e.serviceName)
-                            .toList()
-                            .contains(allServicesList[index].serviceName) ?? false
+                    return AppUtils.profileModel.services
+                                ?.map((e) => e.serviceName)
+                                .toList()
+                                .contains(allServicesList[index].serviceName) ??
+                            false
                         ? SizedBox()
                         : RadioListTile(
                             contentPadding: EdgeInsets.zero,
@@ -365,7 +361,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   text: "Add Service",
                   onTap: () {
                     Future.delayed(
-                      const Duration(milliseconds: 135),
+                      const Duration(milliseconds: 180),
                       () {
                         SmartDialog.dismiss();
                         addServiceFnc();
@@ -393,8 +389,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   addServiceFnc() {
-    if(allServicesList.isNotEmpty){
-      profileModel.services
+    if (allServicesList.isNotEmpty) {
+      AppUtils.profileModel.services
           ?.add(Services(serviceName: allServicesList[value].serviceName));
       setState(() {});
     }

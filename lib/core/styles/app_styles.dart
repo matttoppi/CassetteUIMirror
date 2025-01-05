@@ -606,18 +606,18 @@ class AppStyles {
           letterSpacing: 0.7);
 
   static TextStyle animatedBtnFreeAccTextStyle =
-  GoogleFonts.atkinsonHyperlegible(
-      color: Colors.white,
-      fontSize: 22,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0.7);
+      GoogleFonts.atkinsonHyperlegible(
+          color: Colors.white,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.7);
 
   static TextStyle animatedBtnAddServiceDialogTextStyle =
-  GoogleFonts.atkinsonHyperlegible(
-      color: Colors.white,
-      fontSize: 14,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0.7);
+      GoogleFonts.atkinsonHyperlegible(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.7);
 
   static TextStyle popUpAnimatedBtnStyle = GoogleFonts.atkinsonHyperlegible(
       color: Colors.white,
@@ -664,23 +664,26 @@ class AppStyles {
       fontWeight: FontWeight.normal,
       letterSpacing: 0.5);
 
-  static TextStyle authTextFieldLabelTextStyle = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.textPrimary,
-      fontSize: 14,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0.25);
+  static TextStyle authTextFieldLabelTextStyle =
+      GoogleFonts.atkinsonHyperlegible(
+          color: AppColors.textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.25);
 
-  static TextStyle signInSignUpCenterTextStyle = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.textPrimary,
-      fontSize: 18,
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0.25);
+  static TextStyle signInSignUpCenterTextStyle =
+      GoogleFonts.atkinsonHyperlegible(
+          color: AppColors.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.normal,
+          letterSpacing: 0.25);
 
-  static TextStyle signInSignUpTitleTextStyle = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.textPrimary,
-      fontSize: 38,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0.25);
+  static TextStyle signInSignUpTitleTextStyle =
+      GoogleFonts.atkinsonHyperlegible(
+          color: AppColors.textPrimary,
+          fontSize: 38,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.25);
 
   static TextStyle homeCenterTextStyle = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
@@ -712,11 +715,12 @@ class AppStyles {
       fontWeight: FontWeight.w500,
       letterSpacing: 0.7);
 
-  static TextStyle editProfileServicesTextStyle = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.appBg,
-      fontSize: 14,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+  static TextStyle editProfileServicesTextStyle =
+      GoogleFonts.atkinsonHyperlegible(
+          color: AppColors.appBg,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0);
 
   static TextStyle dialogTitleTextStyle = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.blackColor,
@@ -736,4 +740,176 @@ class AppStyles {
     fontWeight: FontWeight.w600,
   );
 
+  static TextStyle profileNameTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite,
+      fontSize: 22,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.7);
+
+  static TextStyle profileUserNameTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite.withOpacity(0.54),
+      fontSize: 16,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.7);
+
+  static TextStyle profileBioTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite.withOpacity(0.88),
+      fontSize: 14,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.7);
+
+  static TextStyle profileLinkTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite.withOpacity(0.88),
+      fontSize: 14,
+      decoration: TextDecoration.underline,
+      decorationColor: AppColors.colorWhite.withOpacity(0.88),
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.7);
+
+  static TextStyle profileShareTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite,
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.7);
+
+  static TextStyle profileAddMusicTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.7);
+
+  static TextStyle profileTabTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.grayColor,
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+  static TextStyle profileTabSelectedTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite,
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle itemTypeTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.animatedBtnColorToolBarTop,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle itemTitleTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle itemRichTextTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.animatedBtnColorToolBarTop,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle itemRichText2Ts = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle itemDesTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 12,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0);
+
+  static TextStyle itemFromTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 14,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0);
+
+  static TextStyle itemSongDurationTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0);
+
+  static TextStyle itemUsernameTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      decoration: TextDecoration.underline,
+      decorationColor: AppColors.textPrimary,
+      letterSpacing: 0);
+
+
+  static TextStyle trackTrackTitleTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.colorWhite.withOpacity(0.78),
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+  static TextStyle trackNameTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 32,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+
+  static TextStyle trackArtistNameTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 24,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.5);
+
+  static TextStyle trackDetailTitleTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.animatedBtnColorToolBarTop,
+      fontSize: 18,
+      decoration: TextDecoration.underline,
+      decorationColor: AppColors.animatedBtnColorToolBarTop,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+
+  static TextStyle trackDetailContentTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 17,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.5);
+
+  static TextStyle trackBelowBtnStringTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 13,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.7);
+
+  static TextStyle trackPlaylistSongNoTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+
+  static TextStyle playlistTitleAndDurationTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5);
+
+  static TextStyle playlistSubTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary.withOpacity(0.6),
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.7);
+
+  static TextStyle playlistLeadTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.blackColor,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.7);
+
+  static TextStyle addMusicTitleTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 38,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+
+  static TextStyle addMusicSubTitleTs = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.textPrimary,
+      fontSize: 16,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.5);
 }

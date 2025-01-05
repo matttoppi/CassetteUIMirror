@@ -18,6 +18,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool isMenuVisible = false;
   ScrollController scrollController = ScrollController();
+  TextEditingController tfController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -54,16 +55,23 @@ class _HomePageState extends State<HomePage> {
                     style: AppStyles.homeCenterTextStyle),
               ),
               const SizedBox(height: 28),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: TextFieldWidget(hint: "Paste your music link here..."),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextFieldWidget(
+                  hint: "Paste your music link here...",
+                  controller: tfController,
+                ),
               ),
               const SizedBox(height: 28),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: AnimatedPrimaryButton(
                   text: "Convert",
-                  onTap: () {},
+                  onTap: () {
+                    if (tfController.text.isNotEmpty) {
+                      context.go('/track/${tfController.text}/0');
+                    }
+                  },
                   height: 32,
                   width: 200,
                   radius: 10,
@@ -88,7 +96,7 @@ class _HomePageState extends State<HomePage> {
                 text: "Create Your Free Account!",
                 onTap: () {
                   Future.delayed(
-                    Duration(milliseconds: 135),
+                    Duration(milliseconds: 180),
                     () => context.go('/signup'),
                   );
                 },

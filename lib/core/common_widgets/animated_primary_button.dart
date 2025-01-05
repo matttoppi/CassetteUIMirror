@@ -2,7 +2,8 @@ import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:flutter/material.dart';
 
 class AnimatedPrimaryButton extends StatefulWidget {
-  final String text;
+  final String? text;
+  final Widget? centerWidget;
   final double? height;
   final double? width;
   final double? initialPos;
@@ -19,8 +20,9 @@ class AnimatedPrimaryButton extends StatefulWidget {
 
   const AnimatedPrimaryButton(
       {super.key,
-      required this.text,
+      this.text,
       required this.onTap,
+      this.centerWidget,
       this.bottomBorderWidth,
       this.textStyle,
       this.topBorderWidth,
@@ -111,9 +113,9 @@ class _AnimatedPrimaryButtonState extends State<AnimatedPrimaryButton> {
                     borderColor: widget.borderColorTop,
                     color: widget.colorTop,
                     radius: widget.radius),
-                child: Center(
+                child: widget.centerWidget ??  Center(
                   child: Text(
-                    widget.text,
+                    widget.text ?? '',
                     style: widget.textStyle ?? AppStyles.animatedBtnTextStyle,
                   ),
                 ),

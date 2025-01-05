@@ -10,6 +10,8 @@ class AppColors {
   static const Color profileTabBackground = Color(0xFFC4C4C4);
 
   static const Color appBg = Color(0xFFF8F0DE);
+  static const Color grayColor = Color(0xFFA7A7A7);
+  static const Color tabDividerColor = Color(0xFF333333);
   static const Color colorWhite = Color(0xFFFFFFFF);
   static const Color greenAppColor = Color(0xFF1ED760);
   static const Color animatedBtnColorToolBarTop = Color(0xFFED2748);
@@ -69,4 +71,5 @@ class AppStrings {
   static const String trackText = 'Track';
   static const String createFreeAccountText = 'Create Free Account';
   static const String homeTitle = 'Home';
+
 }
