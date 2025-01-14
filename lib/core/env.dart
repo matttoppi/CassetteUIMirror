@@ -1,0 +1,2 @@
+const supabaseUrl = "https://bvhbuedlkzcmsndvsdiw.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2aGJ1ZWRsa3pjbXNuZHZzZGl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY2NzUzMTAsImV4cCI6MjA1MjI1MTMxMH0._ym-Q5UjmBTANucwfIGhyVOqC9KnCGXqcenWEiZVvbU";
