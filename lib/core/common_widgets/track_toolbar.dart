@@ -1,34 +1,55 @@
-import 'dart:developer';
-
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
+import 'package:cassettefrontend/core/storage/preference_helper.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 
 class TrackToolbar extends StatefulWidget {
-  const TrackToolbar({super.key});
+  bool? isLoggedIn;
+  TrackToolbar({super.key,this.isLoggedIn});
 
   @override
   State<TrackToolbar> createState() => _TrackToolbarState();
 }
 
 class _TrackToolbarState extends State<TrackToolbar> {
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(
-            onPressed: () {
-              context.go('/');
-            },
-            icon: Image.asset(
-              icBack,
-              height: 22,
-              color: AppColors.colorWhite,
-            )),
+        widget.isLoggedIn ?? false
+            ? Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: GestureDetector(
+                onTap: (){
+                  context.go('/profile');
+                },
+                child: CircleAvatar(
+                    radius: 24.0,
+                    backgroundImage:
+                        NetworkImage(AppUtils.profileModel.profilePath ?? ''),
+                    backgroundColor: Colors.transparent,
+                  ),
+              ),
+            )
+            : IconButton(
+                onPressed: () {
+                  context.go('/');
+                },
+                icon: Image.asset(
+                  icBack,
+                  height: 22,
+                  color: AppColors.colorWhite,
+                )),
         const SizedBox(width: 4),
         Expanded(
             child: Image.asset(

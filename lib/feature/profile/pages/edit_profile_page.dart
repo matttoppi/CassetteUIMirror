@@ -10,6 +10,7 @@ import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -77,7 +78,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               AnimatedPrimaryButton(
                 text: "Save Changes",
                 onTap: () {
-                  context.go("/profile");
+                  Future.delayed(
+                    Duration(milliseconds: 180),
+                    () => context.go("/profile"),
+                  );
                 },
                 height: 40,
                 width: MediaQuery.of(context).size.width - 46 + 16,
@@ -104,11 +108,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 30.0,
-            backgroundImage:
-                NetworkImage(AppUtils.profileModel.profilePath ?? ''),
-            backgroundColor: Colors.transparent,
+          GestureDetector(
+            onTap: () async {
+              uploadImageFnc(AppUtils.profileModel.id);
+            },
+            child: CircleAvatar(
+              radius: 30.0,
+              backgroundImage:
+                  NetworkImage(AppUtils.profileModel.profilePath ?? ''),
+              backgroundColor: Colors.transparent,
+            ),
           ),
           const SizedBox(width: 22),
           Text("Edit Your Profile", style: AppStyles.profileTitleTextStyle),
@@ -138,8 +147,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   text: "Add More",
                   onTap: () {},
                   onTapDown: (details) {
-                    double tapY = details.globalPosition.dy;
-                    openAddServiceDialog(tapY);
+                    Future.delayed(
+                      const Duration(milliseconds: 180),
+                      () {
+                        double tapY = details.globalPosition.dy;
+                        openAddServiceDialog(tapY);
+                      },
+                    );
                   },
                   width: 120,
                   height: 22,
@@ -393,6 +407,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
       AppUtils.profileModel.services
           ?.add(Services(serviceName: allServicesList[value].serviceName));
       setState(() {});
+    }
+  }
+
+  uploadImageFnc(userId) async {
+    final image = await AppUtils.uploadPhoto();
+    if (image != null) {
+      final imageBytes = await image.readAsBytes();
+      final storagePath =
+          'profile/${userId}${DateTime.now().millisecondsSinceEpoch}';
+      await Supabase.instance.client.storage
+          .from('profile_bucket')
+          .uploadBinary(
+            storagePath,
+            imageBytes,
+            fileOptions: FileOptions(contentType: image.mimeType, upsert: true),
+          )
+          .then(
+        (value) {
+          print("profile uploaded : ${value}");
+        },
+      );
     }
   }
 }

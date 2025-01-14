@@ -2,6 +2,7 @@ import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/common_widgets/animated_primary_button.dart';
+import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,12 +17,6 @@ class PopUpWidget extends StatefulWidget {
 }
 
 class _PopUpWidgetState extends State<PopUpWidget> {
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Visibility(
@@ -93,11 +88,21 @@ class _PopUpWidgetState extends State<PopUpWidget> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    socialWidget(instagramImage),
-                    socialWidget(threadsImage),
-                    socialWidget(tiktokImage),
-                    socialWidget(redditImage),
-                    socialWidget(linkedImage),
+                    socialWidget(instagramImage, () {
+                      AppUtils.openUrlOnNewTab("https://www.instagram.com");
+                    }),
+                    socialWidget(threadsImage, () {
+                      AppUtils.openUrlOnNewTab("https://www.threads.net");
+                    }),
+                    socialWidget(tiktokImage, () {
+                      AppUtils.openUrlOnNewTab("https://www.tiktok.com");
+                    }),
+                    socialWidget(redditImage, () {
+                      AppUtils.openUrlOnNewTab("https://www.reddit.com");
+                    }),
+                    socialWidget(linkedImage, () {
+                      AppUtils.openUrlOnNewTab("https://www.linkedin.com");
+                    }),
                   ],
                 ),
               ],
@@ -108,14 +113,17 @@ class _PopUpWidgetState extends State<PopUpWidget> {
     );
   }
 
-  socialWidget(String image) {
-    return Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-        ),
-        padding: const EdgeInsets.all(6),
-        child: Image.asset(image, height: 22, fit: BoxFit.contain));
+  socialWidget(String image, onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.all(6),
+          child: Image.asset(image, height: 22, fit: BoxFit.contain)),
+    );
   }
 
   popUpItemWidget(text, onTap) {

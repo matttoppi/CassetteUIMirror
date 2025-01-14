@@ -69,7 +69,10 @@ class _HomePageState extends State<HomePage> {
                   text: "Convert",
                   onTap: () {
                     if (tfController.text.isNotEmpty) {
-                      context.go('/track/${tfController.text}/0');
+                      Future.delayed(
+                        Duration(milliseconds: 180),
+                        () => context.go('/track/${tfController.text}/0'),
+                      );
                     }
                   },
                   height: 32,

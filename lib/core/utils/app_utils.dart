@@ -1,12 +1,18 @@
+import 'dart:typed_data';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
+import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:html' as html;
 
 class AppUtils {
   static ProfileModel profileModel = ProfileModel(
+      id: 1,
       fullName: "Matt Toppi",
       userName: "@MattToppi280",
       link: "instragram.com/@MattToppi280",
@@ -82,5 +88,106 @@ class AppUtils {
       content,
       sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
     );
+  }
+
+  static authLinksWidgets({googleOnTap, spotifyOnTap, appleOnTap}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        GestureDetector(
+            onTap: googleOnTap,
+            child: Image.asset(authGoogle, height: 52, fit: BoxFit.contain)),
+        GestureDetector(
+          onTap: spotifyOnTap,
+          child: Image.asset(icSpotify,
+              height: 52, fit: BoxFit.contain, color: AppColors.greenAppColor),
+        ),
+        GestureDetector(
+          onTap: appleOnTap,
+          child: Image.asset(icApple,
+              height: 52,
+              fit: BoxFit.contain,
+              color: AppColors.animatedBtnColorToolBarTop),
+        ),
+      ],
+    );
+  }
+
+  static void openUrlOnNewTab(String url) {
+    html.window.open(url, "new tab");
+  }
+
+  static trackSocialLinksWidget() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        socialImageWidget(icApple, () {
+          AppUtils.openUrlOnNewTab("https://music.apple.com");
+        }),
+        socialImageWidget(icYtMusic, () {
+          AppUtils.openUrlOnNewTab("https://music.youtube.com");
+        }),
+        socialImageWidget(icSpotify, () {
+          AppUtils.openUrlOnNewTab("https://open.spotify.com");
+        }),
+        socialImageWidget(icTidal, () {
+          AppUtils.openUrlOnNewTab("https://tidal.com");
+        }),
+        socialImageWidget(icDeezer, () {
+          AppUtils.openUrlOnNewTab("https://www.deezer.com");
+        }),
+      ],
+    );
+  }
+
+  static socialImageWidget(String image, onTap) {
+    return GestureDetector(
+        onTap: onTap,
+        child: Image.asset(image, height: 48, fit: BoxFit.contain));
+  }
+
+  static cmDesBox({String? userName, String? des}) {
+    return Stack(
+      children: [
+        Container(
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(42),
+                color: AppColors.grayColor),
+            height: 175,
+            margin: EdgeInsets.symmetric(horizontal: 16)),
+        Container(
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(42),
+              color: AppColors.colorWhite),
+          height: 175,
+          width: double.infinity,
+          margin: EdgeInsets.only(top: 3, right: 18, left: 18),
+          padding: EdgeInsets.all(12),
+          child: Column(
+            children: [
+              Text(userName ?? '',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppStyles.trackDetailTitleTs),
+              const SizedBox(height: 12),
+              Text(
+                des ?? "",
+                textAlign: TextAlign.left,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: AppStyles.trackDetailContentTs,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static Future<XFile?> uploadPhoto() async {
+    final image = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, maxHeight: 400, maxWidth: 400);
+      return image;
   }
 }

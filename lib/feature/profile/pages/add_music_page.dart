@@ -56,7 +56,10 @@ class _AddMusicPageState extends State<AddMusicPage> {
                 AnimatedPrimaryButton(
                   text: "Convert",
                   onTap: () {
-                    context.go("/profile");
+                    Future.delayed(
+                      Duration(milliseconds: 180),
+                          () => context.go("/profile"),
+                    );
                   },
                   height: 40,
                   width: MediaQuery.of(context).size.width - 46,

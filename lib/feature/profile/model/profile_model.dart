@@ -1,4 +1,5 @@
 class ProfileModel {
+  int? id;
   String? profilePath;
   String? fullName;
   String? userName;
@@ -7,9 +8,10 @@ class ProfileModel {
   List<Services>? services;
 
   ProfileModel(
-      {this.fullName, this.userName, this.link, this.bio, this.services,this.profilePath});
+      {this.id,this.fullName, this.userName, this.link, this.bio, this.services,this.profilePath});
 
   ProfileModel.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
     fullName = json['fullName'];
     userName = json['userName'];
     profilePath = json['profilePath'];
@@ -25,6 +27,7 @@ class ProfileModel {
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['id'] = this.id;
     data['profilePath'] = this.profilePath;
     data['fullName'] = this.fullName;
     data['userName'] = this.userName;

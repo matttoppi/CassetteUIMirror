@@ -6,6 +6,7 @@ import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
+import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -65,7 +66,10 @@ class _SignUpPageState extends State<SignUpPage> {
               AnimatedPrimaryButton(
                 text: "Sign Up",
                 onTap: () {
-                  context.go("/profile");
+                  Future.delayed(
+                    Duration(milliseconds: 180),
+                    () => context.go("/profile"),
+                  );
                 },
                 height: 40,
                 width: MediaQuery.of(context).size.width - 46 + 16,
@@ -104,20 +108,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 22),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Image.asset(authGoogle, height: 52, fit: BoxFit.contain),
-                  Image.asset(icSpotify,
-                      height: 52,
-                      fit: BoxFit.contain,
-                      color: AppColors.greenAppColor),
-                  Image.asset(icApple,
-                      height: 52,
-                      fit: BoxFit.contain,
-                      color: AppColors.animatedBtnColorToolBarTop),
-                ],
-              ),
+              AppUtils.authLinksWidgets(
+                  appleOnTap: () {}, googleOnTap: () {}, spotifyOnTap: () {}),
               const SizedBox(height: 26),
               bottomRichText(),
               const SizedBox(height: 22),

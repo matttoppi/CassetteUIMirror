@@ -172,7 +172,8 @@ class _ProfilePageState extends State<ProfilePage>
                                 ),
                                 width: MediaQuery.of(context).size.width / 2.4,
                                 onTap: () {
-                                  context.go("/add_music");
+                                  Future.delayed(Duration(milliseconds: 180),
+                                      () => context.go("/add_music"));
                                 },
                                 radius: 10,
                               ),

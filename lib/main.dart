@@ -12,9 +12,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
 
-  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-  const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-  const spotifyApiKey = String.fromEnvironment('SPOTIFY_API_KEY');
+  // const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  // const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  const supabaseUrl = "https://bvhbuedlkzcmsndvsdiw.supabase.co";
+  const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2aGJ1ZWRsa3pjbXNuZHZzZGl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY2NzUzMTAsImV4cCI6MjA1MjI1MTMxMH0._ym-Q5UjmBTANucwfIGhyVOqC9KnCGXqcenWEiZVvbU";
+  // const spotifyApiKey = String.fromEnvironment('SPOTIFY_API_KEY');
 
   try {
     await Supabase.initialize(

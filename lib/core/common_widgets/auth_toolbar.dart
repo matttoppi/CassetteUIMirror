@@ -8,14 +8,15 @@ import 'package:go_router/go_router.dart';
 
 class AuthToolbar extends StatefulWidget {
   final Function burgerMenuFnc;
-  const AuthToolbar({super.key,required this.burgerMenuFnc});
+
+  const AuthToolbar({super.key, required this.burgerMenuFnc});
 
   @override
   State<AuthToolbar> createState() => _AuthToolbarState();
 }
 
-class _AuthToolbarState extends State<AuthToolbar> with TickerProviderStateMixin{
-
+class _AuthToolbarState extends State<AuthToolbar>
+    with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -23,7 +24,12 @@ class _AuthToolbarState extends State<AuthToolbar> with TickerProviderStateMixin
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(child: Image.asset(appLogo, fit: BoxFit.scaleDown)),
+          Expanded(
+              child: GestureDetector(
+                  onTap: () {
+                    context.go("/");
+                  },
+                  child: Image.asset(appLogo, fit: BoxFit.scaleDown))),
           const SizedBox(width: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -38,11 +44,12 @@ class _AuthToolbarState extends State<AuthToolbar> with TickerProviderStateMixin
               AnimatedPrimaryButton(
                 text: "Sign Up",
                 onTap: () {
-                  Future.delayed(Duration(milliseconds: 180),() => context.go('/signup'),);
+                  Future.delayed(
+                      Duration(milliseconds: 180), () => context.go('/signup'));
                 },
               ),
               const SizedBox(width: 4),
-              AppUtils.burgerMenu(onPressed: (){
+              AppUtils.burgerMenu(onPressed: () {
                 widget.burgerMenuFnc();
               }),
             ],

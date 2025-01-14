@@ -3,7 +3,9 @@ import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
 import 'package:cassettefrontend/core/common_widgets/track_toolbar.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
+import 'package:cassettefrontend/core/storage/preference_helper.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
+import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/feature/track/json/playlist_items_json.dart';
 import 'package:cassettefrontend/feature/track/model/playlist_item_model.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +23,12 @@ class TracklistPage extends StatefulWidget {
 }
 
 class _PlaylistPageState extends State<TracklistPage> {
+  String name = '';
+  String artistName = "Daniel Caesar";
+  String desUsername = 'matttoppi';
+  String? des =
+      "One of the my favorite songs off of Daniel Caesar’s magnum opus. I recently bought the entire Freudian album on vinyl.";
+
   Color dominateColor = AppColors.appBg;
 
   List<String> playlist = [
@@ -34,10 +42,15 @@ class _PlaylistPageState extends State<TracklistPage> {
       "https://images.pexels.com/photos/7086286/pexels-photo-7086286.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
 
   List<PlaylistItemModel> playlistList = [];
+  bool isLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
+    isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
+    // isLoggedIn = true;
+    // des = null;
+    name = widget.type == "album" ? "CHROMAKOPIA" : "Waves";
     _generatePalette(widget.type == "album" ? albumUrl : playlist.last);
     playlistList = (playlistItemsJson as List)
         .map((item) => PlaylistItemModel.fromJson(item))
@@ -46,7 +59,7 @@ class _PlaylistPageState extends State<TracklistPage> {
 
   Future<void> _generatePalette(String imageUrl) async {
     final PaletteGenerator paletteGenerator =
-    await PaletteGenerator.fromImageProvider(
+        await PaletteGenerator.fromImageProvider(
       NetworkImage(imageUrl),
       maximumColorCount: 5,
     );
@@ -59,38 +72,37 @@ class _PlaylistPageState extends State<TracklistPage> {
   Widget build(BuildContext context) {
     return AppScaffold(
         body: SingleChildScrollView(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  dominateColor,
-                  AppColors.colorWhite,
-                  AppColors.appBg,
-                ],
-                stops: const [0, 0.35, 1],
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(height: 18),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: TrackToolbar(),
-                ),
-                const SizedBox(height: 18),
-                body(),
-                const SizedBox(height: 18),
-                listingView(),
-                const SizedBox(height: 18),
-                footer(),
-                const SizedBox(height: 18),
-              ],
-            ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              dominateColor,
+              AppColors.colorWhite,
+              AppColors.appBg,
+            ],
+            stops: const [0, 0.35, 1],
           ),
-        ));
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const SizedBox(height: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TrackToolbar(isLoggedIn: isLoggedIn),
+            ),
+            const SizedBox(height: 18),
+            body(),
+            const SizedBox(height: 18),
+            listingView(),
+            Visibility(visible: !isLoggedIn && des != null, child: createAccWidget()),
+            const SizedBox(height: 18),
+          ],
+        ),
+      ),
+    ));
   }
 
   body() {
@@ -114,40 +126,28 @@ class _PlaylistPageState extends State<TracklistPage> {
                 children: [
                   Padding(
                     padding:
-                    const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+                        const EdgeInsets.only(bottom: 20, left: 20, right: 20),
                     child: widget.type == "album"
                         ? Image.network(albumUrl,
-                        width: MediaQuery
-                            .of(context)
-                            .size
-                            .width / 2.5,
-                        height: MediaQuery
-                            .of(context)
-                            .size
-                            .width / 2.5,
-                        fit: BoxFit.cover)
+                            width: MediaQuery.of(context).size.width / 2.5,
+                            height: MediaQuery.of(context).size.width / 2.5,
+                            fit: BoxFit.cover)
                         : SizedBox(
-                      width: MediaQuery
-                          .of(context)
-                          .size
-                          .width / 2.5,
-                      height: MediaQuery
-                          .of(context)
-                          .size
-                          .width / 2.5,
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: playlist.length,
-                        gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2),
-                        itemBuilder: (context, index) {
-                          return Image.network(playlist[index],
-                              fit: BoxFit.cover);
-                        },
-                      ),
-                    ),
+                            width: MediaQuery.of(context).size.width / 2.5,
+                            height: MediaQuery.of(context).size.width / 2.5,
+                            child: GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: playlist.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2),
+                              itemBuilder: (context, index) {
+                                return Image.network(playlist[index],
+                                    fit: BoxFit.cover);
+                              },
+                            ),
+                          ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -168,13 +168,13 @@ class _PlaylistPageState extends State<TracklistPage> {
             ],
           ),
           Text(
-            widget.type == "album" ? "CHROMAKOPIA" : "Waves",
+            name,
             style: AppStyles.trackNameTs,
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-          if(widget.type == "album")
+          if (widget.type == "album")
             Text(
               "Tyler the Creator",
               style: AppStyles.trackArtistNameTs,
@@ -189,54 +189,9 @@ class _PlaylistPageState extends State<TracklistPage> {
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-          const SizedBox(height: 36),
-          Stack(
-            children: [
-              Container(
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(42),
-                      color: AppColors.grayColor),
-                  height: 175,
-                  margin: EdgeInsets.symmetric(horizontal: 16)),
-              Container(
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(42),
-                    color: AppColors.colorWhite),
-                height: 175,
-                width: double.infinity,
-                margin: EdgeInsets.only(top: 3, right: 18, left: 18),
-                padding: EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    Text("matttoppi",
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppStyles.trackDetailTitleTs),
-                    const SizedBox(height: 12),
-                    Text(
-                      "One of the my favorite songs off of Daniel Caesar’s magnum opus. I recently bought the entire Freudian album on vinyl.",
-                      textAlign: TextAlign.left,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppStyles.trackDetailContentTs,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              socialWidget(icApple),
-              socialWidget(icYtMusic),
-              socialWidget(icSpotify),
-              socialWidget(icTidal),
-              socialWidget(icDeezer),
-            ],
-          ),
+          des == null && !isLoggedIn? createAccWidget() : desWidget(),
+          SizedBox(height: des == null ? 40 : 0),
+          AppUtils.trackSocialLinksWidget(),
           const SizedBox(height: 18),
           const Divider(
               height: 2,
@@ -246,6 +201,16 @@ class _PlaylistPageState extends State<TracklistPage> {
               indent: 10),
         ],
       ),
+    );
+  }
+
+  desWidget() {
+    return Column(
+      children: [
+        const SizedBox(height: 36),
+        AppUtils.cmDesBox(userName: desUsername, des: des),
+        const SizedBox(height: 18),
+      ],
     );
   }
 
@@ -268,22 +233,20 @@ class _PlaylistPageState extends State<TracklistPage> {
     );
   }
 
-  footer() {
+  createAccWidget() {
     return Column(
       children: [
+        const SizedBox(height: 18),
         AnimatedPrimaryButton(
           text: "Create Your Free Account!",
           onTap: () {
             Future.delayed(
               Duration(milliseconds: 180),
-                  () => context.go('/signup'),
+              () => context.go('/signup'),
             );
           },
           height: 40,
-          width: MediaQuery
-              .of(context)
-              .size
-              .width - 46,
+          width: MediaQuery.of(context).size.width - 46,
           radius: 10,
           initialPos: 6,
           topBorderWidth: 3,
@@ -302,9 +265,5 @@ class _PlaylistPageState extends State<TracklistPage> {
         ),
       ],
     );
-  }
-
-  socialWidget(String image) {
-    return Image.asset(image, height: 48, fit: BoxFit.contain);
   }
 }
