@@ -3,6 +3,7 @@ import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/common_widgets/animated_primary_button.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
+import 'package:cassettefrontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -47,8 +48,20 @@ class _PopUpWidgetState extends State<PopUpWidget> {
                         child: Image.asset(appLogo, fit: BoxFit.scaleDown)),
                     const SizedBox(width: 25),
                     AnimatedPrimaryButton(
-                        text: "Sign In",
-                        onTap: () {},
+                        text: isAuthenticated ? "Sign Out" : "Sign In",
+                        onTap: () async {
+                          if (isAuthenticated) {
+                            await supabase.auth.signOut().then((value) {
+                              Future.delayed(const Duration(milliseconds: 180),
+                                  () => context.go('/'));
+                              AppUtils.showToast(
+                                  context: context, title: "Signed Out");
+                            });
+                          } else {
+                            Future.delayed(const Duration(milliseconds: 180),
+                                () => context.go('/signin'));
+                          }
+                        },
                         height: 32,
                         width: 125,
                         initialPos: 4,
@@ -71,9 +84,22 @@ class _PopUpWidgetState extends State<PopUpWidget> {
                 popUpItemWidget("Home", () {
                   context.go('/');
                 }),
+                if (isAuthenticated)
+                  popUpItemWidget("My Profile", () {
+                    context.go('/profile');
+                  }),
+                if (isAuthenticated)
+                  popUpItemWidget("Edit Profile", () {
+                    context.go('/edit_profile');
+                  }),
+                if (isAuthenticated)
+                  popUpItemWidget("Add Music", () {
+                    context.go('/add_music');
+                  }),
+                if (isAuthenticated) const Spacer(),
                 popUpItemWidget("Our Team", () {}),
                 popUpItemWidget("Our Story", () {}),
-                const Spacer(),
+                if (!isAuthenticated) const Spacer(),
                 popUpItemWidget("Terms of Service", () {}),
                 popUpItemWidget("Privacy Policy ", () {}),
                 const SizedBox(height: 12),

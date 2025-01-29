@@ -4,13 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_strategy/url_strategy.dart';
 
 import 'core/services/router.dart';
 import 'core/services/spotify_service.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+bool isAuthenticated = false;
+final supabase = Supabase.instance.client;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  setPathUrlStrategy();
   // const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   // const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   // const spotifyApiKey = String.fromEnvironment('SPOTIFY_API_KEY');
@@ -36,13 +41,39 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late final GoRouter _router;
+  late GoRouter router;
 
   @override
   void initState() {
     super.initState();
-    _router = router;
     _handleInitialUri();
+    if (supabase.auth.currentSession != null) {
+      isAuthenticated = true;
+    }
+    router = AppRouter.getRouter(isAuthenticated);
+    supabase.auth.onAuthStateChange.listen(
+      (event) {
+        if (event.event == AuthChangeEvent.signedOut) {
+          isAuthenticated = false;
+        }
+        if (event.event == AuthChangeEvent.signedIn) {
+          isAuthenticated = true;
+        }
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      routerConfig: router,
+      title: 'Cassette App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      builder: FlutterSmartDialog.init(),
+    );
   }
 
   void _handleInitialUri() {
@@ -65,19 +96,6 @@ class _MyAppState extends State<MyApp> {
     } else if (error != null) {
       print('Spotify auth error: $error');
     }
-    _router.go('/profile');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(
-      routerConfig: _router,
-      title: 'Cassette App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      builder: FlutterSmartDialog.init(),
-      debugShowCheckedModeBanner: false,
-    );
+    // router.go('/profile');
   }
 }

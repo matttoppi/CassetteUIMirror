@@ -1,14 +1,18 @@
-import 'dart:typed_data';
-
+import 'package:animated_snack_bar/animated_snack_bar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
+import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
+import 'package:cassettefrontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:html' as html;
+import 'dart:js' as js;
+
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppUtils {
   static ProfileModel profileModel = ProfileModel(
@@ -90,20 +94,26 @@ class AppUtils {
     );
   }
 
-  static authLinksWidgets({googleOnTap, spotifyOnTap, appleOnTap}) {
+  static authLinksWidgets() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         GestureDetector(
-            onTap: googleOnTap,
+            onTap: () async {
+              await googleSignInSignUpFnc();
+            },
             child: Image.asset(authGoogle, height: 52, fit: BoxFit.contain)),
         GestureDetector(
-          onTap: spotifyOnTap,
+          onTap: () async {
+            await spotifySignInSignUpFnc();
+          },
           child: Image.asset(icSpotify,
               height: 52, fit: BoxFit.contain, color: AppColors.greenAppColor),
         ),
         GestureDetector(
-          onTap: appleOnTap,
+          onTap: () async {
+            await appleSignInSignUpFnc();
+          },
           child: Image.asset(icApple,
               height: 52,
               fit: BoxFit.contain,
@@ -188,6 +198,76 @@ class AppUtils {
   static Future<XFile?> uploadPhoto() async {
     final image = await ImagePicker()
         .pickImage(source: ImageSource.gallery, maxHeight: 400, maxWidth: 400);
-      return image;
+    return image;
+  }
+
+  static showToast({required BuildContext context, required String title}) {
+    AnimatedSnackBar(
+      desktopSnackBarPosition: DesktopSnackBarPosition.bottomCenter,
+      mobileSnackBarPosition: MobileSnackBarPosition.bottom,
+      duration: const Duration(seconds: 3),
+      builder: ((context) {
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: AppColors.textPrimary,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Text(title, style: AppStyles.toastStyle),
+        );
+      }),
+    ).show(context);
+  }
+
+  static Future<void> googleSignInSignUpFnc() async {
+    try {
+      await supabase.auth.signInWithOAuth(OAuthProvider.google,
+          redirectTo: '$appDomain/profile');
+    } catch (e) {
+      debugPrint('Google Sign-In Error: $e');
+    }
+  }
+
+  static Future<void> appleSignInSignUpFnc() async {
+    try {
+      await supabase.auth.signInWithOAuth(
+        OAuthProvider.apple,
+        redirectTo: '$appDomain/profile',
+      );
+    } catch (e) {
+      debugPrint('Apple Sign-In Error: $e');
+    }
+  }
+
+  static Future<void> spotifySignInSignUpFnc() async {
+    try {
+      await supabase.auth.signInWithOAuth(
+        OAuthProvider.spotify,
+        redirectTo: '$appDomain/profile',
+      );
+    } catch (e) {
+      debugPrint('Apple Sign-In Error: $e');
+    }
+  }
+
+  static loader() {
+    return LinearProgressIndicator(
+        color: AppColors.textPrimary,
+        borderRadius: BorderRadius.circular(12),
+        backgroundColor: AppColors.appBg);
+  }
+
+  static void authenticateAppleMusic() {
+    js.context.callMethod('requestUserToken');
+  }
+
+  static void listenForUserToken() {
+    html.window.onMessage.listen((event) {
+      String? userToken = event.data;
+      if (userToken != null && userToken.isNotEmpty) {
+        print("Music User Token: $userToken");
+      }
+    });
   }
 }

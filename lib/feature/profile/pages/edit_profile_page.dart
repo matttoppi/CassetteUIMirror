@@ -4,6 +4,7 @@ import 'package:cassettefrontend/core/common_widgets/app_toolbar.dart';
 import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
+import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
@@ -79,7 +80,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 text: "Save Changes",
                 onTap: () {
                   Future.delayed(
-                    Duration(milliseconds: 180),
+                    const Duration(milliseconds: 180),
                     () => context.go("/profile"),
                   );
                 },
@@ -112,11 +113,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
             onTap: () async {
               uploadImageFnc(AppUtils.profileModel.id);
             },
-            child: CircleAvatar(
-              radius: 30.0,
-              backgroundImage:
-                  NetworkImage(AppUtils.profileModel.profilePath ?? ''),
-              backgroundColor: Colors.transparent,
+            child: Container(
+              // color: Colors.red,
+              height: 70,
+              width: 70,
+              child: Stack(
+                children: [
+                  SizedBox(
+                    width: 65,
+                    height: 65,
+                    child: CircleAvatar(
+                      radius: 30.0,
+                      backgroundImage:
+                          NetworkImage(AppUtils.profileModel.profilePath ?? ''),
+                      backgroundColor: Colors.transparent,
+                    ),
+                  ),
+                  Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.appBg,
+                              border: Border.all(color: AppColors.textPrimary)),
+                          child: const Icon(
+                            Icons.edit,
+                            color: AppColors.textPrimary,
+                            size: 16,
+                          ))),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 22),
@@ -406,6 +434,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (allServicesList.isNotEmpty) {
       AppUtils.profileModel.services
           ?.add(Services(serviceName: allServicesList[value].serviceName));
+      if (allServicesList[value].serviceName == "Apple Music") {
+        AppUtils.authenticateAppleMusic();
+      }
       setState(() {});
     }
   }
@@ -417,7 +448,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final storagePath =
           'profile/${userId}${DateTime.now().millisecondsSinceEpoch}';
       await Supabase.instance.client.storage
-          .from('profile_bucket')
+          .from(profileBucket)
           .uploadBinary(
             storagePath,
             imageBytes,

@@ -5,8 +5,10 @@ import 'package:cassettefrontend/core/common_widgets/pop_up_widget.dart';
 import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
+import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
+import 'package:cassettefrontend/main.dart';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -20,8 +22,13 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  bool _isLoading = false;
   bool _isChecked = false;
   bool isMenuVisible = false;
+  TextEditingController emailController = TextEditingController();
+  TextEditingController passController = TextEditingController();
+  TextEditingController confirmPassController = TextEditingController();
+  Map<String, String> validation = {"": ""};
 
   @override
   Widget build(BuildContext context) {
@@ -62,13 +69,21 @@ class _SignUpPageState extends State<SignUpPage> {
               cmLabelTextFieldWidget(),
               const SizedBox(height: 28),
               tncWidget(),
-              const SizedBox(height: 38),
+              const SizedBox(height: 19),
+              _isLoading
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: AppUtils.loader())
+                  : const SizedBox(),
+              const SizedBox(height: 19),
               AnimatedPrimaryButton(
                 text: "Sign Up",
                 onTap: () {
                   Future.delayed(
                     Duration(milliseconds: 180),
-                    () => context.go("/profile"),
+                    () {
+                      _signUp();
+                    },
                   );
                 },
                 height: 40,
@@ -108,8 +123,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 22),
-              AppUtils.authLinksWidgets(
-                  appleOnTap: () {}, googleOnTap: () {}, spotifyOnTap: () {}),
+              AppUtils.authLinksWidgets(),
               const SizedBox(height: 26),
               bottomRichText(),
               const SizedBox(height: 22),
@@ -132,9 +146,19 @@ class _SignUpPageState extends State<SignUpPage> {
                 style: AppStyles.authTextFieldLabelTextStyle),
           ),
           const SizedBox(height: 10),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: TextFieldWidget(hint: "Enter your email address"),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextFieldWidget(
+              hint: "Enter your email address",
+              controller: emailController,
+              errorText: validation.keys.first == "email"
+                  ? validation.values.first
+                  : null,
+              onChanged: (v) {
+                validation = {"": ""};
+                setState(() {});
+              },
+            ),
           ),
           const SizedBox(height: 28),
           Padding(
@@ -144,9 +168,19 @@ class _SignUpPageState extends State<SignUpPage> {
                 style: AppStyles.authTextFieldLabelTextStyle),
           ),
           const SizedBox(height: 10),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: TextFieldWidget(hint: "Enter your password"),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextFieldWidget(
+              hint: "Enter your password",
+              controller: passController,
+              errorText: validation.keys.first == "password"
+                  ? validation.values.first
+                  : null,
+              onChanged: (v) {
+                validation = {"": ""};
+                setState(() {});
+              },
+            ),
           ),
           const SizedBox(height: 28),
           Padding(
@@ -156,9 +190,19 @@ class _SignUpPageState extends State<SignUpPage> {
                 style: AppStyles.authTextFieldLabelTextStyle),
           ),
           const SizedBox(height: 10),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: TextFieldWidget(hint: "Re-enter your password"),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextFieldWidget(
+              hint: "Re-enter your password",
+              controller: confirmPassController,
+              errorText: validation.keys.first == "conPassword"
+                  ? validation.values.first
+                  : null,
+              onChanged: (v) {
+                validation = {"": ""};
+                setState(() {});
+              },
+            ),
           ),
         ],
       ),
@@ -168,57 +212,72 @@ class _SignUpPageState extends State<SignUpPage> {
   tncWidget() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Transform.scale(
-            scale: 1.3,
-            child: Checkbox(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2)),
-              side: const BorderSide(color: AppColors.textPrimary, width: 1),
-              activeColor: AppColors.textPrimary,
-              value: _isChecked,
-              onChanged: (bool? value) {
-                setState(() {
-                  _isChecked = value ?? false;
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                text: 'I have read and agreed to the ',
-                style: AppStyles.tncTextStyle,
-                children: [
-                  TextSpan(
-                    text: 'Terms of Service',
-                    style: AppStyles.tncTextStyle2,
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        // Navigate to Terms of Service page
-                        print('Terms of Service clicked');
-                      },
-                  ),
-                  TextSpan(
-                    text: ' and ',
-                    style: AppStyles.tncTextStyle,
-                  ),
-                  TextSpan(
-                    text: 'Privacy Policy',
-                    style: AppStyles.tncTextStyle2,
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        // Navigate to Privacy Policy page
-                        print('Privacy Policy clicked');
-                      },
-                  ),
-                ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Transform.scale(
+                scale: 1.3,
+                child: Checkbox(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2)),
+                  side:
+                      const BorderSide(color: AppColors.textPrimary, width: 1),
+                  activeColor: AppColors.textPrimary,
+                  value: _isChecked,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      _isChecked = value ?? false;
+                    });
+                  },
+                ),
               ),
-            ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    text: 'I have read and agreed to the ',
+                    style: AppStyles.tncTextStyle,
+                    children: [
+                      TextSpan(
+                        text: 'Terms of Service',
+                        style: AppStyles.tncTextStyle2,
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            // Navigate to Terms of Service page
+                            print('Terms of Service clicked');
+                          },
+                      ),
+                      TextSpan(
+                        text: ' and ',
+                        style: AppStyles.tncTextStyle,
+                      ),
+                      TextSpan(
+                        text: 'Privacy Policy',
+                        style: AppStyles.tncTextStyle2,
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            // Navigate to Privacy Policy page
+                            print('Privacy Policy clicked');
+                          },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
+          validation.keys.first != "isChecked"
+              ? const SizedBox()
+              : Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    validation.values.first,
+                    style: AppStyles.textFieldErrorTextStyle,
+                  ),
+                ),
         ],
       ),
     );
@@ -244,5 +303,67 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
       ),
     );
+  }
+
+  Map<String, String> validateSignUpForm() {
+    if (emailController.text.isEmpty) {
+      validation = {"email": "Please Enter Email"};
+    } else if (!Validation.validateEmail(emailController.text)) {
+      validation = {"email": "Please Enter A Valid Email"};
+    } else if (passController.text.isEmpty) {
+      validation = {"password": "Please Enter Password"};
+    } else if (passController.text.length < 8) {
+      validation = {"password": "Please Enter At-Least 8 Digit Password"};
+    } else if (confirmPassController.text.isEmpty) {
+      validation = {"conPassword": "Please Enter Confirm Password"};
+    } else if (confirmPassController.text != passController.text) {
+      validation = {
+        "conPassword": "Confirm Password does not match with Password"
+      };
+    } else if (!_isChecked) {
+      validation = {
+        "isChecked":
+            "Please agree to all the terms and conditions before Sign Up"
+      };
+    } else {
+      validation = {"": ""};
+    }
+    setState(() {});
+    return validation;
+  }
+
+  Future<void> _signUp() async {
+    if (validateSignUpForm().keys.first != "") return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await supabase.auth.signUp(
+          email: emailController.text,
+          password: passController.text,
+          emailRedirectTo: "$appDomain/profile");
+
+      if (response.user != null) {
+        if (response.session != null) {
+          // Email confirmation is disabled
+          context.go('/profile'); // Redirect to profile page
+        } else {
+          context.go('/profile'); // Redirect to profile page
+          // Email confirmation is enabled
+          AppUtils.showToast(
+              context: context,
+              title: "Please check your email to confirm your account");
+        }
+      } else {
+        throw Exception('Signup failed');
+      }
+    } catch (error) {
+      AppUtils.showToast(context: context, title: error.toString());
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 }

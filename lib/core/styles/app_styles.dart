@@ -912,4 +912,16 @@ class AppStyles {
       fontSize: 16,
       fontWeight: FontWeight.normal,
       letterSpacing: 0.5);
+
+  static TextStyle toastStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.appBg,
+      fontSize: 15,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.3);
+
+  static TextStyle textFieldErrorTextStyle = GoogleFonts.atkinsonHyperlegible(
+      color: AppColors.animatedBtnColorToolBarTopBorder,
+      fontSize: 14,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0);
 }
