@@ -431,6 +431,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   addServiceFnc() {
+    
     if (allServicesList.isNotEmpty) {
       AppUtils.profileModel.services
           ?.add(Services(serviceName: allServicesList[value].serviceName));
