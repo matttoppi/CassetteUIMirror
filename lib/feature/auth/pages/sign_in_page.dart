@@ -170,7 +170,7 @@ class _SignInPageState extends State<SignInPage> {
             child: TextFieldWidget(
               hint: "Enter your password",
               controller: passController,
-              errorText: validation.keys.first == "email"
+              errorText: validation.keys.first == "password"
                   ? validation.values.first
                   : null,
               onChanged: (v) {
