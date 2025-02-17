@@ -91,125 +91,133 @@ class _ProfilePageState extends State<ProfilePage>
                     maxHeight: 320,
                     child: Container(
                       color: AppColors.textPrimary,
+                      height: 320,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 18),
-                          toolBar(),
-                          const SizedBox(height: 5),
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 34.0,
-                                backgroundImage: NetworkImage(
-                                    AppUtils.profileModel.profilePath ?? ''),
-                                backgroundColor: Colors.transparent,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Row(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 18),
+                            toolBar(),
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 34.0,
+                                  backgroundImage: NetworkImage(
+                                      AppUtils.profileModel.profilePath ?? ''),
+                                  backgroundColor: Colors.transparent,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(userData['FullName'] ?? '',
+                                            style: AppStyles.profileNameTs),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                            onTap: () {
+                                              context.go("/edit_profile");
+                                            },
+                                            child: Image.asset(icEdit,
+                                                height: 30)),
+                                      ],
+                                    ),
+                                    // const SizedBox(height: 4),
+                                    Text(userData['Username'] ?? '',
+                                        style: AppStyles.profileUserNameTs),
+                                  ],
+                                )),
+                              ],
+                            ),
+                            const SizedBox(height: 22),
+                            Text(userData['Bio'] ?? '',
+                                style: AppStyles.profileBioTs),
+                            const SizedBox(height: 22),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Image.asset(icLink, height: 18),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(AppUtils.profileModel.link ?? '',
+                                      style: AppStyles.profileLinkTs),
+                                ),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: AppUtils.profileModel.services
+                                            ?.map((service) => Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          left: 8),
+                                                  child: getServiceIcon(
+                                                      service.serviceName ??
+                                                          ''),
+                                                ))
+                                            .toList() ??
+                                        [],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                AnimatedPrimaryButton(
+                                  centerWidget: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(userData['FullName'] ?? '',
-                                          style: AppStyles.profileNameTs),
-                                      const SizedBox(width: 8),
-                                      GestureDetector(
-                                          onTap: () {
-                                            context.go("/edit_profile");
-                                          },
-                                          child:
-                                              Image.asset(icEdit, height: 30)),
+                                      Image.asset(icShare,
+                                          fit: BoxFit.contain, height: 18),
+                                      const SizedBox(width: 12),
+                                      Text("Share Profile",
+                                          style: AppStyles.profileShareTs),
                                     ],
                                   ),
-                                  // const SizedBox(height: 4),
-                                  Text(userData['Username'] ?? '',
-                                      style: AppStyles.profileUserNameTs),
-                                ],
-                              )),
-                            ],
-                          ),
-                          const SizedBox(height: 22),
-                          Text(userData['Bio'] ?? '',
-                              style: AppStyles.profileBioTs),
-                          const SizedBox(height: 22),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Image.asset(icLink, height: 18),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(AppUtils.profileModel.link ?? '',
-                                    style: AppStyles.profileLinkTs),
-                              ),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: AppUtils.profileModel.services
-                                          ?.map((service) => Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left: 8),
-                                                child: getServiceIcon(
-                                                    service.serviceName ?? ''),
-                                              ))
-                                          .toList() ??
-                                      [],
+                                  width:
+                                      MediaQuery.of(context).size.width / 2.4,
+                                  onTap: () {
+                                    AppUtils.onShare(context,
+                                        AppUtils.profileModel.link ?? '');
+                                  },
+                                  radius: 12,
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              AnimatedPrimaryButton(
-                                centerWidget: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Image.asset(icShare,
-                                        fit: BoxFit.contain, height: 18),
-                                    const SizedBox(width: 12),
-                                    Text("Share Profile",
-                                        style: AppStyles.profileShareTs),
-                                  ],
+                                const SizedBox(width: 8),
+                                AnimatedPrimaryButton(
+                                  topBorderWidth: 2,
+                                  colorTop: AppColors.appBg,
+                                  colorBottom: AppColors.appBg,
+                                  borderColorTop: AppColors.textPrimary,
+                                  borderColorBottom: AppColors.textPrimary,
+                                  centerWidget: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.asset(icMusic,
+                                          fit: BoxFit.contain, height: 18),
+                                      const SizedBox(width: 12),
+                                      Text("Add Music",
+                                          style: AppStyles.profileAddMusicTs),
+                                    ],
+                                  ),
+                                  width:
+                                      MediaQuery.of(context).size.width / 2.4,
+                                  onTap: () {
+                                    Future.delayed(Duration(milliseconds: 180),
+                                        () => context.go("/add_music"));
+                                  },
+                                  radius: 10,
                                 ),
-                                width: MediaQuery.of(context).size.width / 2.4,
-                                onTap: () {
-                                  AppUtils.onShare(context,
-                                      AppUtils.profileModel.link ?? '');
-                                },
-                                radius: 12,
-                              ),
-                              const SizedBox(width: 8),
-                              AnimatedPrimaryButton(
-                                topBorderWidth: 2,
-                                colorTop: AppColors.appBg,
-                                colorBottom: AppColors.appBg,
-                                borderColorTop: AppColors.textPrimary,
-                                borderColorBottom: AppColors.textPrimary,
-                                centerWidget: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Image.asset(icMusic,
-                                        fit: BoxFit.contain, height: 18),
-                                    const SizedBox(width: 12),
-                                    Text("Add Music",
-                                        style: AppStyles.profileAddMusicTs),
-                                  ],
-                                ),
-                                width: MediaQuery.of(context).size.width / 2.4,
-                                onTap: () {
-                                  Future.delayed(Duration(milliseconds: 180),
-                                      () => context.go("/add_music"));
-                                },
-                                radius: 10,
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
