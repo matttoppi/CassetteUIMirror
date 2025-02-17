@@ -54,8 +54,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
             .single();
 
         setState(() {
-          nameCtr.text = data['Username'] ?? '';
-          userNameCtr.text = data['Username'] ?? '';
+          String username = data['Username'] ?? '';
+          // Don't display temporary usernames
+          if (!username.startsWith('temp_')) {
+            nameCtr.text = username;
+            userNameCtr.text = username;
+          }
           bioCtr.text = data['Bio'] ?? '';
           linkCtr.text = data['AvatarUrl'] ?? '';
         });
@@ -64,8 +68,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // If no profile exists, use auth metadata
         final metadata = user.userMetadata;
         setState(() {
-          nameCtr.text = metadata?['username'] ?? '';
-          userNameCtr.text = metadata?['username'] ?? '';
+          String username = metadata?['username'] ?? '';
+          // Don't display temporary usernames from metadata either
+          if (!username.startsWith('temp_')) {
+            nameCtr.text = username;
+            userNameCtr.text = username;
+          }
           bioCtr.text = metadata?['bio'] ?? '';
           linkCtr.text = metadata?['profile_picture'] ?? '';
         });
