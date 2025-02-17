@@ -223,41 +223,67 @@ class _EditProfilePageState extends State<EditProfilePage> {
           });
         },
         isMenuVisible: isMenuVisible,
-        body: SingleChildScrollView(
+        body: SafeArea(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 18),
-              AppToolbar(burgerMenuFnc: () {
-                setState(() {
-                  isMenuVisible = !isMenuVisible;
-                });
-              }),
-              const SizedBox(height: 18),
-              profileTopView(),
-              const SizedBox(height: 38),
-              connectServiceView(),
-              const SizedBox(height: 28),
-              labelTextFieldWidget(),
-              const SizedBox(height: 56),
-              AnimatedPrimaryButton(
-                text: "Save Changes",
-                onTap: () {
-                  _saveChanges();
-                },
-                height: 40,
-                width: MediaQuery.of(context).size.width - 46 + 16,
-                radius: 10,
-                initialPos: 6,
-                topBorderWidth: 3,
-                bottomBorderWidth: 3,
-                colorTop: AppColors.animatedBtnColorConvertTop,
-                textStyle: AppStyles.animatedBtnFreeAccTextStyle,
-                borderColorTop: AppColors.animatedBtnColorConvertTop,
-                colorBottom: AppColors.animatedBtnColorConvertBottom,
-                borderColorBottom:
-                    AppColors.animatedBtnColorConvertBottomBorder,
+              // Fixed header section
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 18),
+                  AppToolbar(burgerMenuFnc: () {
+                    setState(() {
+                      isMenuVisible = !isMenuVisible;
+                    });
+                  }),
+                  const SizedBox(height: 18),
+                  profileTopView(),
+                  const SizedBox(height: 38),
+                ],
               ),
-              const SizedBox(height: 56),
+
+              // Scrollable content
+              Expanded(
+                child: ClipRect(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          connectServiceView(),
+                          const SizedBox(height: 28),
+                          labelTextFieldWidget(),
+                          const SizedBox(height: 56),
+                          AnimatedPrimaryButton(
+                            text: "Save Changes",
+                            onTap: () {
+                              _saveChanges();
+                            },
+                            height: 40,
+                            width: MediaQuery.of(context).size.width - 46 + 16,
+                            radius: 10,
+                            initialPos: 6,
+                            topBorderWidth: 3,
+                            bottomBorderWidth: 3,
+                            colorTop: AppColors.animatedBtnColorConvertTop,
+                            textStyle: AppStyles.animatedBtnFreeAccTextStyle,
+                            borderColorTop:
+                                AppColors.animatedBtnColorConvertTop,
+                            colorBottom:
+                                AppColors.animatedBtnColorConvertBottom,
+                            borderColorBottom:
+                                AppColors.animatedBtnColorConvertBottomBorder,
+                          ),
+                          const SizedBox(height: 56),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ));

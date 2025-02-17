@@ -51,6 +51,7 @@ class _ProfilePageState extends State<ProfilePage>
 
         setState(() {
           userData = {
+            'FullName': data['FullName'] ?? '',
             'Username': data['Username'] ?? '',
             'Bio': data['Bio'] ?? '',
             'AvatarUrl': data['AvatarUrl'] ?? ''
@@ -73,84 +74,112 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-        onBurgerPop: () {
-          setState(() {
-            isMenuVisible = !isMenuVisible;
-          });
-        },
-        isMenuVisible: isMenuVisible,
-        body: DefaultTabController(
-          length: 4,
-          child: NestedScrollView(
-            headerSliverBuilder: (context, value) {
-              return [
-                SliverPersistentHeader(
-                  pinned: false,
-                  delegate: SliverAppBarDelegate(
-                    minHeight: 320,
-                    maxHeight: 320,
-                    child: Container(
-                      color: AppColors.textPrimary,
-                      height: 320,
+      onBurgerPop: () {
+        setState(() {
+          isMenuVisible = !isMenuVisible;
+        });
+      },
+      isMenuVisible: isMenuVisible,
+      body: DefaultTabController(
+        length: 4,
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxScrolled) {
+            return [
+              // 1. Top Toolbar Sliver: Contains the cassette logo and hamburger menu. It scrolls off.
+              SliverAppBar(
+                backgroundColor: AppColors.textPrimary,
+                elevation:
+                    0, // remove shadow for flush look with the next section
+                shadowColor:
+                    Colors.transparent, // remove any remaining shadow line
+                shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                        bottom: Radius.zero)), // ensure no border at bottom
+                pinned: false, // not pinned so it scrolls off
+                automaticallyImplyLeading: false,
+                title: toolBar(), // returns the logo and burger menu
+                toolbarHeight: 50,
+              ),
+              // 2. Profile Details Sliver: Displays avatar, user info and action buttons. Scrolls away.
+              SliverPersistentHeader(
+                pinned:
+                    false, // not pinned so that these details completely scroll off
+                delegate: _ProfileHeaderDelegate(
+                  height: 250, // fixed height for profile details
+                  child: Container(
+                    color: AppColors.textPrimary,
+                    child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 18),
-                            toolBar(),
-                            const SizedBox(height: 5),
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 34.0,
-                                  backgroundImage: NetworkImage(
-                                      AppUtils.profileModel.profilePath ?? ''),
-                                  backgroundColor: Colors.transparent,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 34.0,
+                                backgroundImage: NetworkImage(
+                                  AppUtils.profileModel.profilePath ?? '',
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                    child: Column(
+                                backgroundColor: Colors
+                                    .transparent, // simple note: shows transparent background if no image
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
                                     Row(
                                       children: [
-                                        Text(userData['FullName'] ?? '',
-                                            style: AppStyles.profileNameTs),
-                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            userData['FullName'] ?? '',
+                                            style: AppStyles.profileNameTs,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
                                         GestureDetector(
-                                            onTap: () {
-                                              context.go("/edit_profile");
-                                            },
-                                            child: Image.asset(icEdit,
-                                                height: 30)),
+                                          onTap: () =>
+                                              context.go("/edit_profile"),
+                                          child:
+                                              Image.asset(icEdit, height: 30),
+                                        ),
                                       ],
                                     ),
-                                    // const SizedBox(height: 4),
-                                    Text(userData['Username'] ?? '',
-                                        style: AppStyles.profileUserNameTs),
+                                    Text(
+                                      userData['Username'] ?? '',
+                                      style: AppStyles.profileUserNameTs,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ],
-                                )),
-                              ],
-                            ),
-                            const SizedBox(height: 22),
-                            Text(userData['Bio'] ?? '',
-                                style: AppStyles.profileBioTs),
-                            const SizedBox(height: 22),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Image.asset(icLink, height: 18),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(AppUtils.profileModel.link ?? '',
-                                      style: AppStyles.profileLinkTs),
                                 ),
-                                SingleChildScrollView(
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            userData['Bio'] ?? '',
+                            style: AppStyles.profileBioTs,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Image.asset(icLink, height: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  AppUtils.profileModel.link ?? '',
+                                  style: AppStyles.profileLinkTs,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 120,
+                                child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: AppUtils.profileModel.services
                                             ?.map((service) => Padding(
                                                   padding:
@@ -164,126 +193,112 @@ class _ProfilePageState extends State<ProfilePage>
                                         [],
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                AnimatedPrimaryButton(
-                                  centerWidget: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Image.asset(icShare,
-                                          fit: BoxFit.contain, height: 18),
-                                      const SizedBox(width: 12),
-                                      Text("Share Profile",
-                                          style: AppStyles.profileShareTs),
-                                    ],
-                                  ),
-                                  width:
-                                      MediaQuery.of(context).size.width / 2.4,
-                                  onTap: () {
-                                    AppUtils.onShare(context,
-                                        AppUtils.profileModel.link ?? '');
-                                  },
-                                  radius: 12,
-                                ),
-                                const SizedBox(width: 8),
-                                AnimatedPrimaryButton(
-                                  topBorderWidth: 2,
-                                  colorTop: AppColors.appBg,
-                                  colorBottom: AppColors.appBg,
-                                  borderColorTop: AppColors.textPrimary,
-                                  borderColorBottom: AppColors.textPrimary,
-                                  centerWidget: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Image.asset(icMusic,
-                                          fit: BoxFit.contain, height: 18),
-                                      const SizedBox(width: 12),
-                                      Text("Add Music",
-                                          style: AppStyles.profileAddMusicTs),
-                                    ],
-                                  ),
-                                  width:
-                                      MediaQuery.of(context).size.width / 2.4,
-                                  onTap: () {
-                                    Future.delayed(Duration(milliseconds: 180),
-                                        () => context.go("/add_music"));
-                                  },
-                                  radius: 10,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  floating: true,
-                  delegate: SliverAppBarDelegate(
-                    minHeight: 65,
-                    maxHeight: 65,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                          color: AppColors.textPrimary,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0XFF000000),
-                              blurRadius: 11,
-                              offset: Offset(0, 9),
-                              spreadRadius: 0,
-                            ),
-                          ]),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: TabBar(
-                              controller: tabController,
-                              padding: EdgeInsets.zero,
-                              labelPadding: EdgeInsets.zero,
-                              indicatorPadding: EdgeInsets.zero,
-                              indicatorColor: AppColors.colorWhite,
-                              dividerColor: AppColors.tabDividerColor,
-                              indicatorSize: TabBarIndicatorSize.label,
-                              labelStyle: AppStyles.profileTabSelectedTs,
-                              unselectedLabelStyle: AppStyles.profileTabTs,
-                              dividerHeight: 1,
-                              onTap: (v) {},
-                              tabs: const [
-                                Tab(child: Text("Playlists")),
-                                Tab(child: Text("Songs")),
-                                Tab(child: Text("Artists")),
-                                Tab(child: Text("Albums")),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              AnimatedPrimaryButton(
+                                centerWidget: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(icShare,
+                                        fit: BoxFit.contain, height: 18),
+                                    const SizedBox(width: 12),
+                                    Text("Share Profile",
+                                        style: AppStyles.profileShareTs),
+                                  ],
+                                ),
+                                width: MediaQuery.of(context).size.width / 2.4,
+                                onTap: () => AppUtils.onShare(
+                                    context, AppUtils.profileModel.link ?? ''),
+                                radius: 12,
+                              ),
+                              AnimatedPrimaryButton(
+                                topBorderWidth: 2,
+                                colorTop: AppColors.appBg,
+                                colorBottom: AppColors.appBg,
+                                borderColorTop: AppColors.textPrimary,
+                                borderColorBottom: AppColors.textPrimary,
+                                centerWidget: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(icMusic,
+                                        fit: BoxFit.contain, height: 18),
+                                    const SizedBox(width: 12),
+                                    Text("Add Music",
+                                        style: AppStyles.profileAddMusicTs),
+                                  ],
+                                ),
+                                width: MediaQuery.of(context).size.width / 2.4,
+                                onTap: () => Future.delayed(
+                                  Duration(milliseconds: 180),
+                                  () => context.go("/add_music"),
+                                ),
+                                radius: 10,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
                   ),
                 ),
-              ];
-            },
-            body: TabBarView(
-              physics: const NeverScrollableScrollPhysics(),
-              controller: tabController,
-              children: [
-                listWidget(),
-                listWidget(),
-                listWidget(),
-                listWidget(),
-              ],
-            ),
+              ),
+              // 3. Tab Bar Sliver: Stays pinned at the top once fully scrolled, enabling quick navigation.
+              SliverPersistentHeader(
+                pinned:
+                    true, // pinned so the TabBar freezes at the top after scrolling
+                delegate: SliverAppBarDelegate(
+                  minHeight:
+                      50, // fixed height for TabBar; required parameter added
+                  maxHeight:
+                      50, // fixed height for TabBar; required parameter added
+                  child: Material(
+                    elevation: 0, // no extra shadow
+                    shadowColor:
+                        Colors.transparent, // remove any residual shadow
+                    color: AppColors.textPrimary, // match background color
+                    child: TabBar(
+                      controller: tabController,
+                      padding: EdgeInsets.zero,
+                      labelPadding: EdgeInsets.zero,
+                      indicatorPadding: EdgeInsets.zero,
+                      indicatorColor: AppColors.colorWhite,
+                      dividerColor: Colors.transparent,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      labelStyle: AppStyles.profileTabSelectedTs,
+                      unselectedLabelStyle: AppStyles.profileTabTs,
+                      dividerHeight: 0,
+                      onTap: (v) {},
+                      tabs: const [
+                        Tab(child: Text("Playlists")),
+                        Tab(child: Text("Songs")),
+                        Tab(child: Text("Artists")),
+                        Tab(child: Text("Albums")),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ];
+          },
+          body: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
+            controller: tabController,
+            children: [
+              listWidget(),
+              listWidget(),
+              listWidget(),
+              listWidget(),
+            ],
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   listWidget() {
@@ -410,17 +425,31 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   toolBar() {
-    return Row(
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        Expanded(child: Image.asset(appLogo, fit: BoxFit.scaleDown)),
-        SizedBox(width: MediaQuery.of(context).size.width / 1.85),
-        AppUtils.burgerMenu(
+        // Center the app logo constrained to 30% of screen width for scaling
+        Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width *
+                  0.3, // scales with window size
+            ),
+            child: Image.asset(appLogo, fit: BoxFit.contain),
+          ),
+        ),
+        // Align burger menu to the right
+        Align(
+          alignment: Alignment.centerRight,
+          child: AppUtils.burgerMenu(
             onPressed: () {
               setState(() {
                 isMenuVisible = !isMenuVisible;
               });
             },
-            iconColor: AppColors.colorWhite),
+            iconColor: AppColors.colorWhite,
+          ),
+        ),
       ],
     );
   }
@@ -458,5 +487,30 @@ class _ProfilePageState extends State<ProfilePage>
           AppColors.greenAppColor,
         );
     }
+  }
+}
+
+// New top-level delegate moved out of _ProfilePageState
+class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double height; // fixed height for profile details
+  final Widget child; // widget to display
+
+  _ProfileHeaderDelegate({required this.height, required this.child});
+
+  @override
+  double get minExtent => height; // fixed minimum extent
+
+  @override
+  double get maxExtent => height; // fixed maximum extent
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child; // simply returns the provided child
+  }
+
+  @override
+  bool shouldRebuild(covariant _ProfileHeaderDelegate oldDelegate) {
+    return oldDelegate.height != height || oldDelegate.child != child;
   }
 }
