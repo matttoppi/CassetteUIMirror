@@ -428,26 +428,39 @@ class _ProfilePageState extends State<ProfilePage>
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Center the app logo constrained to 30% of screen width for scaling
-        Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width *
-                  0.3, // scales with window size
+        // Align the app logo to the left, constrained to 30% of screen width for scaling
+        Align(
+          alignment: Alignment.centerLeft, // Aligns the logo to the left
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height *
+                  0.02, // dynamic top padding
             ),
-            child: Image.asset(appLogo, fit: BoxFit.contain),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width *
+                    0.3, // scales with window size
+              ),
+              child: Image.asset(appLogo, fit: BoxFit.contain),
+            ),
           ),
         ),
         // Align burger menu to the right
         Align(
           alignment: Alignment.centerRight,
-          child: AppUtils.burgerMenu(
-            onPressed: () {
-              setState(() {
-                isMenuVisible = !isMenuVisible;
-              });
-            },
-            iconColor: AppColors.colorWhite,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height *
+                  0.02, // dynamic top padding
+            ),
+            child: AppUtils.burgerMenu(
+              onPressed: () {
+                setState(() {
+                  isMenuVisible = !isMenuVisible;
+                });
+              },
+              iconColor: AppColors.colorWhite,
+            ),
           ),
         ),
       ],
