@@ -27,6 +27,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   int value = 0;
   bool _isUsernameValid = true;
   String _usernameError = '';
+  bool _isSaveOnCooldown = false;
 
   TextEditingController nameCtr = TextEditingController();
   TextEditingController userNameCtr = TextEditingController();
@@ -111,8 +112,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveChanges() async {
+    if (_isSaveOnCooldown) {
+      return;
+    }
+
     if (!_validateUsername(userNameCtr.text)) {
       AppUtils.showToast(context: context, title: _usernameError);
+      _startCooldown();
       return;
     }
 
@@ -133,6 +139,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 context: context,
                 title:
                     "Username already exists. Please choose a different one.");
+            _startCooldown();
           }
           return;
         }
@@ -174,9 +181,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
         print('[ERROR] Profile save error: $e');
         if (mounted) {
           AppUtils.showToast(context: context, title: "Error updating profile");
+          _startCooldown();
         }
       }
     }
+  }
+
+  void _startCooldown() {
+    setState(() => _isSaveOnCooldown = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _isSaveOnCooldown = false);
+      }
+    });
   }
 
   fillAllServices() {
