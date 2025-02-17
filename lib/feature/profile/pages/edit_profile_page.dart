@@ -119,7 +119,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final user = supabase.auth.currentUser;
     if (user != null) {
       try {
-        // Update auth metadata
+        // Check if username exists first
+        final existingUser = await supabase
+            .from('Users')
+            .select('Username')
+            .eq('Username', userNameCtr.text)
+            .neq('UserId', user.id)
+            .maybeSingle();
+
+        if (existingUser != null) {
+          if (mounted) {
+            AppUtils.showToast(
+                context: context,
+                title:
+                    "Username already exists. Please choose a different one.");
+          }
+          return;
+        }
+
+        // Proceed with updates if username is unique
         await supabase.auth.updateUser(UserAttributes(
           data: {
             'username': userNameCtr.text,
@@ -130,7 +148,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ));
 
         try {
-          // Try to update existing profile
           await supabase.from('Users').update({
             'Username': userNameCtr.text,
             'Bio': bioCtr.text,
@@ -138,7 +155,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           }).eq('UserId', user.id);
         } catch (e) {
           print('[DEBUG] Profile update failed, trying insert');
-          // If update fails, try to insert new profile
           await supabase.from('Users').insert({
             'UserId': user.id,
             'Username': userNameCtr.text,
@@ -149,14 +165,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
           });
         }
 
-        AppUtils.showToast(
-            context: context, title: "Profile updated successfully");
-
-        context.go('/profile');
+        if (mounted) {
+          AppUtils.showToast(
+              context: context, title: "Profile updated successfully");
+          context.go('/profile');
+        }
       } catch (e) {
         print('[ERROR] Profile save error: $e');
-        AppUtils.showToast(
-            context: context, title: "Error updating profile: ${e.toString()}");
+        if (mounted) {
+          AppUtils.showToast(context: context, title: "Error updating profile");
+        }
       }
     }
   }
