@@ -223,7 +223,7 @@ class AppUtils {
   static Future<void> googleSignInSignUpFnc() async {
     try {
       await supabase.auth.signInWithOAuth(OAuthProvider.google,
-          redirectTo: '$appDomain/profile');
+          redirectTo: '${Env.appDomain}/profile');
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
     }
@@ -233,7 +233,7 @@ class AppUtils {
     try {
       await supabase.auth.signInWithOAuth(
         OAuthProvider.apple,
-        redirectTo: '$appDomain/profile',
+        redirectTo: '${Env.appDomain}/profile',
       );
     } catch (e) {
       debugPrint('Apple Sign-In Error: $e');
@@ -244,7 +244,7 @@ class AppUtils {
     try {
       await supabase.auth.signInWithOAuth(
         OAuthProvider.spotify,
-        redirectTo: '$appDomain/profile',
+        redirectTo: '${Env.appDomain}/profile',
       );
     } catch (e) {
       debugPrint('Apple Sign-In Error: $e');

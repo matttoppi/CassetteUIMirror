@@ -51,13 +51,22 @@ class _PopUpWidgetState extends State<PopUpWidget> {
                         text: isAuthenticated ? "Sign Out" : "Sign In",
                         onTap: () async {
                           if (isAuthenticated) {
-                            await supabase.auth.signOut().then((value) {
-                              Future.delayed(const Duration(milliseconds: 180),
-                                  () => context.go('/'));
+                            try {
+                              if (widget.onPop != null) {
+                                widget.onPop!(); // Close the popup first
+                              }
+                              await supabase.auth.signOut();
                               AppUtils.showToast(
                                   context: context, title: "Signed Out");
-                            });
+                            } catch (e) {
+                              AppUtils.showToast(
+                                  context: context,
+                                  title: "Error signing out: ${e.toString()}");
+                            }
                           } else {
+                            if (widget.onPop != null) {
+                              widget.onPop!(); // Close the popup
+                            }
                             Future.delayed(const Duration(milliseconds: 180),
                                 () => context.go('/signin'));
                           }

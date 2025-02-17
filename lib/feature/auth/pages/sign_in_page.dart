@@ -76,6 +76,7 @@ class _SignInPageState extends State<SignInPage> {
               AnimatedPrimaryButton(
                 text: "Sign In",
                 onTap: () {
+                  if (_isLoading) return;
                   Future.delayed(
                     Duration(milliseconds: 180),
                     () {
@@ -263,7 +264,7 @@ class _SignInPageState extends State<SignInPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: RichText(
         text: TextSpan(
-          text: 'Don’t have an account yet? ',
+          text: "Don't have an account yet? ",
           style: AppStyles.bottomRichTextStyle,
           children: [
             TextSpan(

@@ -13,6 +13,10 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async'; // Add this import for TimeoutException
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -54,7 +58,7 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text("Let’s get started!",
+                child: Text("Let's get started!",
                     textAlign: TextAlign.center,
                     style: AppStyles.signInSignUpTitleTextStyle),
               ),
@@ -79,6 +83,8 @@ class _SignUpPageState extends State<SignUpPage> {
               AnimatedPrimaryButton(
                 text: "Sign Up",
                 onTap: () {
+                  if (_isLoading)
+                    return; // Prevent multiple sign ups if already loading
                   Future.delayed(
                     Duration(milliseconds: 180),
                     () {
@@ -310,6 +316,8 @@ class _SignUpPageState extends State<SignUpPage> {
       validation = {"email": "Please Enter Email"};
     } else if (!Validation.validateEmail(emailController.text)) {
       validation = {"email": "Please Enter A Valid Email"};
+    } else if (emailController.text.split('@').first.length < 3) {
+      validation = {"email": "Email prefix must be at least 3 characters"};
     } else if (passController.text.isEmpty) {
       validation = {"password": "Please Enter Password"};
     } else if (passController.text.length < 8) {
@@ -334,36 +342,193 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _signUp() async {
     if (validateSignUpForm().keys.first != "") return;
-    setState(() {
-      _isLoading = true;
-    });
+    if (!mounted) return;
+
+    setState(() => _isLoading = true);
 
     try {
-      final response = await supabase.auth.signUp(
-          email: emailController.text,
-          password: passController.text,
-          emailRedirectTo: "$appDomain/profile");
+      // Generate temporary username
+      final emailPrefix = emailController.text.split('@').first;
+      final rawUsername =
+          'temp_${emailPrefix.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '').toLowerCase()}';
+      final usersTableUsername =
+          rawUsername.length > 30 ? rawUsername.substring(0, 30) : rawUsername;
 
-      if (response.user != null) {
-        if (response.session != null) {
-          // Email confirmation is disabled
-          context.go('/profile'); // Redirect to profile page
-        } else {
-          context.go('/profile'); // Redirect to profile page
-          // Email confirmation is enabled
-          AppUtils.showToast(
-              context: context,
-              title: "Please check your email to confirm your account");
+      print(
+          '[DEBUG] Starting signup process for email: ${emailController.text.trim().toLowerCase()}');
+
+      // Add delay to ensure proper request handling
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      try {
+        print('[DEBUG] Preparing signup request with:');
+        print('[DEBUG] Email: ${emailController.text.trim().toLowerCase()}');
+        print('[DEBUG] Username data: $usersTableUsername');
+
+        // Basic signup with error catching
+        final AuthResponse response;
+        try {
+          // Add request logging
+          final signUpData = {
+            'email': emailController.text.trim().toLowerCase(),
+            'password': passController.text,
+            'data': {
+              'username': usersTableUsername,
+            },
+          };
+          print(
+              '[DEBUG] SignUp request data (excluding password): ${signUpData..remove('password')}');
+
+          try {
+            response = await supabase.auth.signUp(
+              email: emailController.text.trim().toLowerCase(),
+              password: passController.text,
+              data: {
+                'username': usersTableUsername,
+              },
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                throw TimeoutException('Signup request timed out');
+              },
+            );
+
+            if (response.user == null) {
+              throw AuthException('Signup failed - no user returned');
+            }
+
+            // Log response details
+            print('[DEBUG] Auth response received:');
+            print('[DEBUG] User ID: ${response.user?.id}');
+            print('[DEBUG] User email: ${response.user?.email}');
+            print('[DEBUG] Session present: ${response.session != null}');
+          } catch (authError) {
+            print('[ERROR] Auth signup error details:');
+            print('[ERROR] Error type: ${authError.runtimeType}');
+            print('[ERROR] Full error: $authError');
+
+            if (authError is AuthException) {
+              print('[ERROR] Status code: ${authError.statusCode}');
+              print('[ERROR] Message: ${authError.message}');
+              throw authError; // Throw the original error
+            }
+
+            // For other types of errors, wrap them in a more descriptive AuthException
+            throw AuthException(
+                'Failed to create account. Please try again later.');
+          }
+        } catch (authError) {
+          print('[ERROR] Auth signup error details:');
+          print('[ERROR] Error type: ${authError.runtimeType}');
+          print('[ERROR] Full error: $authError');
+
+          if (authError is AuthException) {
+            print('[ERROR] Status code: ${authError.statusCode}');
+            print('[ERROR] Message: ${authError.message}');
+          }
+
+          throw AuthException(
+              'Failed to create account: ${authError.toString()}');
         }
-      } else {
-        throw Exception('Signup failed');
+
+        final user = response.user!;
+        print('[DEBUG] User created successfully with ID: ${user.id}');
+
+        try {
+          // Create user profile in Users table
+          print('[DEBUG] Auth UID: ${user.id} (Type: ${user.id.runtimeType})');
+          print('[DEBUG] AuthUserId to insert: ${user.id}');
+          print('[DEBUG] Attempting to insert with payload:');
+          final payload = {
+            'UserId': user.id,
+            'AuthUserId': user.id,
+            'Username': usersTableUsername,
+            'Email': user.email!,
+            'Bio': '',
+            'AvatarUrl': '',
+            'JoinDate': DateTime.now().toIso8601String()
+          };
+          print('[DEBUG] ${json.encode(payload)}');
+
+          // Test select permission first
+          print('[DEBUG] Testing SELECT permission...');
+          try {
+            final selectTest = await supabase.from('Users').select().limit(1);
+            print(
+                '[DEBUG] SELECT test successful: ${selectTest.length} rows found');
+          } catch (selectError) {
+            print('[ERROR] SELECT test failed: $selectError');
+          }
+
+          // Attempt insert with error details
+          print('[DEBUG] Attempting INSERT...');
+          try {
+            final response =
+                await supabase.from('Users').insert(payload).select().single();
+            print(
+                '[DEBUG] Insert successful. Response: ${json.encode(response)}');
+          } catch (insertError) {
+            print('[ERROR] Detailed insert error:');
+            print('[ERROR] Error type: ${insertError.runtimeType}');
+            print('[ERROR] Full error: $insertError');
+            if (insertError is PostgrestException) {
+              print('[ERROR] Code: ${insertError.code}');
+              print('[ERROR] Message: ${insertError.message}');
+              print('[ERROR] Details: ${insertError.details}');
+              print('[ERROR] Hint: ${insertError.hint}');
+            }
+            rethrow;
+          }
+
+          print('[DEBUG] User profile created in database');
+
+          // Only navigate if both auth and database operations succeed
+          if (response.session != null) {
+            context.go('/edit_profile');
+          } else {
+            context.go('/verify-email');
+          }
+        } catch (dbError) {
+          print('[ERROR] Database error: $dbError');
+          final errorMsg =
+              dbError is PostgrestException && dbError.code == '42501'
+                  ? 'Database permissions issue - contact support'
+                  : 'Profile creation failed';
+
+          if (mounted) {
+            AppUtils.showToast(context: context, title: errorMsg);
+          }
+          rethrow;
+        }
+      } catch (error) {
+        print('[ERROR] Signup process error: $error');
+
+        String errorMessage = error is AuthException
+            ? error.toString()
+            : 'An unexpected error occurred. Please try again.';
+
+        if (mounted) {
+          AppUtils.showToast(
+            context: context,
+            title: errorMessage,
+          );
+        }
       }
     } catch (error) {
-      AppUtils.showToast(context: context, title: error.toString());
+      print('[ERROR] Signup process error: $error');
+
+      String errorMessage = error is AuthException
+          ? error.toString()
+          : 'An unexpected error occurred. Please try again.';
+
+      if (mounted) {
+        AppUtils.showToast(
+          context: context,
+          title: errorMessage,
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 }

@@ -7,9 +7,11 @@ import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/feature/profile/json/profile_items_json.dart';
 import 'package:cassettefrontend/feature/profile/model/profile_item_model.dart';
+import 'package:cassettefrontend/main.dart'; // Import for supabase client
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -24,6 +26,8 @@ class _ProfilePageState extends State<ProfilePage>
   List<ProfileItemsJson> profileItemList = [];
   TabController? tabController;
   int selectedIndex = 0;
+  Map<String, dynamic> userData = {};
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -32,6 +36,32 @@ class _ProfilePageState extends State<ProfilePage>
     profileItemList = (profileItemsJson as List)
         .map((item) => ProfileItemsJson.fromJson(item))
         .toList();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      try {
+        final data = await supabase
+            .from('Users')
+            .select()
+            .eq('AuthUserId', user.id)
+            .single();
+
+        setState(() {
+          userData = {
+            'Username': data['Username'] ?? '',
+            'Bio': data['Bio'] ?? '',
+            'AvatarUrl': data['AvatarUrl'] ?? ''
+          };
+          isLoading = false;
+        });
+      } catch (e) {
+        print('[ERROR] Profile load failed: $e');
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   @override
@@ -83,7 +113,7 @@ class _ProfilePageState extends State<ProfilePage>
                                 children: [
                                   Row(
                                     children: [
-                                      Text(AppUtils.profileModel.fullName ?? '',
+                                      Text(userData['FullName'] ?? '',
                                           style: AppStyles.profileNameTs),
                                       const SizedBox(width: 8),
                                       GestureDetector(
@@ -95,14 +125,14 @@ class _ProfilePageState extends State<ProfilePage>
                                     ],
                                   ),
                                   // const SizedBox(height: 4),
-                                  Text(AppUtils.profileModel.userName ?? '',
+                                  Text(userData['Username'] ?? '',
                                       style: AppStyles.profileUserNameTs),
                                 ],
                               )),
                             ],
                           ),
                           const SizedBox(height: 22),
-                          Text(AppUtils.profileModel.bio ?? '',
+                          Text(userData['Bio'] ?? '',
                               style: AppStyles.profileBioTs),
                           const SizedBox(height: 22),
                           Row(
@@ -279,67 +309,70 @@ class _ProfilePageState extends State<ProfilePage>
                       fit: BoxFit.cover)),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(profileItemList[index].type ?? '',
-                                  style: AppStyles.itemTypeTs),
-                              Text(profileItemList[index].title ?? '',
-                                  style: AppStyles.itemTitleTs,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
-                              profileItemList[index].type == "Song"
-                                  ? Text(
-                                      "${profileItemList[index].artist} | ${profileItemList[index].album} | ${profileItemList[index].duration}",
-                                      style: AppStyles.itemSongDurationTs,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis)
-                                  : playlistDurationWidget(
-                                      profileItemList[index]
-                                          .songCount
-                                          .toString(),
-                                      " songs | ${profileItemList[index].duration}"),
-                            ],
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(profileItemList[index].type ?? '',
+                                    style: AppStyles.itemTypeTs),
+                                Text(profileItemList[index].title ?? '',
+                                    style: AppStyles.itemTitleTs,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                                profileItemList[index].type == "Song"
+                                    ? Text(
+                                        "${profileItemList[index].artist} | ${profileItemList[index].album} | ${profileItemList[index].duration}",
+                                        style: AppStyles.itemSongDurationTs,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis)
+                                    : playlistDurationWidget(
+                                        profileItemList[index]
+                                            .songCount
+                                            .toString(),
+                                        " songs | ${profileItemList[index].duration}"),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 5),
-                        AnimatedPrimaryButton(
-                          centerWidget: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(icShare,
-                                  fit: BoxFit.contain, height: 15),
-                            ],
+                          const SizedBox(width: 5),
+                          AnimatedPrimaryButton(
+                            centerWidget: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(icShare,
+                                    fit: BoxFit.contain, height: 15),
+                              ],
+                            ),
+                            colorBottom:
+                                AppColors.animatedBtnColorConvertBottom,
+                            borderColorTop: AppColors.textPrimary,
+                            colorTop: AppColors.textPrimary,
+                            borderColorBottom: AppColors.textPrimary,
+                            initialPos: 3,
+                            width: 50,
+                            height: 28,
+                            onTap: () {},
+                            radius: 12,
                           ),
-                          colorBottom: AppColors.animatedBtnColorConvertBottom,
-                          borderColorTop: AppColors.textPrimary,
-                          colorTop: AppColors.textPrimary,
-                          borderColorBottom: AppColors.textPrimary,
-                          initialPos: 3,
-                          width: 50,
-                          height: 28,
-                          onTap: () {},
-                          radius: 12,
-                        ),
-                      ],
-                    ),
-                    Text(profileItemList[index].description ?? '',
-                        style: AppStyles.itemDesTs,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 12),
-                    playlistDurationWidget(
-                        "from: ", profileItemList[index].username,
-                        style: AppStyles.itemFromTs,
-                        style2: AppStyles.itemUsernameTs),
-                  ],
+                        ],
+                      ),
+                      Text(profileItemList[index].description ?? '',
+                          style: AppStyles.itemDesTs,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 12),
+                      playlistDurationWidget(
+                          "from: ", profileItemList[index].username,
+                          style: AppStyles.itemFromTs,
+                          style2: AppStyles.itemUsernameTs),
+                    ],
+                  ),
                 ),
               )
             ],

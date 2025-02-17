@@ -8,10 +8,12 @@ import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
+import 'package:cassettefrontend/main.dart'; // Import for supabase client
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -23,6 +25,8 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   bool isMenuVisible = false;
   int value = 0;
+  bool _isUsernameValid = true;
+  String _usernameError = '';
 
   TextEditingController nameCtr = TextEditingController();
   TextEditingController userNameCtr = TextEditingController();
@@ -33,12 +37,128 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    nameCtr.text = AppUtils.profileModel.fullName ?? '';
-    userNameCtr.text = AppUtils.profileModel.userName ?? '';
-    linkCtr.text = AppUtils.profileModel.link ?? '';
-    bioCtr.text = AppUtils.profileModel.bio ?? '';
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      try {
+        // Try to fetch existing profile
+        final data = await supabase
+            .from('Users')
+            .select()
+            .eq('UserId', user.id)
+            .single();
+
+        setState(() {
+          nameCtr.text = data['Username'] ?? '';
+          userNameCtr.text = data['Username'] ?? '';
+          bioCtr.text = data['Bio'] ?? '';
+          linkCtr.text = data['AvatarUrl'] ?? '';
+        });
+      } catch (e) {
+        print('[DEBUG] No existing profile found, using auth metadata');
+        // If no profile exists, use auth metadata
+        final metadata = user.userMetadata;
+        setState(() {
+          nameCtr.text = metadata?['username'] ?? '';
+          userNameCtr.text = metadata?['username'] ?? '';
+          bioCtr.text = metadata?['bio'] ?? '';
+          linkCtr.text = metadata?['profile_picture'] ?? '';
+        });
+      }
+    }
+  }
+
+  bool _validateUsername(String username) {
+    if (username.isEmpty) {
+      setState(() {
+        _isUsernameValid = false;
+        _usernameError = 'Username cannot be empty';
+      });
+      return false;
+    }
+    if (username.length > 30) {
+      setState(() {
+        _isUsernameValid = false;
+        _usernameError = 'Username must be 30 characters or less';
+      });
+      return false;
+    }
+    if (username.startsWith('temp_')) {
+      setState(() {
+        _isUsernameValid = false;
+        _usernameError = 'Username cannot start with "temp_"';
+      });
+      return false;
+    }
+    // Add basic character validation
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)) {
+      setState(() {
+        _isUsernameValid = false;
+        _usernameError =
+            'Username can only contain letters, numbers, and underscores';
+      });
+      return false;
+    }
+    setState(() {
+      _isUsernameValid = true;
+      _usernameError = '';
+    });
+    return true;
+  }
+
+  Future<void> _saveChanges() async {
+    if (!_validateUsername(userNameCtr.text)) {
+      AppUtils.showToast(context: context, title: _usernameError);
+      return;
+    }
+
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      try {
+        // Update auth metadata
+        await supabase.auth.updateUser(UserAttributes(
+          data: {
+            'username': userNameCtr.text,
+            'bio': bioCtr.text,
+            'profile_picture': linkCtr.text,
+            'is_temporary_username': false,
+          },
+        ));
+
+        try {
+          // Try to update existing profile
+          await supabase.from('Users').update({
+            'Username': userNameCtr.text,
+            'Bio': bioCtr.text,
+            'AvatarUrl': linkCtr.text,
+          }).eq('UserId', user.id);
+        } catch (e) {
+          print('[DEBUG] Profile update failed, trying insert');
+          // If update fails, try to insert new profile
+          await supabase.from('Users').insert({
+            'UserId': user.id,
+            'Username': userNameCtr.text,
+            'Email': user.email!,
+            'Bio': bioCtr.text,
+            'AvatarUrl': linkCtr.text,
+            'JoinDate': DateTime.now().toIso8601String()
+          });
+        }
+
+        AppUtils.showToast(
+            context: context, title: "Profile updated successfully");
+
+        context.go('/profile');
+      } catch (e) {
+        print('[ERROR] Profile save error: $e');
+        AppUtils.showToast(
+            context: context, title: "Error updating profile: ${e.toString()}");
+      }
+    }
   }
 
   fillAllServices() {
@@ -79,10 +199,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               AnimatedPrimaryButton(
                 text: "Save Changes",
                 onTap: () {
-                  Future.delayed(
-                    const Duration(milliseconds: 180),
-                    () => context.go("/profile"),
-                  );
+                  _saveChanges();
                 },
                 height: 40,
                 width: MediaQuery.of(context).size.width - 46 + 16,
@@ -228,15 +345,40 @@ class _EditProfilePageState extends State<EditProfilePage> {
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text("Username",
-                textAlign: TextAlign.left,
-                style: AppStyles.authTextFieldLabelTextStyle),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text("Username",
+                        textAlign: TextAlign.left,
+                        style: AppStyles.authTextFieldLabelTextStyle),
+                    const SizedBox(width: 8),
+                    Text("(required)",
+                        style: AppStyles.authTextFieldLabelTextStyle.copyWith(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text("Choose a unique username (30 characters max)",
+                    style: AppStyles.authTextFieldLabelTextStyle
+                        .copyWith(fontSize: 12, fontStyle: FontStyle.italic)),
+                Text("Letters, numbers, and underscores only",
+                    style: AppStyles.authTextFieldLabelTextStyle
+                        .copyWith(fontSize: 12, fontStyle: FontStyle.italic)),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextFieldWidget(
-                hint: "Enter your username", controller: userNameCtr),
+                hint: "Choose your username",
+                controller: userNameCtr,
+                errorText: !_isUsernameValid ? _usernameError : null,
+                onChanged: (value) => _validateUsername(value)),
           ),
           const SizedBox(height: 14),
           Padding(
@@ -431,7 +573,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   addServiceFnc() {
-
     if (allServicesList.isNotEmpty) {
       AppUtils.profileModel.services
           ?.add(Services(serviceName: allServicesList[value].serviceName));
@@ -449,7 +590,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final storagePath =
           'profile/${userId}${DateTime.now().millisecondsSinceEpoch}';
       await Supabase.instance.client.storage
-          .from(profileBucket)
+          .from(Env.profileBucket)
           .uploadBinary(
             storagePath,
             imageBytes,

@@ -5,6 +5,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_strategy/url_strategy.dart';
+import 'dart:html' if (dart.library.html) 'dart:html' as html;
 
 import 'core/services/router.dart';
 import 'core/services/spotify_service.dart';
@@ -22,10 +23,12 @@ void main() async {
 
   try {
     await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
+      url: Env.supabaseUrl,
+      anonKey: Env.supabaseAnonKey,
       debug: true,
+      // Remove authOptions and realtimeClientOptions for now
     );
+    print('Supabase initialized successfully');
   } catch (e) {
     print('Supabase initialization error: $e');
   }
@@ -42,23 +45,46 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late GoRouter router;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
     _handleInitialUri();
-    if (supabase.auth.currentSession != null) {
-      isAuthenticated = true;
-    }
-    router = AppRouter.getRouter(isAuthenticated);
+    router = AppRouter.getRouter(false); // Start with unauthenticated router
+
+    // Listen for auth state changes
     supabase.auth.onAuthStateChange.listen(
-      (event) {
-        if (event.event == AuthChangeEvent.signedOut) {
-          isAuthenticated = false;
-        }
-        if (event.event == AuthChangeEvent.signedIn) {
-          isAuthenticated = true;
-        }
+      (data) {
+        final AuthChangeEvent event = data.event;
+        if (!mounted) return;
+
+        setState(() {
+          switch (event) {
+            case AuthChangeEvent.initialSession:
+              // Don't force sign out, just set the state
+              isAuthenticated = data.session != null;
+              router = AppRouter.getRouter(isAuthenticated);
+              break;
+            case AuthChangeEvent.signedIn:
+              isAuthenticated = true;
+              router = AppRouter.getRouter(true);
+              break;
+            case AuthChangeEvent.signedOut:
+              isAuthenticated = false;
+              router = AppRouter.getRouter(false);
+              if (_initialized) {
+                router.go('/');
+              }
+              break;
+            case AuthChangeEvent.tokenRefreshed:
+              // Handle token refresh if needed
+              break;
+            default:
+              break;
+          }
+          _initialized = true;
+        });
       },
     );
   }
