@@ -12,22 +12,22 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-class TracklistPage extends StatefulWidget {
+class CollectionPage extends StatefulWidget {
   final String? type;
   final String? trackId;
 
-  const TracklistPage({super.key, this.type, this.trackId});
+  const CollectionPage({super.key, this.type, this.trackId});
 
   @override
-  State<TracklistPage> createState() => _PlaylistPageState();
+  State<CollectionPage> createState() => _CollectionPageState();
 }
 
-class _PlaylistPageState extends State<TracklistPage> {
+class _CollectionPageState extends State<CollectionPage> {
   String name = '';
   String artistName = "Daniel Caesar";
   String desUsername = 'matttoppi';
   String? des =
-      "One of the my favorite songs off of Daniel Caesar’s magnum opus. I recently bought the entire Freudian album on vinyl.";
+      "One of the my favorite songs off of Daniel Caesar's magnum opus. I recently bought the entire Freudian album on vinyl.";
 
   Color dominateColor = AppColors.appBg;
 
@@ -97,7 +97,8 @@ class _PlaylistPageState extends State<TracklistPage> {
             body(),
             const SizedBox(height: 18),
             listingView(),
-            Visibility(visible: !isLoggedIn && des != null, child: createAccWidget()),
+            Visibility(
+                visible: !isLoggedIn && des != null, child: createAccWidget()),
             const SizedBox(height: 18),
           ],
         ),
@@ -189,7 +190,7 @@ class _PlaylistPageState extends State<TracklistPage> {
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-          des == null && !isLoggedIn? createAccWidget() : desWidget(),
+          des == null && !isLoggedIn ? createAccWidget() : desWidget(),
           SizedBox(height: des == null ? 40 : 0),
           AppUtils.trackSocialLinksWidget(),
           const SizedBox(height: 18),

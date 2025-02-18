@@ -10,23 +10,23 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-class TrackPage extends StatefulWidget {
+class MediaDetailPage extends StatefulWidget {
   final String? type;
   final String? trackId;
 
-  const TrackPage({super.key, this.type, this.trackId});
+  const MediaDetailPage({super.key, this.type, this.trackId});
 
   @override
-  State<TrackPage> createState() => _TrackPageState();
+  State<MediaDetailPage> createState() => _MediaDetailPageState();
 }
 
-class _TrackPageState extends State<TrackPage> {
+class _MediaDetailPageState extends State<MediaDetailPage> {
   /////
   String name = '';
   String artistName = "Daniel Caesar";
   String desUsername = 'matttoppi';
   String? des =
-      "One of the my favorite songs off of Daniel Caesar’s magnum opus. I recently bought the entire Freudian album on vinyl.";
+      "One of the my favorite songs off of Daniel Caesar's magnum opus. I recently bought the entire Freudian album on vinyl.";
 
   /////
 
