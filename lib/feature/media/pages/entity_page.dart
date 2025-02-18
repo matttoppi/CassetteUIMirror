@@ -10,25 +10,24 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-class MediaDetailPage extends StatefulWidget {
-  final String? type;
+/// Handles display of standalone entities (individual tracks and artists)
+/// Both types share similar UI as they are single items without inner track listings
+class EntityPage extends StatefulWidget {
+  final String? type; // "artist" or "track"
   final String? trackId;
 
-  const MediaDetailPage({super.key, this.type, this.trackId});
+  const EntityPage({super.key, this.type, this.trackId});
 
   @override
-  State<MediaDetailPage> createState() => _MediaDetailPageState();
+  State<EntityPage> createState() => _EntityPageState();
 }
 
-class _MediaDetailPageState extends State<MediaDetailPage> {
-  /////
+class _EntityPageState extends State<EntityPage> {
   String name = '';
   String artistName = "Daniel Caesar";
   String desUsername = 'matttoppi';
   String? des =
       "One of the my favorite songs off of Daniel Caesar's magnum opus. I recently bought the entire Freudian album on vinyl.";
-
-  /////
 
   Color dominateColor = AppColors.appBg;
   bool isLoggedIn = false;
@@ -43,8 +42,6 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
   void initState() {
     super.initState();
     isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
-    // isLoggedIn = true;
-    // des = null;
     name = widget.type == "artist" ? "Kendrick Lamar" : "Loose";
     _generatePalette(widget.type == "artist" ? artistUrl : songUrl);
   }

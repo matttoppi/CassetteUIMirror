@@ -5,8 +5,8 @@ import 'package:cassettefrontend/feature/home/pages/home_page.dart';
 import 'package:cassettefrontend/feature/profile/pages/add_music_page.dart';
 import 'package:cassettefrontend/feature/profile/pages/edit_profile_page.dart';
 import 'package:cassettefrontend/feature/profile/pages/profile_page.dart';
-import 'package:cassettefrontend/feature/track/pages/playlist_page.dart';
-import 'package:cassettefrontend/feature/track/pages/track_page.dart';
+import 'package:cassettefrontend/feature/media/pages/collection_page.dart';
+import 'package:cassettefrontend/feature/media/pages/entity_page.dart';
 import 'package:cassettefrontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -44,14 +44,16 @@ class AppRouter {
           name: 'track',
           path: '/track/:type/:trackId',
           builder: (context, state) {
+            // Collections (multiple tracks): albums and playlists
             if (state.pathParameters['type'] == "playlist" ||
                 state.pathParameters['type'] == "album") {
-              return TracklistPage(
+              return CollectionPage(
                 type: state.pathParameters['type'],
                 trackId: state.pathParameters['trackId'],
               );
             }
-            return TrackPage(
+            // Standalone entities: individual tracks and artists
+            return EntityPage(
               type: state.pathParameters['type'],
               trackId: state.pathParameters['trackId'],
             );
@@ -68,7 +70,8 @@ class AppRouter {
             return CustomTransitionPage(
               key: state.pageKey,
               child: const SignUpPage(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
                 return FadeTransition(
                   opacity: animation,
                   child: child,
@@ -84,7 +87,8 @@ class AppRouter {
             return CustomTransitionPage(
               key: state.pageKey,
               child: const SignInPage(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
                 return FadeTransition(
                   opacity: animation,
                   child: child,
@@ -105,10 +109,9 @@ class AppRouter {
         ),
       ],
       redirect: (BuildContext context, GoRouterState state) {
-        if(!isAuthenticated && state.matchedLocation.startsWith('/profile')){
+        if (!isAuthenticated && state.matchedLocation.startsWith('/profile')) {
           return '/';
-        }
-        else{
+        } else {
           return null;
         }
         // print('Router: Redirecting for path: ${state.uri.path}');

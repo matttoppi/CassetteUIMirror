@@ -6,14 +6,16 @@ import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/storage/preference_helper.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
-import 'package:cassettefrontend/feature/track/json/playlist_items_json.dart';
-import 'package:cassettefrontend/feature/track/model/playlist_item_model.dart';
+import 'package:cassettefrontend/feature/media/json/collection_items.dart';
+import 'package:cassettefrontend/feature/media/model/collection_item.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 
+/// Handles display of track collections (playlists and albums)
+/// Both types share similar UI as they are collections of tracks
 class CollectionPage extends StatefulWidget {
-  final String? type;
+  final String? type; // "album" or "playlist"
   final String? trackId;
 
   const CollectionPage({super.key, this.type, this.trackId});
@@ -41,19 +43,17 @@ class _CollectionPageState extends State<CollectionPage> {
   String albumUrl =
       "https://images.pexels.com/photos/7086286/pexels-photo-7086286.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
 
-  List<PlaylistItemModel> playlistList = [];
+  List<CollectionItem> playlistList = [];
   bool isLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
     isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
-    // isLoggedIn = true;
-    // des = null;
     name = widget.type == "album" ? "CHROMAKOPIA" : "Waves";
     _generatePalette(widget.type == "album" ? albumUrl : playlist.last);
-    playlistList = (playlistItemsJson as List)
-        .map((item) => PlaylistItemModel.fromJson(item))
+    playlistList = (collectionItems as List)
+        .map((item) => CollectionItem.fromJson(item))
         .toList();
   }
 
