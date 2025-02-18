@@ -7,6 +7,7 @@ import 'package:cassettefrontend/feature/profile/pages/edit_profile_page.dart';
 import 'package:cassettefrontend/feature/profile/pages/profile_page.dart';
 import 'package:cassettefrontend/feature/media/pages/collection_page.dart';
 import 'package:cassettefrontend/feature/media/pages/entity_page.dart';
+import 'package:cassettefrontend/feature/media/pages/post_page.dart';
 import 'package:cassettefrontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -40,22 +41,70 @@ class AppRouter {
             return const ProfilePage();
           },
         ),
+        // Media routes for different types
         GoRoute(
           name: 'track',
-          path: '/track/:type/:trackId',
+          path: '/track/:id',
           builder: (context, state) {
-            // Collections (multiple tracks): albums and playlists
-            if (state.pathParameters['type'] == "playlist" ||
-                state.pathParameters['type'] == "album") {
-              return CollectionPage(
-                type: state.pathParameters['type'],
-                trackId: state.pathParameters['trackId'],
+            final id = state.pathParameters['id'];
+            final postData = state.extra as Map<String, dynamic>?;
+
+            // If we have postData, use it directly
+            if (postData != null) {
+              return EntityPage(
+                type: 'track',
+                trackId: postData['musicElementId'] as String?,
+                postId: id,
+                postData: postData,
               );
             }
-            // Standalone entities: individual tracks and artists
+
+            // Fallback if no postData
             return EntityPage(
-              type: state.pathParameters['type'],
-              trackId: state.pathParameters['trackId'],
+              type: 'track',
+              trackId: id,
+              postId: id,
+            );
+          },
+        ),
+        GoRoute(
+          name: 'artist',
+          path: '/artist/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            final postData = state.extra as Map<String, dynamic>?;
+
+            return EntityPage(
+              type: 'artist',
+              trackId: postData?['musicElementId'] as String?,
+              postId: id,
+              postData: postData,
+            );
+          },
+        ),
+        GoRoute(
+          name: 'album',
+          path: '/album/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            final postData = state.extra as Map<String, dynamic>?;
+            return CollectionPage(
+              type: 'album',
+              trackId: id,
+              postData: postData,
+            );
+          },
+        ),
+        GoRoute(
+          name: 'playlist',
+          path: '/playlist/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'];
+            final postData = state.extra as Map<String, dynamic>?;
+            return CollectionPage(
+              type: 'playlist',
+              trackId: id,
+              postData: postData,
             );
           },
         ),
@@ -106,6 +155,15 @@ class AppRouter {
           name: 'add_music',
           path: '/add_music',
           builder: (context, state) => const AddMusicPage(),
+        ),
+        GoRoute(
+          name: 'post',
+          path: '/p/:postId',
+          builder: (context, state) {
+            final postId = state.pathParameters['postId'];
+            final postData = state.extra as Map<String, dynamic>?;
+            return PostPage(postData: postData ?? {'postId': postId});
+          },
         ),
       ],
       redirect: (BuildContext context, GoRouterState state) {

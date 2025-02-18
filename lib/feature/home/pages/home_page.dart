@@ -8,6 +8,8 @@ import 'package:cassettefrontend/core/common_widgets/animated_primary_button.dar
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cassettefrontend/core/services/api_service.dart';
+import 'package:cassettefrontend/core/constants/element_type.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,6 +20,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
+  final ApiService _apiService = ApiService();
   bool isMenuVisible = false;
   late final AnimationController _fadeController;
   late final Animation<double> groupAFadeAnimation;
@@ -27,6 +30,7 @@ class _HomePageState extends State<HomePage>
   late final Animation<Offset> groupBSlideAnimation;
   final ScrollController scrollController = ScrollController();
   final TextEditingController tfController = TextEditingController();
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -35,6 +39,19 @@ class _HomePageState extends State<HomePage>
       vsync: this,
       duration: const Duration(milliseconds: 5500),
     );
+
+    // Test API connection
+    _apiService.testConnection().then((isConnected) {
+      if (!isConnected && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Warning: Cannot connect to API server'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    });
+
     groupAFadeAnimation = TweenSequence<double>([
       // Fade in from 0.0 to 1.0 during the first 45% of the timeline
       TweenSequenceItem(
@@ -155,16 +172,10 @@ class _HomePageState extends State<HomePage>
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: AnimatedPrimaryButton(
-                          text: "Convert",
-                          onTap: () {
-                            if (tfController.text.isNotEmpty) {
-                              Future.delayed(
-                                const Duration(milliseconds: 180),
-                                () =>
-                                    context.go('/track/${tfController.text}/0'),
-                              );
-                            }
-                          },
+                          text: isLoading ? "Converting..." : "Convert",
+                          onTap: isLoading
+                              ? () {} // Empty function when loading
+                              : () => _handleLinkConversion(tfController.text),
                           height: 32,
                           width: 200,
                           radius: 10,
@@ -231,6 +242,63 @@ class _HomePageState extends State<HomePage>
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Image.asset(appLogoText, fit: BoxFit.contain),
     );
+  }
+
+  Future<void> _handleLinkConversion(String link) async {
+    if (link.isEmpty) return;
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // Make the conversion request
+      final response = await _apiService.convertMusicLink(link);
+
+      // Log the response for debugging
+      print('API Response: $response');
+
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+
+        // Verify required fields are present
+        final elementType = response['elementType'] as String?;
+        final postId = response['postId'] as String?;
+        final details = response['details'] as Map<String, dynamic>?;
+
+        if (elementType == null || postId == null || details == null) {
+          throw Exception('Missing required fields in response');
+        }
+
+        // Navigate based on element type
+        final type = elementType.toLowerCase();
+        if (type == 'track' ||
+            type == 'artist' ||
+            type == 'album' ||
+            type == 'playlist') {
+          print('Navigating to /$type/$postId with data: $response');
+          context.go('/$type/$postId', extra: response);
+        } else {
+          throw Exception('Unsupported element type: $elementType');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+        // Show error snackbar with more detailed message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error converting link: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        print('Link conversion error: $e');
+      }
+    }
   }
 
   @override

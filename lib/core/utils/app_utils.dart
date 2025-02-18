@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:html' as html;
 import 'dart:js' as js;
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -127,33 +128,36 @@ class AppUtils {
     html.window.open(url, "new tab");
   }
 
-  static trackSocialLinksWidget() {
+  static Widget trackSocialLinksWidget({Map<String, dynamic>? platforms}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        socialImageWidget(icApple, () {
-          AppUtils.openUrlOnNewTab("https://music.apple.com");
-        }),
-        socialImageWidget(icYtMusic, () {
-          AppUtils.openUrlOnNewTab("https://music.youtube.com");
-        }),
-        socialImageWidget(icSpotify, () {
-          AppUtils.openUrlOnNewTab("https://open.spotify.com");
-        }),
-        socialImageWidget(icTidal, () {
-          AppUtils.openUrlOnNewTab("https://tidal.com");
-        }),
-        socialImageWidget(icDeezer, () {
-          AppUtils.openUrlOnNewTab("https://www.deezer.com");
-        }),
+        IconButton(
+          onPressed: () {
+            if (platforms?.containsKey('spotify') ?? false) {
+              openUrlOnNewTab(platforms!['spotify']['url']);
+            }
+          },
+          icon: Image.asset(icSpotify, height: 38),
+        ),
+        IconButton(
+          onPressed: () {
+            if (platforms?.containsKey('appleMusic') ?? false) {
+              openUrlOnNewTab(platforms!['appleMusic']['url']);
+            }
+          },
+          icon: Image.asset(icApple, height: 38),
+        ),
+        IconButton(
+          onPressed: () {
+            if (platforms?.containsKey('deezer') ?? false) {
+              openUrlOnNewTab(platforms!['deezer']['url']);
+            }
+          },
+          icon: Image.asset(icDeezer, height: 38),
+        ),
       ],
     );
-  }
-
-  static socialImageWidget(String image, onTap) {
-    return GestureDetector(
-        onTap: onTap,
-        child: Image.asset(image, height: 48, fit: BoxFit.contain));
   }
 
   static cmDesBox({String? userName, String? des}) {

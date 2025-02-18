@@ -17,8 +17,16 @@ import 'package:palette_generator/palette_generator.dart';
 class CollectionPage extends StatefulWidget {
   final String? type; // "album" or "playlist"
   final String? trackId;
+  final String? postId;
+  final Map<String, dynamic>? postData;
 
-  const CollectionPage({super.key, this.type, this.trackId});
+  const CollectionPage({
+    super.key,
+    this.type,
+    this.trackId,
+    this.postId,
+    this.postData,
+  });
 
   @override
   State<CollectionPage> createState() => _CollectionPageState();
@@ -26,35 +34,38 @@ class CollectionPage extends StatefulWidget {
 
 class _CollectionPageState extends State<CollectionPage> {
   String name = '';
-  String artistName = "Daniel Caesar";
-  String desUsername = 'matttoppi';
-  String? des =
-      "One of the my favorite songs off of Daniel Caesar's magnum opus. I recently bought the entire Freudian album on vinyl.";
-
+  String artistName = '';
+  String? des;
+  String? desUsername;
   Color dominateColor = AppColors.appBg;
-
-  List<String> playlist = [
-    "https://images.pexels.com/photos/15447298/pexels-photo-15447298/free-photo-of-retro-cassette-records-in-stacks.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-    "https://images.pexels.com/photos/1853542/pexels-photo-1853542.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-    "https://images.pexels.com/photos/1164975/pexels-photo-1164975.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-    "https://images.pexels.com/photos/844928/pexels-photo-844928.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-  ];
-
-  String albumUrl =
-      "https://images.pexels.com/photos/7086286/pexels-photo-7086286.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-
-  List<CollectionItem> playlistList = [];
   bool isLoggedIn = false;
+  String coverArtUrl = '';
+  List<CollectionItem> trackList = [];
 
   @override
   void initState() {
     super.initState();
     isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
-    name = widget.type == "album" ? "CHROMAKOPIA" : "Waves";
-    _generatePalette(widget.type == "album" ? albumUrl : playlist.last);
-    playlistList = (collectionItems as List)
-        .map((item) => CollectionItem.fromJson(item))
-        .toList();
+
+    // Initialize data from postData if available
+    if (widget.postData != null) {
+      final details = widget.postData!['details'] as Map<String, dynamic>;
+      name = details['title'] as String;
+      artistName = details['artist'] as String;
+      coverArtUrl = details['coverArtUrl'] as String;
+      des = widget.postData!['caption'] as String?;
+      desUsername = widget.postData!['username'] as String?;
+
+      // Parse tracks if available
+      if (details.containsKey('tracks')) {
+        final tracks = details['tracks'] as List<dynamic>;
+        trackList =
+            tracks.map((track) => CollectionItem.fromJson(track)).toList();
+      }
+
+      // Generate palette from cover art
+      _generatePalette(coverArtUrl);
+    }
   }
 
   Future<void> _generatePalette(String imageUrl) async {
@@ -89,6 +100,16 @@ class _CollectionPageState extends State<CollectionPage> {
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             const SizedBox(height: 18),
+            if (widget.postId != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Post ID: ${widget.postId}',
+                  style: AppStyles.trackTrackTitleTs,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: TrackToolbar(isLoggedIn: isLoggedIn),
@@ -128,27 +149,10 @@ class _CollectionPageState extends State<CollectionPage> {
                   Padding(
                     padding:
                         const EdgeInsets.only(bottom: 20, left: 20, right: 20),
-                    child: widget.type == "album"
-                        ? Image.network(albumUrl,
-                            width: MediaQuery.of(context).size.width / 2.5,
-                            height: MediaQuery.of(context).size.width / 2.5,
-                            fit: BoxFit.cover)
-                        : SizedBox(
-                            width: MediaQuery.of(context).size.width / 2.5,
-                            height: MediaQuery.of(context).size.width / 2.5,
-                            child: GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: playlist.length,
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2),
-                              itemBuilder: (context, index) {
-                                return Image.network(playlist[index],
-                                    fit: BoxFit.cover);
-                              },
-                            ),
-                          ),
+                    child: Image.network(coverArtUrl,
+                        width: MediaQuery.of(context).size.width / 2.5,
+                        height: MediaQuery.of(context).size.width / 2.5,
+                        fit: BoxFit.cover),
                   ),
                   Positioned(
                     bottom: 0,
@@ -175,31 +179,27 @@ class _CollectionPageState extends State<CollectionPage> {
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-          if (widget.type == "album")
-            Text(
-              "Tyler the Creator",
-              style: AppStyles.trackArtistNameTs,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
           Text(
-            "14 songs | 1h",
-            style: AppStyles.trackPlaylistSongNoTs,
+            artistName,
+            style: AppStyles.trackArtistNameTs,
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-          des == null && !isLoggedIn ? createAccWidget() : desWidget(),
-          SizedBox(height: des == null ? 40 : 0),
-          AppUtils.trackSocialLinksWidget(),
-          const SizedBox(height: 18),
+          des == null ? createAccWidget() : desWidget(),
+          SizedBox(height: des == null ? 125 : 0),
           const Divider(
               height: 2,
               thickness: 2,
               color: AppColors.textPrimary,
               endIndent: 10,
               indent: 10),
+          const SizedBox(height: 18),
+          // Pass platforms data to social links widget
+          widget.postData != null
+              ? AppUtils.trackSocialLinksWidget(
+                  platforms: widget.postData!['platforms'])
+              : AppUtils.trackSocialLinksWidget(),
         ],
       ),
     );
@@ -215,20 +215,20 @@ class _CollectionPageState extends State<CollectionPage> {
     );
   }
 
-  listingView() {
+  Widget listingView() {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: playlistList.length,
+      itemCount: trackList.length,
       itemBuilder: (context, index) {
+        final track = trackList[index];
         return ListTile(
-          leading: Text("${index + 1}", style: AppStyles.playlistLeadTs),
-          title: Text(playlistList[index].title ?? '',
-              style: AppStyles.playlistTitleAndDurationTs),
-          subtitle: Text(playlistList[index].artist ?? '',
-              style: AppStyles.playlistSubTs),
-          trailing: Text(playlistList[index].duration ?? '',
-              style: AppStyles.playlistTitleAndDurationTs),
+          title: Text(track.title, style: AppStyles.trackTrackTitleTs),
+          subtitle: Text(track.artist, style: AppStyles.trackArtistNameTs),
+          leading: Image.network(track.coverArtUrl, width: 50, height: 50),
+          onTap: () {
+            // Handle track selection
+          },
         );
       },
     );

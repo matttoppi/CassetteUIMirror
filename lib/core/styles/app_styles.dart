@@ -839,7 +839,6 @@ class AppStyles {
       decorationColor: AppColors.textPrimary,
       letterSpacing: 0);
 
-
   static TextStyle trackTrackTitleTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.colorWhite.withOpacity(0.78),
       fontSize: 24,
@@ -883,11 +882,12 @@ class AppStyles {
       fontWeight: FontWeight.bold,
       letterSpacing: 0.5);
 
-  static TextStyle playlistTitleAndDurationTs = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.textPrimary,
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0.5);
+  static TextStyle playlistTitleAndDurationTs =
+      GoogleFonts.atkinsonHyperlegible(
+          color: AppColors.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.5);
 
   static TextStyle playlistSubTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary.withOpacity(0.6),
@@ -924,4 +924,26 @@ class AppStyles {
       fontSize: 14,
       fontWeight: FontWeight.normal,
       letterSpacing: 0);
+
+  // Post container styles
+  static const TextStyle titleStyle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  );
+
+  static const TextStyle subtitleStyle = TextStyle(
+    fontSize: 16,
+    color: Colors.white,
+  );
+
+  static const TextStyle captionStyle = TextStyle(
+    fontSize: 16,
+    color: Colors.white,
+  );
+
+  static const TextStyle platformButtonTextStyle = TextStyle(
+    fontSize: 14,
+    color: Colors.white,
+  );
 }

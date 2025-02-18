@@ -1,45 +1,31 @@
 class CollectionItem {
-  String? type;
-  String? title;
-  String? artist;
-  String? album;
-  String? duration;
-  int? songCount;
-  String? description;
-  String? username;
+  final String title;
+  final String artist;
+  final String duration;
+  final String coverArtUrl;
 
   CollectionItem({
-    this.type,
-    this.title,
-    this.artist,
-    this.album,
-    this.duration,
-    this.songCount,
-    this.description,
-    this.username,
+    required this.title,
+    required this.artist,
+    required this.duration,
+    required this.coverArtUrl,
   });
 
-  CollectionItem.fromJson(Map<String, dynamic> json) {
-    type = json['type'];
-    title = json['title'];
-    artist = json['artist'];
-    album = json['album'];
-    duration = json['duration'];
-    songCount = json['songCount'];
-    description = json['description'];
-    username = json['username'];
+  factory CollectionItem.fromJson(Map<String, dynamic> json) {
+    return CollectionItem(
+      title: json['title'] as String,
+      artist: json['artist'] as String,
+      duration: json['duration'] as String,
+      coverArtUrl: json['coverArtUrl'] as String,
+    );
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['type'] = this.type;
     data['title'] = this.title;
     data['artist'] = this.artist;
-    data['album'] = this.album;
     data['duration'] = this.duration;
-    data['songCount'] = this.songCount;
-    data['description'] = this.description;
-    data['username'] = this.username;
+    data['coverArtUrl'] = this.coverArtUrl;
     return data;
   }
 }
