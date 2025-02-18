@@ -4,8 +4,15 @@ import 'package:vitality/vitality.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 
-class AnimatedBackground extends StatelessWidget {
-  AnimatedBackground({super.key});
+class AnimatedBackground extends StatefulWidget {
+  const AnimatedBackground({super.key});
+
+  @override
+  State<AnimatedBackground> createState() => _AnimatedBackgroundState();
+}
+
+class _AnimatedBackgroundState extends State<AnimatedBackground> {
+  double _opacity = 0.0;
 
   List<String> bgElements = [
     icCircleBlue,
@@ -32,20 +39,34 @@ class AnimatedBackground extends StatelessWidget {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Delay a bit then fade the background in over 1 second
+    Future.delayed(const Duration(milliseconds: 100), () {
+      setState(() {
+        _opacity = 1.0;
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<ui.Image>>(
-        future: loadImage(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return Vitality.randomly(
+      future: loadImage(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return AnimatedOpacity(
+            opacity: _opacity,
+            duration: const Duration(milliseconds: 1000),
+            child: Vitality.randomly(
               whenOutOfScreenMode: WhenOutOfScreenMode.Teleport,
               randomItemsColors: const [Colors.yellow],
               background: Colors.transparent,
-              itemsCount: 16,
+              itemsCount: 12,
               maxSize: 60,
-              minSize: 60,
-              maxSpeed: 0.5,
-              minSpeed: 0.5,
+              minSize: 30,
+              maxSpeed: 0.25,
+              minSpeed: 0.1,
               enableYMovements: true,
               enableXMovements: true,
               randomItemsBehaviours: snapshot.data
@@ -55,9 +76,11 @@ class AnimatedBackground extends StatelessWidget {
                           ))
                       .toList() ??
                   [],
-            );
-          }
-          return const SizedBox();
-        });
+            ),
+          );
+        }
+        return const SizedBox();
+      },
+    );
   }
 }
