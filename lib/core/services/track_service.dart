@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:palette_generator/palette_generator.dart';
+import 'package:http/http.dart' as http;
 import 'api_service.dart';
 
 class TrackService {
@@ -28,15 +29,8 @@ class TrackService {
     _currentTrackData = trackData;
 
     try {
-      // Try to get artwork URL from different sources
-      String? artworkUrl;
-      if (trackData['platforms']?['spotify']?['artworkUrl'] != null) {
-        artworkUrl = trackData['platforms']['spotify']['artworkUrl'];
-      } else if (trackData['platforms']?['applemusic']?['artworkUrl'] != null) {
-        artworkUrl = trackData['platforms']['applemusic']['artworkUrl'];
-      } else if (trackData['details']?['coverArtUrl'] != null) {
-        artworkUrl = trackData['details']['coverArtUrl'];
-      }
+      // Extract artwork URL
+      String? artworkUrl = _extractArtworkUrl(trackData);
 
       if (artworkUrl != null && artworkUrl.isNotEmpty) {
         print("Getting dominant color from artwork: $artworkUrl");
@@ -68,77 +62,40 @@ class TrackService {
     return trackData;
   }
 
+  String? _extractArtworkUrl(Map<String, dynamic> trackData) {
+    return trackData['details']?['coverArtUrl'] as String?;
+  }
+
   Future<Color> getDominantColor(String imageUrl) async {
     try {
-      // Simple color mapping based on platform
-      if (_currentTrackData != null) {
-        final platforms =
-            _currentTrackData!['platforms'] as Map<String, dynamic>?;
-
-        // Get genres from any available platform
-        final List<String> genres = [];
-        if (platforms != null) {
-          for (var platform in platforms.values) {
-            if (platform is Map<String, dynamic> &&
-                platform['genres'] is List) {
-              genres.addAll((platform['genres'] as List).cast<String>());
-            }
-          }
-        }
-
-        // Color selection based on genre
-        if (genres.isNotEmpty) {
-          String mainGenre = genres.first.toLowerCase();
-
-          // Genre-based color mapping
-          if (mainGenre.contains('rock') || mainGenre.contains('metal')) {
-            return Colors.red.shade700;
-          } else if (mainGenre.contains('blues')) {
-            return Colors.indigo.shade600;
-          } else if (mainGenre.contains('jazz')) {
-            return Colors.amber.shade700;
-          } else if (mainGenre.contains('classical')) {
-            return Colors.brown.shade500;
-          } else if (mainGenre.contains('electronic') ||
-              mainGenre.contains('dance')) {
-            return Colors.purple.shade500;
-          } else if (mainGenre.contains('hip') || mainGenre.contains('rap')) {
-            return Colors.grey.shade800;
-          } else if (mainGenre.contains('soul') || mainGenre.contains('r&b')) {
-            return Colors.deepOrange.shade500;
-          } else if (mainGenre.contains('pop')) {
-            return Colors.pink.shade400;
-          } else if (mainGenre.contains('country') ||
-              mainGenre.contains('folk')) {
-            return Colors.green.shade600;
-          }
-        }
-
-        // If no genre match, use platform-based colors
-        if (platforms?['spotify'] != null) {
-          return const Color(0xFF1DB954); // Spotify green
-        } else if (platforms?['applemusic'] != null) {
-          return const Color(0xFFFA243C); // Apple Music red
-        } else if (platforms?['deezer'] != null) {
-          return const Color(0xFF00C7F2); // Deezer blue
-        }
+      // Download image bytes using http to avoid canvas tainting issues
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode != 200) {
+        // Fallback to default color if the image fails to load
+        return Colors.blue; // Default color
       }
-
-      // Default color sequence if no other matches
-      final defaultColors = [
-        Colors.purple.shade500,
-        Colors.teal.shade500,
-        Colors.deepOrange.shade500,
-        Colors.indigo.shade500,
-        Colors.pink.shade500,
-      ];
-
-      // Use a deterministic selection based on the URL
-      final colorIndex = imageUrl.hashCode.abs() % defaultColors.length;
-      return defaultColors[colorIndex];
+      // Create an in-memory image from the downloaded bytes
+      final PaletteGenerator paletteGenerator =
+          await PaletteGenerator.fromImageProvider(
+        MemoryImage(response.bodyBytes),
+        size: const Size(200, 200), // Constrain size for faster processing
+        maximumColorCount: 32, // Increased for better color selection
+      );
+      // Filter for more vibrant colors
+      List<PaletteColor> vibrantColors =
+          paletteGenerator.paletteColors.where((paletteColor) {
+        final hsl = HSLColor.fromColor(paletteColor.color);
+        // Filter colors based on saturation and lightness
+        return hsl.saturation > 0.4 &&
+            hsl.lightness > 0.3 &&
+            hsl.lightness < 0.7;
+      }).toList()
+            ..sort((a, b) => b.population.compareTo(a.population));
+      // Return the most vibrant color, or default to blue if none found
+      return vibrantColors.isNotEmpty ? vibrantColors.first.color : Colors.blue;
     } catch (e) {
-      print("Error in getDominantColor: $e");
-      return Colors.purple.shade500; // Different default than blue
+      print('Error in getDominantColor: $e'); // Log error for debugging
+      return Colors.blue; // Fallback color
     }
   }
 }

@@ -217,8 +217,7 @@ class _EntityPageState extends State<EntityPage> {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
-          des == null ? createAccWidget() : desWidget(),
-          SizedBox(height: des == null ? 125 : 0),
+          if (des != null) desWidget(),
           const Divider(
               height: 2,
               thickness: 2,
@@ -231,7 +230,7 @@ class _EntityPageState extends State<EntityPage> {
               ? AppUtils.trackSocialLinksWidget(
                   platforms: widget.postData!['platforms'])
               : AppUtils.trackSocialLinksWidget(),
-          Visibility(visible: !isLoggedIn, child: createAccWidget()),
+          if (!isLoggedIn) createAccWidget(),
         ],
       ),
     );
@@ -255,7 +254,7 @@ class _EntityPageState extends State<EntityPage> {
           text: "Create Your Free Account!",
           onTap: () {
             Future.delayed(
-              Duration(milliseconds: 180),
+              const Duration(milliseconds: 180),
               () => context.go('/signup'),
             );
           },
