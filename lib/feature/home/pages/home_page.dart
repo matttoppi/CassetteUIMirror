@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage>
     super.initState();
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 5500),
+      duration: const Duration(milliseconds: 6000),
     );
 
     // Test API connection
@@ -53,41 +53,49 @@ class _HomePageState extends State<HomePage>
     });
 
     groupAFadeAnimation = TweenSequence<double>([
-      // Fade in from 0.0 to 1.0 during the first 45% of the timeline
+      // Fade in from 0.0 to 1.0 during the first 23.3% of the timeline (35% of original 4000ms)
       TweenSequenceItem(
         tween: Tween<double>(begin: 0.0, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
-        weight: 45,
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 23.3,
       ),
-      // Then maintain full opacity until the end (remaining 55%)
+      // Then maintain full opacity until the end
       TweenSequenceItem(
         tween: ConstantTween<double>(1.0),
-        weight: 55,
+        weight: 76.7,
       ),
     ]).animate(_fadeController);
     _logoSlideAnimation = TweenSequence<Offset>([
-      // Hold the logo at the lower offset for the first 45% of the timeline
+      // Hold the logo at the lower offset for the first 23.3% of the timeline (35% of original 4000ms)
       TweenSequenceItem(
         tween: ConstantTween<Offset>(const Offset(0, 0.8)),
-        weight: 45,
+        weight: 23.3,
       ),
-      // Slide upward from offset (0, 0.8) to (0, 0.0) over the remaining 55%
+      // Slide upward from offset (0, 0.8) to (0, 0.0) - over 26.7% (40% of original 4000ms)
       TweenSequenceItem(
         tween: Tween<Offset>(begin: const Offset(0, 0.8), end: Offset.zero)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 55,
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 26.7,
+      ),
+      // Hold at final position for remaining time
+      TweenSequenceItem(
+        tween: ConstantTween<Offset>(Offset.zero),
+        weight: 50.0,
       ),
     ]).animate(_fadeController);
     groupBFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _fadeController,
-        curve: const Interval(0.818, 1.0, curve: Curves.easeIn),
+        // Adjusted for 6000ms duration (0.55 to 0.825 of original 4000ms = 0.367 to 0.55 of 6000ms)
+        curve: const Interval(0.367, 0.55, curve: Curves.easeOutCubic),
       ),
     );
     groupCFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _fadeController,
-        curve: const Interval(0.818, 1.0, curve: Curves.easeIn),
+        // Start 1s after others finish (0.55 + 1s/6s = 0.55 + 0.167 = 0.717)
+        // End at same duration as group B (0.717 + 0.183 = 0.9)
+        curve: const Interval(0.717, 0.9, curve: Curves.easeOutCubic),
       ),
     );
     groupBSlideAnimation = Tween<Offset>(
@@ -96,10 +104,11 @@ class _HomePageState extends State<HomePage>
     ).animate(
       CurvedAnimation(
         parent: _fadeController,
-        curve: const Interval(0.818, 1.0, curve: Curves.easeOut),
+        // Adjusted for 6000ms duration (0.55 to 0.825 of original 4000ms = 0.367 to 0.55 of 6000ms)
+        curve: const Interval(0.367, 0.55, curve: Curves.easeOutCubic),
       ),
     );
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 400), () {
       _fadeController.forward();
     });
   }
