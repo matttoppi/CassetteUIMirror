@@ -2,15 +2,19 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  // For local development
-  static const String baseUrl = 'http://localhost:5173/api/v1';
+  // API base URL
+  static const String baseUrl =
+      'https://nm2uheummh.us-east-1.awsapprunner.com/api/v1';
+  // Base domain without path for connection testing
+  static const String baseDomain =
+      'https://nm2uheummh.us-east-1.awsapprunner.com';
 
   // Test function to verify API connection using root endpoint
   Future<bool> testConnection() async {
     try {
       // Test with root endpoint GET request
       final response = await http.get(
-        Uri.parse('http://localhost:5173'), // Root URL without /api/v1
+        Uri.parse(baseDomain), // Root URL without /api/v1
       );
       print('API test connection status: ${response.statusCode}');
       print('API info: ${response.body}');
