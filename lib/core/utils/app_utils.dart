@@ -134,24 +134,96 @@ class AppUtils {
       children: [
         IconButton(
           onPressed: () {
-            if (platforms?.containsKey('spotify') ?? false) {
-              openUrlOnNewTab(platforms!['spotify']['url']);
+            try {
+              if (platforms?.containsKey('spotify') ?? false) {
+                final spotifyData =
+                    platforms!['spotify'] as Map<String, dynamic>;
+                final url = spotifyData['url'] ??
+                    spotifyData['link'] ??
+                    spotifyData['href'] ??
+                    '';
+                if (url.isNotEmpty) {
+                  openUrlOnNewTab(url);
+                }
+              }
+            } catch (e) {
+              print('Error opening Spotify link: $e');
             }
           },
           icon: Image.asset(icSpotify, height: 38),
         ),
         IconButton(
           onPressed: () {
-            if (platforms?.containsKey('appleMusic') ?? false) {
-              openUrlOnNewTab(platforms!['appleMusic']['url']);
+            try {
+              // Check for applemusic key (all lowercase, no underscore)
+              if (platforms?.containsKey('applemusic') ?? false) {
+                final appleData =
+                    platforms!['applemusic'] as Map<String, dynamic>;
+                final url = appleData['url'] ??
+                    appleData['link'] ??
+                    appleData['href'] ??
+                    '';
+                if (url.isNotEmpty) {
+                  openUrlOnNewTab(url);
+                }
+              }
+              // Check for apple_music key (with underscore)
+              else if (platforms?.containsKey('apple_music') ?? false) {
+                final appleData =
+                    platforms!['apple_music'] as Map<String, dynamic>;
+                final url = appleData['url'] ??
+                    appleData['link'] ??
+                    appleData['href'] ??
+                    '';
+                if (url.isNotEmpty) {
+                  openUrlOnNewTab(url);
+                }
+              }
+              // Check for appleMusic key (camelCase)
+              else if (platforms?.containsKey('appleMusic') ?? false) {
+                final appleData =
+                    platforms!['appleMusic'] as Map<String, dynamic>;
+                final url = appleData['url'] ??
+                    appleData['link'] ??
+                    appleData['href'] ??
+                    '';
+                if (url.isNotEmpty) {
+                  openUrlOnNewTab(url);
+                }
+              }
+              // Check for apple-music key (with dash)
+              else if (platforms?.containsKey('apple-music') ?? false) {
+                final appleData =
+                    platforms!['apple-music'] as Map<String, dynamic>;
+                final url = appleData['url'] ??
+                    appleData['link'] ??
+                    appleData['href'] ??
+                    '';
+                if (url.isNotEmpty) {
+                  openUrlOnNewTab(url);
+                }
+              }
+            } catch (e) {
+              print('Error opening Apple Music link: $e');
             }
           },
           icon: Image.asset(icApple, height: 38),
         ),
         IconButton(
           onPressed: () {
-            if (platforms?.containsKey('deezer') ?? false) {
-              openUrlOnNewTab(platforms!['deezer']['url']);
+            try {
+              if (platforms?.containsKey('deezer') ?? false) {
+                final deezerData = platforms!['deezer'] as Map<String, dynamic>;
+                final url = deezerData['url'] ??
+                    deezerData['link'] ??
+                    deezerData['href'] ??
+                    '';
+                if (url.isNotEmpty) {
+                  openUrlOnNewTab(url);
+                }
+              }
+            } catch (e) {
+              print('Error opening Deezer link: $e');
             }
           },
           icon: Image.asset(icDeezer, height: 38),
