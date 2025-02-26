@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cassettefrontend/services/spotify_service.dart';
+
+import 'core/services/spotify_service.dart';
 
 class SpotifyCallbackPage extends StatefulWidget {
   final String? code;
