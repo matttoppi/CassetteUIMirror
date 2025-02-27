@@ -31,14 +31,34 @@ class AppUtils {
       ]);
 
   static Widget burgerMenu(
-      {required VoidCallback onPressed, Color? iconColor}) {
+      {required VoidCallback onPressed, Color? iconColor, double? size}) {
+    // Get the screen width if available
+    double? screenWidth;
+    try {
+      screenWidth = WidgetsBinding.instance.window.physicalSize.width /
+          WidgetsBinding.instance.window.devicePixelRatio;
+    } catch (e) {
+      // If we can't get the screen width, use default sizes
+    }
+
+    // Determine icon size based on screen width
+    final bool isNarrow = screenWidth != null && screenWidth < 400;
+    final double iconSize = size ?? (isNarrow ? 36.0 : 42.0);
+    final double imageHeight =
+        size != null ? size * 0.6 : (isNarrow ? 20.0 : 24.0);
+
     return IconButton(
-      iconSize: 42,
+      iconSize: iconSize,
+      padding: EdgeInsets.zero, // Remove padding to save space
+      constraints:
+          const BoxConstraints(), // Remove constraints to allow smaller size
       onPressed: onPressed,
-      icon: Image.asset(icMenu,
-          color: iconColor ?? AppColors.textPrimary,
-          fit: BoxFit.contain,
-          height: 24),
+      icon: Image.asset(
+        icMenu,
+        color: iconColor ?? AppColors.textPrimary,
+        fit: BoxFit.contain,
+        height: imageHeight,
+      ),
     );
   }
 
