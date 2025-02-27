@@ -1,6 +1,8 @@
 import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
 import 'package:cassettefrontend/core/common_widgets/auth_toolbar.dart';
 import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
+import 'package:cassettefrontend/core/common_widgets/auto_paste_text_field_widget.dart';
+import 'package:cassettefrontend/core/common_widgets/clipboard_paste_button.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
@@ -10,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/constants/element_type.dart';
+import 'dart:async';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,6 +34,7 @@ class _HomePageState extends State<HomePage>
   final ScrollController scrollController = ScrollController();
   final TextEditingController tfController = TextEditingController();
   bool isLoading = false;
+  Timer? _autoConvertTimer;
 
   @override
   void initState() {
@@ -172,11 +176,79 @@ class _HomePageState extends State<HomePage>
                       const SizedBox(height: 28),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: TextFieldWidget(
+                        child: ClipboardPasteButton(
                           hint: "Paste your music link here...",
                           controller: tfController,
+                          onPaste: (value) {
+                            // Auto-convert after a short delay to give user time to see what was pasted
+                            _autoConvertTimer?.cancel();
+                            _autoConvertTimer =
+                                Timer(const Duration(milliseconds: 1500), () {
+                              if (value.isNotEmpty && !isLoading && mounted) {
+                                _handleLinkConversion(value);
+                              }
+                            });
+                          },
                         ),
                       ),
+                      if (tfController.text.isNotEmpty && !isLoading)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, right: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  // Cancel auto-convert timer when manually editing
+                                  _autoConvertTimer?.cancel();
+
+                                  // Show a dialog to edit the link
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) {
+                                      final TextEditingController
+                                          editController =
+                                          TextEditingController(
+                                              text: tfController.text);
+                                      return AlertDialog(
+                                        title: const Text('Edit Link'),
+                                        content: TextField(
+                                          controller: editController,
+                                          decoration: const InputDecoration(
+                                            hintText: 'Edit your music link',
+                                          ),
+                                          autofocus: true,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              tfController.text =
+                                                  editController.text;
+                                              Navigator.pop(context);
+                                            },
+                                            child: const Text('Save'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                child: Text(
+                                  'Edit',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 28),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -313,6 +385,7 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     _fadeController.dispose();
+    _autoConvertTimer?.cancel();
     super.dispose();
   }
 }
