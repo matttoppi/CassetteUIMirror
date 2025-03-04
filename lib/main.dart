@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'dart:html' if (dart.library.html) 'dart:html' as html;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/services/router.dart';
 import 'core/services/spotify_service.dart';
@@ -17,16 +18,20 @@ final supabase = Supabase.instance.client;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
-  // const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-  // const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-  // const spotifyApiKey = String.fromEnvironment('SPOTIFY_API_KEY');
+
+  // Load environment variables
+  try {
+    await dotenv.load(fileName: ".env");
+    print('Environment variables loaded successfully');
+  } catch (e) {
+    print('Error loading environment variables: $e');
+  }
 
   try {
     await Supabase.initialize(
       url: Env.supabaseUrl,
       anonKey: Env.supabaseAnonKey,
       debug: true,
-      // Remove authOptions and realtimeClientOptions for now
     );
     print('Supabase initialized successfully');
   } catch (e) {

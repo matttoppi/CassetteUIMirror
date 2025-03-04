@@ -2,12 +2,26 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  // API base URL
-  static const String baseUrl =
-      'https://nm2uheummh.us-east-1.awsapprunner.com/api/v1';
-  // Base domain without path for connection testing
-  static const String baseDomain =
+  // API URLs for different environments
+  static const String _prodBaseUrl =
       'https://nm2uheummh.us-east-1.awsapprunner.com';
+  static const String _localBaseUrl = 'http://localhost:5173';
+
+  // Get the base URL from environment configuration
+  static String get baseUrl {
+    // Read the API_ENV from dart-define, default to 'prod' if not set
+    final apiEnv =
+        const String.fromEnvironment('API_ENV', defaultValue: 'prod');
+    final baseDomain = apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
+    return '$baseDomain/api/v1';
+  }
+
+  // Base domain without path for connection testing
+  static String get baseDomain {
+    final apiEnv =
+        const String.fromEnvironment('API_ENV', defaultValue: 'prod');
+    return apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
+  }
 
   // Test function to verify API connection using root endpoint
   Future<bool> testConnection() async {
@@ -50,9 +64,22 @@ class ApiService {
             'musicElementId': data['musicElementId'],
             'postId': data['postId'],
             'details': {
-              'title': data['details']['title'],
-              'artist': data['details']['artist'],
-              'coverArtUrl': data['details']['coverArtUrl'],
+              'title': data['elementType']?.toLowerCase() == 'artist'
+                  ? data['details']['name']
+                  : data['details']['title'],
+              'artist': data['elementType']?.toLowerCase() == 'artist'
+                  ? '' // Artists don't have an artist field
+                  : data['details']['artist'],
+              'coverArtUrl': data['elementType']?.toLowerCase() == 'artist'
+                  ? data['details']['imageUrl']
+                  : data['details']['coverArtUrl'],
+              // Add additional artist-specific fields
+              if (data['elementType']?.toLowerCase() ==
+                  'artist') ...<String, dynamic>{
+                'followers': data['details']['followers'],
+                'genres': data['details']['genres'],
+                'popularity': data['details']['popularity'],
+              },
               // Optional fields for collections
               if (data['details']['tracks'] != null)
                 'tracks': data['details']['tracks'],

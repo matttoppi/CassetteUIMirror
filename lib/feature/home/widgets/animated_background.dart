@@ -11,8 +11,10 @@ class AnimatedBackground extends StatefulWidget {
   State<AnimatedBackground> createState() => _AnimatedBackgroundState();
 }
 
-class _AnimatedBackgroundState extends State<AnimatedBackground> {
-  double _opacity = 0.0;
+class _AnimatedBackgroundState extends State<AnimatedBackground>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  bool _imagesLoaded = false;
 
   List<String> bgElements = [
     icCircleBlue,
@@ -35,18 +37,26 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
       ui.FrameInfo fi = await codec.getNextFrame();
       list.add(fi.image);
     }
+
+    // Only start animation after images are loaded
+    if (!_imagesLoaded && mounted) {
+      setState(() {
+        _imagesLoaded = true;
+      });
+      _fadeController.forward();
+    }
+
     return list;
   }
 
   @override
   void initState() {
     super.initState();
-    // Delay a bit then fade the background in over 1 second
-    Future.delayed(const Duration(milliseconds: 100), () {
-      setState(() {
-        _opacity = 1.0;
-      });
-    });
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+      value: 0, // Ensure we start at 0
+    );
   }
 
   @override
@@ -54,33 +64,44 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
     return FutureBuilder<List<ui.Image>>(
       future: loadImage(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return AnimatedOpacity(
-            opacity: _opacity,
-            duration: const Duration(milliseconds: 1000),
-            child: Vitality.randomly(
-              whenOutOfScreenMode: WhenOutOfScreenMode.Teleport,
-              randomItemsColors: const [Colors.yellow],
-              background: Colors.transparent,
-              itemsCount: 12,
-              maxSize: 60,
-              minSize: 30,
-              maxSpeed: 0.25,
-              minSpeed: 0.1,
-              enableYMovements: true,
-              enableXMovements: true,
-              randomItemsBehaviours: snapshot.data
-                      ?.map((image) => ItemBehaviour(
-                            shape: ShapeType.Image,
-                            image: image,
-                          ))
-                      .toList() ??
-                  [],
-            ),
-          );
+        if (!snapshot.hasData) {
+          return const SizedBox(); // Return empty widget while loading
         }
-        return const SizedBox();
+
+        return AnimatedBuilder(
+          animation: _fadeController,
+          builder: (context, child) {
+            return Opacity(
+              opacity: _fadeController.value,
+              child: Vitality.randomly(
+                whenOutOfScreenMode: WhenOutOfScreenMode.Teleport,
+                randomItemsColors: List.generate(12, (index) => Colors.white),
+                background: Colors.transparent,
+                itemsCount: 12,
+                maxSize: 60,
+                minSize: 30,
+                maxSpeed: 0.25,
+                minSpeed: 0.1,
+                enableYMovements: true,
+                enableXMovements: true,
+                randomItemsBehaviours: snapshot.data
+                        ?.map((image) => ItemBehaviour(
+                              shape: ShapeType.Image,
+                              image: image,
+                            ))
+                        .toList() ??
+                    [],
+              ),
+            );
+          },
+        );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
   }
 }
