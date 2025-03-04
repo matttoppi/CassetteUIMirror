@@ -64,9 +64,22 @@ class ApiService {
             'musicElementId': data['musicElementId'],
             'postId': data['postId'],
             'details': {
-              'title': data['details']['title'],
-              'artist': data['details']['artist'],
-              'coverArtUrl': data['details']['coverArtUrl'],
+              'title': data['elementType']?.toLowerCase() == 'artist'
+                  ? data['details']['name']
+                  : data['details']['title'],
+              'artist': data['elementType']?.toLowerCase() == 'artist'
+                  ? '' // Artists don't have an artist field
+                  : data['details']['artist'],
+              'coverArtUrl': data['elementType']?.toLowerCase() == 'artist'
+                  ? data['details']['imageUrl']
+                  : data['details']['coverArtUrl'],
+              // Add additional artist-specific fields
+              if (data['elementType']?.toLowerCase() ==
+                  'artist') ...<String, dynamic>{
+                'followers': data['details']['followers'],
+                'genres': data['details']['genres'],
+                'popularity': data['details']['popularity'],
+              },
               // Optional fields for collections
               if (data['details']['tracks'] != null)
                 'tracks': data['details']['tracks'],

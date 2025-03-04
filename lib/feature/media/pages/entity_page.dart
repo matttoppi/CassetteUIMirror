@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:cassettefrontend/core/services/track_service.dart';
 import 'package:cassettefrontend/core/services/report_service.dart';
+import 'package:intl/intl.dart';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -85,15 +86,27 @@ class _EntityPageState extends State<EntityPage> {
               final platforms =
                   widget.postData!['platforms'] as Map<String, dynamic>?;
               if (platforms != null) {
-                // Try Spotify first, then Apple Music
+                // Try each platform in order: Deezer, Spotify, Apple Music
+                final deezer = platforms['deezer'] as Map<String, dynamic>?;
                 final spotify = platforms['spotify'] as Map<String, dynamic>?;
                 final appleMusic =
                     platforms['applemusic'] as Map<String, dynamic>?;
 
-                imageUrl = spotify?['artworkUrl']?.toString() ??
+                imageUrl = deezer?['artworkUrl']?.toString() ??
+                    spotify?['artworkUrl']?.toString() ??
                     appleMusic?['artworkUrl']?.toString() ??
                     '';
                 print('Got imageUrl from platforms: $imageUrl');
+
+                // For artists, also try to get additional info if not already set
+                if (widget.type == 'artist') {
+                  // Get genres from Apple Music if available
+                  final genres = appleMusic?['genres'] as List<dynamic>? ?? [];
+                  if (genres.isNotEmpty) {
+                    print('Got genres from Apple Music: $genres');
+                    // Store genres in details if needed
+                  }
+                }
               }
             }
 
@@ -111,7 +124,9 @@ class _EntityPageState extends State<EntityPage> {
         } else {
           print('Error: No details found in postData');
           setState(() {
-            name = 'Error Loading Track';
+            name = widget.type == 'artist'
+                ? 'Error Loading Artist'
+                : 'Error Loading Track';
             artistName = '';
             imageUrl = '';
           });
@@ -120,7 +135,9 @@ class _EntityPageState extends State<EntityPage> {
         print('Error processing track data: $e');
         print('Stack trace: $stackTrace');
         setState(() {
-          name = 'Error Loading Track';
+          name = widget.type == 'artist'
+              ? 'Error Loading Artist'
+              : 'Error Loading Track';
           artistName = '';
           imageUrl = '';
         });
@@ -420,7 +437,7 @@ class _EntityPageState extends State<EntityPage> {
             maxLines: 1,
           ),
           widget.type == "artist"
-              ? const SizedBox()
+              ? _buildArtistDetails()
               : Text(
                   artistName,
                   style: AppStyles.trackArtistNameTs,
@@ -436,16 +453,41 @@ class _EntityPageState extends State<EntityPage> {
               endIndent: 10,
               indent: 10),
           const SizedBox(height: 18),
-          // Pass platforms data to social links widget
           widget.postData != null
               ? AppUtils.trackSocialLinksWidget(
                   platforms: widget.postData!['platforms'])
               : AppUtils.trackSocialLinksWidget(),
           if (!isLoggedIn) createAccWidget(),
-          // Add report problem button
           _reportProblemButton(),
         ],
       ),
+    );
+  }
+
+  Widget _buildArtistDetails() {
+    final details = widget.postData?['details'] as Map<String, dynamic>?;
+    if (details == null) return const SizedBox();
+
+    final genres = (details['genres'] as List<dynamic>?)?.cast<String>() ?? [];
+
+    return Column(
+      children: [
+        if (genres.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: genres
+                .map((genre) => Chip(
+                      label: Text(genre),
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                      labelStyle: TextStyle(color: AppColors.primary),
+                    ))
+                .toList(),
+          ),
+        ],
+      ],
     );
   }
 
