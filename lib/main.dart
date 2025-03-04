@@ -19,14 +19,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setPathUrlStrategy();
 
-  // Load environment variables
-  try {
-    await dotenv.load(fileName: ".env");
-    print('Environment variables loaded successfully');
-  } catch (e) {
-    print('Error loading environment variables: $e');
-  }
-
   try {
     await Supabase.initialize(
       url: Env.supabaseUrl,

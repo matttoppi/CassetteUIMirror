@@ -5,13 +5,15 @@ class ApiService {
   // API URLs for different environments
   static const String _prodBaseUrl =
       'https://nm2uheummh.us-east-1.awsapprunner.com';
-  static const String _localBaseUrl = 'http://localhost:5173';
+  static const String _localBaseUrl =
+      'http://localhost:5173'; // Updated to match your local API port
 
   // Get the base URL from environment configuration
   static String get baseUrl {
     // Read the API_ENV from dart-define, default to 'prod' if not set
     final apiEnv =
         const String.fromEnvironment('API_ENV', defaultValue: 'prod');
+    print('Current API Environment: $apiEnv'); // Helpful for debugging
     final baseDomain = apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
     return '$baseDomain/api/v1';
   }

@@ -88,7 +88,6 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
-    - .env
     - lib/assets/images/cassette_name_logo.png
     - lib/assets/images/cassette_name.png
     - lib/core/data/dummy_profile_data.json
