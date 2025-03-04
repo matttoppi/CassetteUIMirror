@@ -253,7 +253,24 @@ class _HomePageState extends State<HomePage>
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: AnimatedPrimaryButton(
-                          text: isLoading ? "Converting..." : "Convert",
+                          text: isLoading ? null : "Convert",
+                          centerWidget: isLoading
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : null,
                           onTap: isLoading
                               ? () {} // Empty function when loading
                               : () => _handleLinkConversion(tfController.text),
