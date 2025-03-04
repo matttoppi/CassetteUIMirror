@@ -291,6 +291,7 @@ class AppUtils {
     );
   }
 
+
   static Future<XFile?> uploadPhoto() async {
     final image = await ImagePicker()
         .pickImage(source: ImageSource.gallery, maxHeight: 400, maxWidth: 400);
