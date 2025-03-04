@@ -4,19 +4,22 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../env.dart';
 
 class SpotifyService {
-  static const String _clientId = '352a874dee3c4b46b27f1a96df70aa0b';
-  static const String _clientSecret = '393f714172be4f00a2f68dbac3baa029';
-  static const String _localRedirectUri = 'http://localhost:56752/spotify_callback';
-  static const String _productionRedirectUri = 'https://cassetteinc.org/spotify_callback';
+  static String get _clientId => Env.spotifyClientId;
+  static String get _clientSecret => Env.spotifyClientSecret;
+  static String get _localRedirectUri => '${Env.appDomain}/spotify_callback';
+  static String get _productionRedirectUri =>
+      '${Env.appDomain}/spotify_callback';
   static const String _scope = 'user-read-private user-read-email';
 
   static String get _redirectUri {
     if (kIsWeb) {
       final currentUrl = Uri.base.toString();
       print('Current URL: $currentUrl');
-      if (currentUrl.startsWith('http://localhost') || currentUrl.startsWith('http://127.0.0.1')) {
+      if (currentUrl.startsWith('http://localhost') ||
+          currentUrl.startsWith('http://127.0.0.1')) {
         return _localRedirectUri;
       } else {
         return _productionRedirectUri;
@@ -45,7 +48,8 @@ class SpotifyService {
     } else {
       // For mobile platforms
       if (await canLaunchUrl(Uri.parse(authUrl))) {
-        await launchUrl(Uri.parse(authUrl), mode: LaunchMode.externalApplication);
+        await launchUrl(Uri.parse(authUrl),
+            mode: LaunchMode.externalApplication);
       } else {
         throw 'Could not launch $authUrl';
       }
