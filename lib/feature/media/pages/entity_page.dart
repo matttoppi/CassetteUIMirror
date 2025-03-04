@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:cassettefrontend/core/services/track_service.dart';
+import 'package:cassettefrontend/core/services/report_service.dart';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -33,6 +34,7 @@ class EntityPage extends StatefulWidget {
 
 class _EntityPageState extends State<EntityPage> {
   final TrackService _trackService = TrackService();
+  final ReportService _reportService = ReportService();
   String name = '';
   String artistName = '';
   String? des;
@@ -40,6 +42,16 @@ class _EntityPageState extends State<EntityPage> {
   Color dominateColor = AppColors.appBg;
   bool isLoggedIn = false;
   String imageUrl = '';
+  // Selected issue for reporting
+  String? _selectedIssue;
+  // Text controller for "Other" option
+  final TextEditingController _otherIssueController = TextEditingController();
+
+  @override
+  void dispose() {
+    _otherIssueController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -174,6 +186,205 @@ class _EntityPageState extends State<EntityPage> {
     ));
   }
 
+  // Show report problem dialog with radio buttons for issue selection
+  void _showReportDialog() {
+    // Reset the text controller when opening the dialog
+    _otherIssueController.clear();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Report a Problem'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Please select the issue you\'re experiencing:'),
+                  const SizedBox(height: 16),
+                  RadioListTile<String>(
+                    title: const Text('Conversion Links'),
+                    value: 'Conversion Links',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Cover Art'),
+                    value: 'Cover Art',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Music Element Title or Artist'),
+                    value: 'Music Element Title or Artist',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Other'),
+                    value: 'Other',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: _selectedIssue == 'Other' ? 80 : 0,
+                    curve: Curves.easeInOut,
+                    child: AnimatedOpacity(
+                      opacity: _selectedIssue == 'Other' ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: TextField(
+                          controller: _otherIssueController,
+                          decoration: const InputDecoration(
+                            hintText: 'Please describe the issue...',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          enabled: _selectedIssue == 'Other' && !isSubmitting,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                        },
+                  child: const Text('Cancel'),
+                ),
+                if (isSubmitting)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                else
+                  TextButton(
+                    onPressed: _selectedIssue == null
+                        ? null
+                        : () async {
+                            if (_selectedIssue == 'Other' &&
+                                _otherIssueController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please describe the issue'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+
+                            setState(() {
+                              isSubmitting = true;
+                            });
+
+                            try {
+                              await _reportService.submitReport(
+                                postId: widget.postId ?? '',
+                                issueType: _selectedIssue!,
+                                elementType: widget.type ?? 'track',
+                                elementId: widget.trackId ?? '',
+                                description: _selectedIssue == 'Other'
+                                    ? _otherIssueController.text
+                                    : null,
+                                apiResponse: widget.postData,
+                                originalLink:
+                                    widget.postData?['originalLink'] as String?,
+                              );
+
+                              if (mounted) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Thank you for your report. We\'ll look into it.'),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setState(() {
+                                isSubmitting = false;
+                              });
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text('Error submitting report: $e'),
+                                    duration: const Duration(seconds: 3),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    child: const Text('Submit'),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Report problem button widget
+  Widget _reportProblemButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextButton.icon(
+        onPressed: _showReportDialog,
+        icon: const Icon(Icons.report_problem_outlined, color: Colors.red),
+        label: const Text(
+          'Report a Problem',
+          style: TextStyle(color: Colors.red),
+        ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          backgroundColor: Colors.red.withOpacity(0.1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Colors.red, width: 1),
+          ),
+        ),
+      ),
+    );
+  }
+
   body() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -231,6 +442,8 @@ class _EntityPageState extends State<EntityPage> {
                   platforms: widget.postData!['platforms'])
               : AppUtils.trackSocialLinksWidget(),
           if (!isLoggedIn) createAccWidget(),
+          // Add report problem button
+          _reportProblemButton(),
         ],
       ),
     );

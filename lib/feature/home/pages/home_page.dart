@@ -353,6 +353,9 @@ class _HomePageState extends State<HomePage>
           throw Exception('Missing required fields in response');
         }
 
+        // Add the original link to the response data for later use in reports
+        response['originalLink'] = link;
+
         // Navigate based on element type
         final type = elementType.toLowerCase();
         if (type == 'track' ||
