@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' if (dart.library.html) 'dart:html' show window;
 
 class ClipboardPasteButton extends StatefulWidget {
   final String hint;
@@ -36,23 +37,60 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
   String _displayText = "";
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
+  int _retryCount = 0;
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(milliseconds: 300);
 
-  // Determine if we're on a desktop platform where hover makes sense
-  // This is a fallback method used in initState before we have context
-  bool get _isDesktop {
+  // Helper to detect iOS in web
+  bool get _isIOS {
     if (kIsWeb) {
-      // For web, we'll need context to determine if it's mobile or desktop
-      // So we'll default to true and update in didChangeDependencies
-      return true;
+      // Check user agent for iOS
+      final userAgent = window.navigator.userAgent.toLowerCase();
+      return userAgent.contains('iphone') ||
+          userAgent.contains('ipad') ||
+          userAgent.contains('ipod');
     }
-
     try {
-      // Check if we're on a desktop OS
-      return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+      return Platform.isIOS;
     } catch (e) {
-      // If Platform is not available, default to false
       return false;
     }
+  }
+
+  // Helper to check if it's an Apple Music link
+  bool _isAppleMusicLink(String? text) {
+    if (text == null) return false;
+    final linkLower = text.toLowerCase();
+    return linkLower.contains('apple.com') || linkLower.contains('music.apple');
+  }
+
+  // Retry mechanism for clipboard access
+  Future<ClipboardData?> _getClipboardWithRetry() async {
+    ClipboardData? clipboardData;
+
+    while (_retryCount < maxRetries && clipboardData?.text?.isEmpty != false) {
+      try {
+        // Add delay for iOS devices, especially for Apple Music links
+        if (_isIOS) {
+          await Future.delayed(retryDelay * (_retryCount + 1));
+        }
+
+        clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+
+        // If we got data, or if it's not iOS/Apple Music, break
+        if (clipboardData?.text?.isNotEmpty == true ||
+            (!_isIOS && !_isAppleMusicLink(clipboardData?.text))) {
+          break;
+        }
+
+        _retryCount++;
+      } catch (e) {
+        print('Retry $_retryCount failed: $e');
+        _retryCount++;
+      }
+    }
+
+    return clipboardData;
   }
 
   @override
@@ -144,6 +182,9 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
   }
 
   Future<void> _pasteFromClipboard() async {
+    // Reset retry count
+    _retryCount = 0;
+
     // Run a quick tap animation
     _animationController.forward().then((_) {
       _animationController.reverse();
@@ -154,9 +195,9 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
     });
 
     try {
-      // Get clipboard data
-      ClipboardData? clipboardData =
-          await Clipboard.getData(Clipboard.kTextPlain);
+      // Get clipboard data with retry mechanism
+      final clipboardData = await _getClipboardWithRetry();
+
       if (clipboardData != null &&
           clipboardData.text != null &&
           clipboardData.text!.isNotEmpty) {
@@ -182,24 +223,117 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
           });
         }
       } else {
-        // Show a snackbar if clipboard is empty
+        // Show a more detailed snackbar message
         if (mounted) {
+          final message = _isIOS && _retryCount >= maxRetries
+              ? 'Unable to access clipboard. For Apple Music links, try manually entering the URL.'
+              : 'No text found in clipboard';
+
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No text found in clipboard'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: Text(message),
+              duration: const Duration(seconds: 2),
+              action: SnackBarAction(
+                label: 'Manual Entry',
+                onPressed: () {
+                  // Show manual entry dialog
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      final TextEditingController manualController =
+                          TextEditingController();
+                      return AlertDialog(
+                        title: const Text('Enter Music Link'),
+                        content: TextField(
+                          controller: manualController,
+                          decoration: const InputDecoration(
+                            hintText: 'Paste or type your music link here',
+                          ),
+                          autofocus: true,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              if (manualController.text.isNotEmpty) {
+                                widget.controller.text = manualController.text;
+                                _updateDisplayText(manualController.text);
+                                if (widget.onPaste != null) {
+                                  widget.onPaste!(manualController.text);
+                                }
+                                setState(() {
+                                  _hasContent = true;
+                                });
+                              }
+                              Navigator.pop(context);
+                            },
+                            child: const Text('Add'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           );
         }
       }
     } catch (e) {
-      // Handle any errors
       print('Error pasting from clipboard: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error accessing clipboard: ${e.toString()}'),
+            content: Text('Error accessing clipboard. Try manual entry.'),
             duration: const Duration(seconds: 2),
+            action: SnackBarAction(
+              label: 'Manual Entry',
+              onPressed: () {
+                // Show manual entry dialog (same as above)
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    final TextEditingController manualController =
+                        TextEditingController();
+                    return AlertDialog(
+                      title: const Text('Enter Music Link'),
+                      content: TextField(
+                        controller: manualController,
+                        decoration: const InputDecoration(
+                          hintText: 'Paste or type your music link here',
+                        ),
+                        autofocus: true,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            if (manualController.text.isNotEmpty) {
+                              widget.controller.text = manualController.text;
+                              _updateDisplayText(manualController.text);
+                              if (widget.onPaste != null) {
+                                widget.onPaste!(manualController.text);
+                              }
+                              setState(() {
+                                _hasContent = true;
+                              });
+                            }
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Add'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
           ),
         );
       }
@@ -389,17 +523,80 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       )
-                    : IconButton(
-                        icon: Icon(
-                          Icons.content_paste_rounded,
-                          color: _shouldHighlight(isDesktop)
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
-                          size: 20,
-                        ),
-                        onPressed: _pasteFromClipboard,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.content_paste_rounded,
+                              color: _shouldHighlight(isDesktop)
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                              size: 20,
+                            ),
+                            onPressed: _pasteFromClipboard,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              color: _shouldHighlight(isDesktop)
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  final TextEditingController manualController =
+                                      TextEditingController();
+                                  return AlertDialog(
+                                    title: const Text('Enter Music Link'),
+                                    content: TextField(
+                                      controller: manualController,
+                                      decoration: const InputDecoration(
+                                        hintText:
+                                            'Paste or type your music link here',
+                                      ),
+                                      autofocus: true,
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          if (manualController
+                                              .text.isNotEmpty) {
+                                            widget.controller.text =
+                                                manualController.text;
+                                            _updateDisplayText(
+                                                manualController.text);
+                                            if (widget.onPaste != null) {
+                                              widget.onPaste!(
+                                                  manualController.text);
+                                            }
+                                            setState(() {
+                                              _hasContent = true;
+                                            });
+                                          }
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text('Add'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                       ),
             ],
           ),

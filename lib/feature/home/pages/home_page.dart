@@ -183,7 +183,7 @@ class _HomePageState extends State<HomePage>
                             // Auto-convert after a short delay to give user time to see what was pasted
                             _autoConvertTimer?.cancel();
                             _autoConvertTimer =
-                                Timer(const Duration(milliseconds: 1500), () {
+                                Timer(const Duration(milliseconds: 500), () {
                               if (value.isNotEmpty && !isLoading && mounted) {
                                 _handleLinkConversion(value);
                               }
@@ -238,7 +238,7 @@ class _HomePageState extends State<HomePage>
                                     },
                                   );
                                 },
-                                child: Text(
+                                child: const Text(
                                   'Edit',
                                   style: TextStyle(
                                     color: AppColors.primary,
@@ -255,10 +255,10 @@ class _HomePageState extends State<HomePage>
                         child: AnimatedPrimaryButton(
                           text: isLoading ? null : "Convert",
                           centerWidget: isLoading
-                              ? Row(
+                              ? const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const SizedBox(
+                                    SizedBox(
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
