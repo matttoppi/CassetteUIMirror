@@ -186,14 +186,8 @@ class _HomePageState extends State<HomePage>
                             // Only auto-convert if the link is from a supported service
                             final linkLower = value.toLowerCase();
                             final isSupported = linkLower.contains('spotify') ||
-                                linkLower.contains('apple.com') ||
-                                linkLower.contains('music.apple') ||
-                                linkLower.contains('deezer') ||
-                                linkLower.contains('tidal') ||
-                                linkLower.contains('youtube') ||
-                                linkLower.contains('youtu.be') ||
-                                linkLower.contains('soundcloud') ||
-                                linkLower.contains('amazon');
+                                linkLower.contains('apple') ||
+                                linkLower.contains('deezer');
 
                             if (isSupported && !isLoading && mounted) {
                               // Start a shorter timer for better UX

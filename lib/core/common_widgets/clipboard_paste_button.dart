@@ -90,23 +90,12 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
 
     if (linkLower.contains('spotify')) {
       _displayText = "Spotify link pasted...";
-    } else if (linkLower.contains('apple.com') ||
-        linkLower.contains('music.apple')) {
+    } else if (linkLower.contains('apple')) {
       _displayText = "Apple Music link pasted...";
     } else if (linkLower.contains('deezer')) {
       _displayText = "Deezer link pasted...";
-    } else if (linkLower.contains('tidal')) {
-      _displayText = "Tidal link pasted...";
-    } else if (linkLower.contains('youtube') ||
-        linkLower.contains('youtu.be')) {
-      _displayText = "YouTube link pasted...";
-    } else if (linkLower.contains('soundcloud')) {
-      _displayText = "SoundCloud link pasted...";
-    } else if (linkLower.contains('amazon') ||
-        linkLower.contains('music.amazon')) {
-      _displayText = "Amazon Music link pasted...";
     } else {
-      _displayText = "Music link pasted...";
+      _displayText = "Link pasted...";
     }
   }
 
@@ -118,8 +107,8 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
 
       widget.controller.text = cleanText;
       _updateDisplayText(cleanText);
+
       if (widget.onPaste != null) {
-        // Ensure we call onPaste with the cleaned text
         widget.onPaste!(cleanText);
       }
       if (widget.onTap != null) {
@@ -150,7 +139,6 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
           // If we got text from pasteboard, clean and validate it
           if (clipboardText != null) {
             clipboardText = clipboardText.trim();
-            // If it's empty after cleaning, set to null to try system clipboard
             if (clipboardText.isEmpty) {
               clipboardText = null;
             }
@@ -167,37 +155,10 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
       }
 
       if (clipboardText != null && clipboardText.isNotEmpty) {
-        // Check if it looks like a music link before auto-pasting
-        final linkLower = clipboardText.toLowerCase();
-        final isLikelyMusicLink = linkLower.contains('spotify') ||
-            linkLower.contains('apple.com') ||
-            linkLower.contains('music.apple') ||
-            linkLower.contains('deezer') ||
-            linkLower.contains('tidal') ||
-            linkLower.contains('youtube') ||
-            linkLower.contains('youtu.be') ||
-            linkLower.contains('soundcloud') ||
-            linkLower.contains('amazon');
-
-        if (isLikelyMusicLink) {
-          await _handlePastedText(clipboardText);
-        } else {
-          // If it doesn't look like a music link, show manual entry with the text pre-filled
-          if (mounted) {
-            _showManualEntryDialog(initialText: clipboardText);
-          }
-        }
-      } else {
-        // If no text found, show empty manual entry dialog
-        if (mounted) {
-          _showManualEntryDialog();
-        }
+        await _handlePastedText(clipboardText);
       }
     } catch (e) {
       print('Error pasting from clipboard: $e');
-      if (mounted) {
-        _showManualEntryDialog();
-      }
     } finally {
       if (mounted) {
         setState(() {
@@ -205,61 +166,6 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
         });
       }
     }
-  }
-
-  void _showManualEntryDialog({String? initialText}) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final TextEditingController manualController =
-            TextEditingController(text: initialText);
-        return AlertDialog(
-          title: const Text('Enter Music Link'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: manualController,
-                decoration: const InputDecoration(
-                  hintText: 'Paste or type your music link here',
-                ),
-                autofocus: true,
-                onSubmitted: (value) {
-                  if (value.isNotEmpty) {
-                    _handlePastedText(value);
-                    Navigator.pop(context);
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Supported services: Spotify, Apple Music, YouTube, Deezer, Tidal, SoundCloud, Amazon Music',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (manualController.text.isNotEmpty) {
-                  _handlePastedText(manualController.text);
-                }
-                Navigator.pop(context);
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _clearText() {
@@ -426,19 +332,6 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
                                         size: 20,
                                       ),
                                       onPressed: _pasteFromClipboard,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.edit_outlined,
-                                        color: _shouldHighlight(isDesktop)
-                                            ? AppColors.primary
-                                            : AppColors.textPrimary,
-                                        size: 20,
-                                      ),
-                                      onPressed: _showManualEntryDialog,
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
                                     ),
