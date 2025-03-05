@@ -180,14 +180,28 @@ class _HomePageState extends State<HomePage>
                           hint: "Paste your music link here...",
                           controller: tfController,
                           onPaste: (value) {
-                            // Auto-convert after a short delay to give user time to see what was pasted
+                            // Cancel any existing timer
                             _autoConvertTimer?.cancel();
-                            _autoConvertTimer =
-                                Timer(const Duration(milliseconds: 500), () {
-                              if (value.isNotEmpty && !isLoading && mounted) {
+
+                            // Only auto-convert if the link is from a supported service
+                            final linkLower = value.toLowerCase();
+                            final isSupported = linkLower.contains('spotify') ||
+                                linkLower.contains('apple.com') ||
+                                linkLower.contains('music.apple') ||
+                                linkLower.contains('deezer') ||
+                                linkLower.contains('tidal') ||
+                                linkLower.contains('youtube') ||
+                                linkLower.contains('youtu.be') ||
+                                linkLower.contains('soundcloud') ||
+                                linkLower.contains('amazon');
+
+                            if (isSupported && !isLoading && mounted) {
+                              // Start a shorter timer for better UX
+                              _autoConvertTimer =
+                                  Timer(const Duration(milliseconds: 300), () {
                                 _handleLinkConversion(value);
-                              }
-                            });
+                              });
+                            }
                           },
                         ),
                       ),
