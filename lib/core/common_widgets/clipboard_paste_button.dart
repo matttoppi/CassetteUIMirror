@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pasteboard/pasteboard.dart';
+import 'dart:js' as js;
+import 'dart:js_util' show promiseToFuture, callMethod, hasProperty;
+import 'dart:async' show Completer;
 
 class ClipboardPasteButton extends StatefulWidget {
   final String hint;
@@ -121,6 +124,8 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
   }
 
   Future<void> _pasteFromClipboard() async {
+    print('Starting paste operation...'); // Debug log
+
     _animationController.forward().then((_) {
       _animationController.reverse();
     });
@@ -132,11 +137,69 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
     try {
       String? clipboardText;
 
-      // Try pasteboard first for better iOS compatibility
-      if (!kIsWeb) {
+      // Handle web platform specifically
+      if (kIsWeb) {
+        print('Running in web mode...'); // Debug log
+
         try {
+          // Try to read clipboard text directly
+          print('Attempting to read clipboard...'); // Debug log
+
+          // Check if clipboard API is available
+          final hasClipboard = js.context.hasProperty('navigator') &&
+              js.context['navigator'].hasProperty('clipboard') &&
+              js.context['navigator']['clipboard'].hasProperty('readText');
+
+          if (hasClipboard) {
+            print('Clipboard API available, reading text...'); // Debug log
+            try {
+              // Convert the Promise to a Future and await it
+              final result = await promiseToFuture<String>(
+                  js.context['navigator']['clipboard'].callMethod('readText'));
+
+              if (result.isNotEmpty) {
+                clipboardText = result;
+                print(
+                    'Successfully read clipboard text: $clipboardText'); // Debug log
+              }
+            } catch (e) {
+              print('Error reading clipboard: $e'); // Debug log
+            }
+          } else {
+            print('Clipboard API not available'); // Debug log
+          }
+        } catch (e) {
+          print('Web clipboard access failed: $e');
+        }
+
+        // Fallback to legacy clipboard API if modern API failed
+        if (clipboardText == null) {
+          print('Attempting legacy clipboard API...'); // Debug log
+          try {
+            final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+            clipboardText = clipboardData?.text?.trim();
+            print('Got text from legacy API: $clipboardText'); // Debug log
+          } catch (e) {
+            print('Legacy clipboard API failed: $e');
+          }
+        }
+
+        // If all else fails, show paste instruction
+        if (clipboardText == null) {
+          print('Showing paste instruction...'); // Debug log
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please use Ctrl+V or Command+V to paste'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        print('Running in non-web mode...'); // Debug log
+        try {
+          // Try pasteboard first for better iOS/desktop compatibility
           clipboardText = await Pasteboard.text;
-          // If we got text from pasteboard, clean and validate it
+          print('Got text from pasteboard: $clipboardText'); // Debug log
           if (clipboardText != null) {
             clipboardText = clipboardText.trim();
             if (clipboardText.isEmpty) {
@@ -146,16 +209,21 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
         } catch (e) {
           print('Pasteboard error: $e');
         }
-      }
 
-      // Fallback to default clipboard if pasteboard fails or on web
-      if (clipboardText == null) {
-        final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-        clipboardText = clipboardData?.text?.trim();
+        // Fallback to default clipboard if pasteboard fails
+        if (clipboardText == null) {
+          print('Attempting default clipboard...'); // Debug log
+          final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+          clipboardText = clipboardData?.text?.trim();
+          print('Got text from default clipboard: $clipboardText'); // Debug log
+        }
       }
 
       if (clipboardText != null && clipboardText.isNotEmpty) {
+        print('Handling pasted text...'); // Debug log
         await _handlePastedText(clipboardText);
+      } else {
+        print('No clipboard text found'); // Debug log
       }
     } catch (e) {
       print('Error pasting from clipboard: $e');
@@ -178,6 +246,8 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
 
   @override
   Widget build(BuildContext context) {
+    print(
+        'Building ClipboardPasteButton, hasContent: $_hasContent'); // Debug log
     final isDesktop = _isDesktopWithContext(context);
 
     return SizedBox(
@@ -200,22 +270,30 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
           ScaleTransition(
             scale: _scaleAnimation,
             child: GestureDetector(
-              onTap: _hasContent ? null : _pasteFromClipboard,
+              onTap: () {
+                print('Button tapped, hasContent: $_hasContent'); // Debug log
+                if (!_hasContent) {
+                  _pasteFromClipboard();
+                }
+              },
               onTapDown: _hasContent
                   ? null
                   : (details) {
+                      print('Button pressed down'); // Debug log
                       _animationController.forward();
                       setState(() => _isPressed = true);
                     },
               onTapUp: _hasContent
                   ? null
                   : (details) {
+                      print('Button released'); // Debug log
                       _animationController.reverse();
                       setState(() => _isPressed = false);
                     },
               onTapCancel: _hasContent
                   ? null
                   : () {
+                      print('Button tap cancelled'); // Debug log
                       _animationController.reverse();
                       setState(() => _isPressed = false);
                     },
