@@ -17,6 +17,8 @@ import 'dart:async';
 import 'dart:ui' show lerpDouble;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uni_links/uni_links.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -302,6 +304,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // When loading, we don't show search results, but we do show the search bar
     final bool shouldShowResults = isSearchViewActive && !isLoading;
 
+    // Get screen size for responsive calculations
+    final screenSize = MediaQuery.of(context).size;
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return AppScaffold(
       showAnimatedBg: true,
       onBurgerPop: () {
@@ -319,294 +326,171 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               controller: scrollController,
               physics: shouldShowResults
                   ? const NeverScrollableScrollPhysics()
-                  : const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                children: [
-                  const SizedBox(height: 18),
-                  AuthToolbar(
-                    burgerMenuFnc: () {
-                      setState(() {
-                        isMenuVisible = !isMenuVisible;
-                      });
-                    },
-                  ),
+                  : kIsWeb
+                      ? const ClampingScrollPhysics() // Default for web
+                      : Platform.isIOS
+                          ? const BouncingScrollPhysics() // iOS native bounce effect
+                          : const ClampingScrollPhysics(), // Android behavior
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height,
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 18),
+                    AuthToolbar(
+                      burgerMenuFnc: () {
+                        setState(() {
+                          isMenuVisible = !isMenuVisible;
+                        });
+                      },
+                    ),
 
-                  // Search bar and results container
-                  AnimatedBuilder(
-                    animation: _searchAnimController,
-                    builder: (context, searchBarChild) {
-                      final animValue = CurvedAnimation(
-                        parent: _searchAnimController,
-                        curve: Curves.easeOutQuart,
-                      ).value;
+                    // Search bar and results container
+                    AnimatedBuilder(
+                      animation: _searchAnimController,
+                      builder: (context, searchBarChild) {
+                        final animValue = CurvedAnimation(
+                          parent: _searchAnimController,
+                          curve: Curves.easeOutQuart,
+                        ).value;
 
-                      // Calculate offset based on AuthToolbar height (40) plus padding
-                      const startOffset = 0.0;
-                      final endOffset =
-                          -(MediaQuery.of(context).padding.top + 58.0 + 160.0);
-                      final double verticalOffset =
-                          lerpDouble(startOffset, endOffset, animValue)!;
+                        // Calculate offset based on screen size and SafeArea
+                        // This ensures search bar doesn't overlap with nav bar
+                        const startOffset = 0.0;
+                        // Calculate a responsive endOffset that considers device size
+                        final toolbarHeight = 58.0; // AuthToolbar height
+                        final safeTop = topPadding > 0 ? topPadding : 20.0;
+                        // Use percentage of screen height instead of fixed value
+                        final percentOffset = screenSize.height * 0.18;
+                        final endOffset =
+                            -(safeTop + toolbarHeight + percentOffset);
 
-                      return Transform.translate(
-                        offset: Offset(0, verticalOffset),
-                        child: Column(
-                          children: [
-                            // Content that appears/fades when not searching
-                            FadeTransition(
-                              opacity: groupAFadeAnimation,
-                              child: Column(
-                                children: [
-                                  SlideTransition(
-                                    position: _logoSlideAnimation,
-                                    child: AnimatedBuilder(
-                                      animation: _logoFadeController,
-                                      builder: (context, child) {
-                                        return Opacity(
-                                          opacity:
-                                              1 - _logoFadeController.value,
-                                          child: child,
-                                        );
-                                      },
-                                      child: Column(
-                                        children: [
-                                          textGraphics(),
-                                          const SizedBox(height: 5),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12 + 16),
-                                            child: Text(
-                                              "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                              textAlign: TextAlign.center,
-                                              style:
-                                                  AppStyles.homeCenterTextStyle,
+                        final double verticalOffset =
+                            lerpDouble(startOffset, endOffset, animValue)!;
+
+                        return Transform.translate(
+                          offset: Offset(0, verticalOffset),
+                          child: Column(
+                            children: [
+                              // Content that appears/fades when not searching
+                              FadeTransition(
+                                opacity: groupAFadeAnimation,
+                                child: Column(
+                                  children: [
+                                    SlideTransition(
+                                      position: _logoSlideAnimation,
+                                      child: AnimatedBuilder(
+                                        animation: _logoFadeController,
+                                        builder: (context, child) {
+                                          return Opacity(
+                                            opacity:
+                                                1 - _logoFadeController.value,
+                                            child: child,
+                                          );
+                                        },
+                                        child: Column(
+                                          children: [
+                                            textGraphics(),
+                                            const SizedBox(height: 5),
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12 + 16),
+                                              child: Text(
+                                                "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                                textAlign: TextAlign.center,
+                                                style: AppStyles
+                                                    .homeCenterTextStyle,
+                                                // Add overflow handling
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 2,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Search bar with independent sliding animation
-                            FadeTransition(
-                              opacity: groupBFadeAnimation,
-                              child: SlideTransition(
-                                position: groupBSlideAnimation,
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    top: lerpDouble(22.0, 5.0, animValue)!,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: MusicSearchBar(
-                                          hint:
-                                              "Search or paste your music link here...",
-                                          controller: tfController,
-                                          focusNode: _searchFocusNode,
-                                          textInputAction: TextInputAction.done,
-                                          onSubmitted: (_) {
-                                            FocusScope.of(context).unfocus();
-
-                                            // If text is empty, ensure we're showing top charts
-                                            if (tfController.text.isEmpty) {
-                                              setState(() {
-                                                isShowingSearchResults = false;
-                                              });
-
-                                              if (searchResults == null) {
-                                                _loadTopCharts();
-                                              }
-                                            }
-                                          },
-                                          onPaste: (value) {
-                                            _autoConvertTimer?.cancel();
-
-                                            final linkLower =
-                                                value.toLowerCase();
-                                            final isSupported = linkLower
-                                                    .contains('spotify.com') ||
-                                                linkLower.contains(
-                                                    'apple.com/music') ||
-                                                linkLower.contains(
-                                                    'music.apple.com') ||
-                                                linkLower
-                                                    .contains('deezer.com');
-
-                                            if (isSupported &&
-                                                !isLoading &&
-                                                mounted) {
-                                              setState(() {
-                                                searchResults = null;
-                                                _searchAnimController.reverse();
-                                                _logoFadeController.reverse();
-                                              });
-
-                                              _autoConvertTimer = Timer(
-                                                  const Duration(
-                                                      milliseconds: 300), () {
-                                                _handleLinkConversion(value);
-                                              });
-                                            }
-                                          },
-                                          onSearch: (query) {
-                                            if (!isLoading) {
-                                              _handleSearch(query);
-                                            }
-                                          },
-                                          isLoading: isLoading,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
                               ),
-                            ),
 
-                            // Search results with improved fade in
-                            if (shouldShowResults)
-                              AnimatedBuilder(
-                                animation: _searchAnimController,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: Curves.easeOutQuad
-                                        .transform(_searchAnimController.value),
-                                    child: child,
-                                  );
-                                },
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    minHeight: 100,
-                                    maxHeight: MediaQuery.of(context)
-                                            .size
-                                            .height -
-                                        // Top nav bar height + padding
-                                        (58.0 +
-                                            MediaQuery.of(context)
-                                                .padding
-                                                .top) -
-                                        // Bottom padding to match top spacing
-                                        (75.0 +
-                                            MediaQuery.of(context)
-                                                .padding
-                                                .bottom) -
-                                        // Search bar height and padding
-                                        80,
-                                  ),
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  child: GestureDetector(
-                                    // Prevent taps in this area from dismissing the search
-                                    onTap: () {},
-                                    // Prevent scroll gestures from being interpreted as taps
-                                    behavior: HitTestBehavior.opaque,
-                                    child: Stack(
+                              // Search bar with independent sliding animation
+                              FadeTransition(
+                                opacity: groupBFadeAnimation,
+                                child: SlideTransition(
+                                  position: groupBSlideAnimation,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      // Make top padding responsive
+                                      top: lerpDouble(22.0,
+                                          screenSize.height * 0.01, animValue)!,
+                                    ),
+                                    child: Column(
                                       children: [
-                                        // Bottom "shadow" container
-                                        Container(
-                                          margin: const EdgeInsets.only(
-                                              top: 4), // Offset for 3D effect
-                                          decoration: BoxDecoration(
-                                            color: AppColors
-                                                .animatedBtnColorConvertBottom,
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color: AppColors
-                                                  .animatedBtnColorConvertBottomBorder,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: const SizedBox(
-                                            width: double.infinity,
-                                            height: double.infinity,
-                                          ),
-                                        ),
-                                        // Top content container
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color: AppColors
-                                                  .animatedBtnColorConvertTop,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: Material(
-                                            color: Colors.transparent,
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                // Add a header row with title and close button
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          left: 16,
-                                                          top: 12,
-                                                          right: 8,
-                                                          bottom: 2),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        // Show different text based on whether this is search or charts
-                                                        isShowingSearchResults
-                                                            ? "Search Results"
-                                                            : "Top Charts",
-                                                        style: AppStyles
-                                                            .itemTypeTs
-                                                            .copyWith(
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.close,
-                                                          size: 20,
-                                                          color: AppColors
-                                                              .textPrimary,
-                                                        ),
-                                                        onPressed: _closeSearch,
-                                                        splashColor:
-                                                            Colors.transparent,
-                                                        highlightColor:
-                                                            Colors.transparent,
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                // Add a divider
-                                                Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 12),
-                                                  child: Divider(
-                                                    color: AppColors
-                                                        .animatedBtnColorConvertTop
-                                                        .withOpacity(0.3),
-                                                    height: 1,
-                                                  ),
-                                                ),
-                                                // Remove the previous standalone close button since we've integrated it into the header
-                                                Expanded(
-                                                  child: _buildSearchResults(),
-                                                ),
-                                              ],
-                                            ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16),
+                                          child: MusicSearchBar(
+                                            hint:
+                                                "Search or paste your music link here...",
+                                            controller: tfController,
+                                            focusNode: _searchFocusNode,
+                                            textInputAction:
+                                                TextInputAction.done,
+                                            onSubmitted: (_) {
+                                              FocusScope.of(context).unfocus();
+
+                                              // If text is empty, ensure we're showing top charts
+                                              if (tfController.text.isEmpty) {
+                                                setState(() {
+                                                  isShowingSearchResults =
+                                                      false;
+                                                });
+
+                                                if (searchResults == null) {
+                                                  _loadTopCharts();
+                                                }
+                                              }
+                                            },
+                                            onPaste: (value) {
+                                              _autoConvertTimer?.cancel();
+
+                                              final linkLower =
+                                                  value.toLowerCase();
+                                              final isSupported = linkLower
+                                                      .contains(
+                                                          'spotify.com') ||
+                                                  linkLower.contains(
+                                                      'apple.com/music') ||
+                                                  linkLower.contains(
+                                                      'music.apple.com') ||
+                                                  linkLower
+                                                      .contains('deezer.com');
+
+                                              if (isSupported &&
+                                                  !isLoading &&
+                                                  mounted) {
+                                                setState(() {
+                                                  searchResults = null;
+                                                  _searchAnimController
+                                                      .reverse();
+                                                  _logoFadeController.reverse();
+                                                });
+
+                                                _autoConvertTimer = Timer(
+                                                    const Duration(
+                                                        milliseconds: 300), () {
+                                                  _handleLinkConversion(value);
+                                                });
+                                              }
+                                            },
+                                            onSearch: (query) {
+                                              if (!isLoading) {
+                                                _handleSearch(query);
+                                              }
+                                            },
+                                            isLoading: isLoading,
                                           ),
                                         ),
                                       ],
@@ -614,70 +498,242 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
 
-                  // Bottom graphics and create account button
-                  if (!shouldShowResults) // Only show when search is not active
-                    AnimatedBuilder(
-                      animation: _searchAnimController,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: 1 - _searchAnimController.value,
-                          child: Visibility(
-                            visible: !shouldShowResults,
-                            child: child!,
+                              // Search results with improved fade in
+                              if (shouldShowResults)
+                                AnimatedBuilder(
+                                  animation: _searchAnimController,
+                                  builder: (context, child) {
+                                    return Opacity(
+                                      opacity: Curves.easeOutQuad.transform(
+                                          _searchAnimController.value),
+                                      child: child,
+                                    );
+                                  },
+                                  child: Container(
+                                    constraints: BoxConstraints(
+                                      minHeight: 100,
+                                      // Make maxHeight calculation more responsive and web compatible
+                                      maxHeight: kIsWeb
+                                          ? screenSize.height *
+                                              0.5 // Slightly smaller on web
+                                          : screenSize.height *
+                                              0.6, // Maintain mobile size
+                                    ),
+                                    margin: EdgeInsets.symmetric(
+                                        horizontal: kIsWeb
+                                            ? 24
+                                            : 16, // Wider margins on web
+                                        vertical: screenSize.height * 0.01),
+                                    child: GestureDetector(
+                                      // Prevent taps in this area from dismissing the search
+                                      onTap: () {},
+                                      // Prevent scroll gestures from being interpreted as taps
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Stack(
+                                        children: [
+                                          // Bottom "shadow" container
+                                          Container(
+                                            margin: const EdgeInsets.only(
+                                                top: 4), // Offset for 3D effect
+                                            decoration: BoxDecoration(
+                                              color: AppColors
+                                                  .animatedBtnColorConvertBottom,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: AppColors
+                                                    .animatedBtnColorConvertBottomBorder,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            child: const SizedBox(
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            ),
+                                          ),
+                                          // Top content container
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: AppColors
+                                                    .animatedBtnColorConvertTop,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  // Add a header row with title and close button
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            left: 16,
+                                                            top: 12,
+                                                            right: 8,
+                                                            bottom: 2),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                          // Show different text based on whether this is search or charts
+                                                          isShowingSearchResults
+                                                              ? "Search Results"
+                                                              : "Top Charts",
+                                                          style: AppStyles
+                                                              .itemTypeTs
+                                                              .copyWith(
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                            Icons.close,
+                                                            size: 20,
+                                                            color: AppColors
+                                                                .textPrimary,
+                                                          ),
+                                                          onPressed:
+                                                              _closeSearch,
+                                                          splashColor: Colors
+                                                              .transparent,
+                                                          highlightColor: Colors
+                                                              .transparent,
+                                                          padding:
+                                                              EdgeInsets.zero,
+                                                          constraints:
+                                                              const BoxConstraints(),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  // Add a divider
+                                                  Padding(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 12),
+                                                    child: Divider(
+                                                      color: AppColors
+                                                          .animatedBtnColorConvertTop
+                                                          .withOpacity(0.3),
+                                                      height: 1,
+                                                    ),
+                                                  ),
+                                                  // Remove the previous standalone close button since we've integrated it into the header
+                                                  Expanded(
+                                                    child:
+                                                        _buildSearchResults(),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         );
                       },
-                      child: FadeTransition(
-                        opacity: groupCFadeAnimation,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              homeGraphics,
-                              fit: BoxFit.contain,
-                              width: double.infinity,
-                              height: MediaQuery.of(context).size.height / 1.5,
+                    ),
+
+                    // Bottom graphics and create account button
+                    if (!shouldShowResults) // Only show when search is not active
+                      AnimatedBuilder(
+                        animation: _searchAnimController,
+                        builder: (context, child) {
+                          return Opacity(
+                            opacity: 1 - _searchAnimController.value,
+                            child: Visibility(
+                              visible: !shouldShowResults,
+                              child: child!,
                             ),
-                            const SizedBox(height: 30),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 36),
-                              child: AnimatedPrimaryButton(
-                                text: "Create Your Free Account!",
-                                onTap: () {
-                                  Future.delayed(
-                                    const Duration(milliseconds: 180),
-                                    () => context.go('/signup'),
-                                  );
-                                },
-                                height: 40,
-                                width:
-                                    MediaQuery.of(context).size.width - 46 + 16,
-                                radius: 10,
-                                initialPos: 6,
-                                topBorderWidth: 3,
-                                bottomBorderWidth: 3,
-                                colorTop: AppColors.animatedBtnColorConvertTop,
-                                textStyle:
-                                    AppStyles.animatedBtnFreeAccTextStyle,
-                                borderColorTop:
-                                    AppColors.animatedBtnColorConvertTop,
-                                colorBottom:
-                                    AppColors.animatedBtnColorConvertBottom,
-                                borderColorBottom: AppColors
-                                    .animatedBtnColorConvertBottomBorder,
+                          );
+                        },
+                        child: FadeTransition(
+                          opacity: groupCFadeAnimation,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Use responsive height for image with web adjustments
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: kIsWeb
+                                      ? screenSize.height *
+                                          0.4 // Smaller on web
+                                      : screenSize.height *
+                                          0.5, // Keep mobile size
+                                ),
+                                child: Image.asset(
+                                  homeGraphics,
+                                  fit: BoxFit.contain,
+                                  width: double.infinity,
+                                ),
                               ),
-                            ),
-                          ],
+                              SizedBox(
+                                  height: kIsWeb
+                                      ? screenSize.height *
+                                          0.04 // More space on web
+                                      : screenSize.height * 0.03),
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: kIsWeb
+                                      ? 48 +
+                                          bottomPadding *
+                                              0.5 // More padding on web
+                                      : 36 + bottomPadding * 0.5,
+                                ),
+                                child: AnimatedPrimaryButton(
+                                  text: "Create Your Free Account!",
+                                  onTap: () {
+                                    Future.delayed(
+                                      const Duration(milliseconds: 180),
+                                      () => context.go('/signup'),
+                                    );
+                                  },
+                                  height:
+                                      kIsWeb ? 48 : 40, // Taller button on web
+                                  // Make width responsive with web adjustments
+                                  width: kIsWeb
+                                      ? (screenSize.width > 800
+                                          ? 500
+                                          : screenSize.width *
+                                              0.7) // Constrained on web
+                                      : screenSize.width *
+                                          0.85, // Original mobile width
+                                  radius: 10,
+                                  initialPos: 6,
+                                  topBorderWidth: 3,
+                                  bottomBorderWidth: 3,
+                                  colorTop:
+                                      AppColors.animatedBtnColorConvertTop,
+                                  textStyle:
+                                      AppStyles.animatedBtnFreeAccTextStyle,
+                                  borderColorTop:
+                                      AppColors.animatedBtnColorConvertTop,
+                                  colorBottom:
+                                      AppColors.animatedBtnColorConvertBottom,
+                                  borderColorBottom: AppColors
+                                      .animatedBtnColorConvertBottomBorder,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -687,9 +743,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget textGraphics() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Use percentage-based padding for different screen sizes
+    // Use smaller padding on smaller screens, more on larger ones
+    final horizontalPadding =
+        screenWidth < 400 ? screenWidth * 0.04 : screenWidth * 0.05;
+
+    // On web, we need to account for different viewport sizes
+    final maxWidth = kIsWeb
+        ? (screenWidth > 800 ? 500.0 : screenWidth * 0.85)
+        : screenWidth * 0.9;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Image.asset(appLogoText, fit: BoxFit.contain),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          // Limit width on larger screens to prevent stretched look
+          maxWidth: maxWidth,
+        ),
+        child: Image.asset(
+          appLogoText,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 
@@ -873,6 +949,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         physics: const AlwaysScrollableScrollPhysics(),
         itemBuilder: (context, index) {
           final item = results[index];
+          // Get screen dimensions for adaptive layout
+          final screenWidth = MediaQuery.of(context).size.width;
+          // Calculate adaptive sizes based on screen width
+          final bool isSmallScreen = screenWidth < 360;
+          final double coverSize = isSmallScreen ? 40 : 50;
+          final double iconSize = isSmallScreen ? 14 : 16;
+          final double horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+          final double verticalPadding = isSmallScreen ? 6.0 : 8.0;
+
           return Material(
             color: Colors.transparent,
             child: InkWell(
@@ -932,9 +1017,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               highlightColor:
                   AppColors.animatedBtnColorConvertTop.withOpacity(0.1),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: verticalPadding,
                 ),
                 child: Row(
                   children: [
@@ -942,8 +1027,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       borderRadius: BorderRadius.circular(6),
                       child: item['coverArtUrl'] != null
                           ? Container(
-                              width: 50,
-                              height: 50,
+                              width: coverSize,
+                              height: coverSize,
                               decoration: BoxDecoration(
                                 border: Border.all(
                                   color: AppColors.animatedBtnColorConvertTop
@@ -954,21 +1039,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ),
                               child: Image.network(
                                 item['coverArtUrl'],
-                                width: 50,
-                                height: 50,
+                                width: coverSize,
+                                height: coverSize,
                                 fit: BoxFit.cover,
                                 loadingBuilder:
                                     (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
                                   return Container(
-                                    width: 50,
-                                    height: 50,
+                                    width: coverSize,
+                                    height: coverSize,
                                     color: Colors.grey[200],
-                                    child: const Center(
+                                    child: Center(
                                       child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
+                                        width: coverSize * 0.4,
+                                        height: coverSize * 0.4,
+                                        child: const CircularProgressIndicator(
                                           strokeWidth: 2,
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
@@ -983,8 +1068,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ),
                             )
                           : Container(
-                              width: 50,
-                              height: 50,
+                              width: coverSize,
+                              height: coverSize,
                               decoration: BoxDecoration(
                                 color: Colors.grey[200],
                                 borderRadius: BorderRadius.circular(6),
@@ -996,54 +1081,60 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ),
                               child: Icon(
                                 Icons.music_note,
+                                size: coverSize * 0.6,
                                 color: AppColors.textPrimary.withOpacity(0.5),
                               ),
                             ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: isSmallScreen ? 8 : 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             item['title'] ?? 'Unknown',
-                            style: AppStyles.itemTitleTs,
+                            style: AppStyles.itemTitleTs.copyWith(
+                              fontSize: isSmallScreen ? 14 : 16,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          Row(
+                          Wrap(
+                            spacing: 6, // gap between adjacent chips
+                            runSpacing: 2, // gap between lines
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
                                 item['artist'] ?? '',
-                                style: AppStyles.itemDesTs,
+                                style: AppStyles.itemDesTs.copyWith(
+                                  fontSize: isSmallScreen ? 12 : 14,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               if (item['type'] != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isSmallScreen ? 4 : 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.animatedBtnColorConvertTop
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
                                       color: AppColors
                                           .animatedBtnColorConvertTop
-                                          .withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: AppColors
-                                            .animatedBtnColorConvertTop
-                                            .withOpacity(0.3),
-                                        width: 1,
-                                      ),
+                                          .withOpacity(0.3),
+                                      width: 1,
                                     ),
-                                    child: Text(
-                                      item['type']?.toString().toUpperCase() ??
-                                          '',
-                                      style: AppStyles.itemTypeTs.copyWith(
-                                        fontSize: 10,
-                                      ),
+                                  ),
+                                  child: Text(
+                                    item['type']?.toString().toUpperCase() ??
+                                        '',
+                                    style: AppStyles.itemTypeTs.copyWith(
+                                      fontSize: isSmallScreen ? 8 : 10,
                                     ),
                                   ),
                                 ),
@@ -1054,7 +1145,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                     Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 16,
+                      size: iconSize,
                       color: AppColors.textPrimary.withOpacity(0.5),
                     ),
                   ],
@@ -1069,28 +1160,45 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // Handle animation status changes
   void _handleSearchAnimationStatus(AnimationStatus status) {
-    print(
-        '[_handleSearchAnimationStatus] status: $status, current text: "${tfController.text}", isLoading: $isLoading');
     // When the search animation completes (search bar fully visible)
     if (status == AnimationStatus.completed) {
-      // If search field is empty, show top charts
+      // Add a small delay to ensure the animation has fully rendered
+      // before updating the UI state - helps on slower devices
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (!mounted) return;
+
+        // If search field is empty, show top charts
+        if (tfController.text.isEmpty && !isLoading) {
+          setState(() {
+            isShowingSearchResults = false;
+            isSearchActive = true; // Keep search active
+            print(
+                '[_handleSearchAnimationStatus] Animation completed: Setting search active, no results');
+          });
+
+          // Only load if we don't already have them
+          if (searchResults == null || isLoadingCharts) {
+            print(
+                '[_handleSearchAnimationStatus] Loading top charts after animation');
+            _loadTopCharts();
+          }
+        } else if (tfController.text.isNotEmpty) {
+          // Ensure search results are visible when there's text
+          setState(() {
+            isShowingSearchResults = true;
+            isSearchActive = true;
+          });
+        }
+      });
+    } else if (status == AnimationStatus.dismissed) {
+      // Animation has fully reversed
+      // If text is empty and not loading, reset search UI state
       if (tfController.text.isEmpty && !isLoading) {
         setState(() {
+          isSearchActive = false;
           isShowingSearchResults = false;
-          isSearchActive = true; // Keep search active
-          print(
-              '[_handleSearchAnimationStatus] Completed: Empty text. Setting isSearchActive true, isShowingSearchResults false.');
         });
-
-        // Only load if we don't already have them
-        if (searchResults == null || isLoadingCharts) {
-          print(
-              '[_handleSearchAnimationStatus] Calling _loadTopCharts from animation status');
-          _loadTopCharts();
-        }
       }
-    } else {
-      print('[_handleSearchAnimationStatus] Not completed, no action.');
     }
   }
 
