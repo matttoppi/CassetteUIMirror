@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _searchAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 450),
     );
 
     _searchBarSlideAnimation = Tween<double>(
@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       end: 0.0,
     ).animate(CurvedAnimation(
       parent: _searchAnimController,
-      curve: Curves.easeOutCubic,
+      curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
     ));
 
     _searchFocusNode.addListener(_handleSearchFocus);
@@ -212,30 +212,42 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         children: [
                           // Content that appears/fades when not searching
                           Opacity(
-                            opacity: 1 - _searchAnimController.value,
+                            opacity: Curves.easeInOutCubic
+                                .transform(1 - _searchAnimController.value),
                             child: Visibility(
-                              visible: _searchAnimController.value < 0.5,
+                              visible: _searchAnimController.value < 0.8,
                               child: FadeTransition(
                                 opacity: groupAFadeAnimation,
                                 child: Column(
                                   children: [
                                     SlideTransition(
                                       position: _logoSlideAnimation,
-                                      child: Column(
-                                        children: [
-                                          textGraphics(),
-                                          const SizedBox(height: 5),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12 + 16),
-                                            child: Text(
-                                              "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                              textAlign: TextAlign.center,
-                                              style:
-                                                  AppStyles.homeCenterTextStyle,
+                                      child: AnimatedBuilder(
+                                        animation: _logoFadeAnimation,
+                                        builder: (context, child) {
+                                          // Apply a more gradual fade out
+                                          return Opacity(
+                                            opacity: _logoFadeAnimation.value,
+                                            child: child,
+                                          );
+                                        },
+                                        child: Column(
+                                          children: [
+                                            textGraphics(),
+                                            const SizedBox(height: 5),
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12 + 16),
+                                              child: Text(
+                                                "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                                textAlign: TextAlign.center,
+                                                style: AppStyles
+                                                    .homeCenterTextStyle,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -244,20 +256,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                           ),
 
-                          // Search bar with sliding animation
+                          // Search bar with improved sliding animation
                           FadeTransition(
                             opacity: groupBFadeAnimation,
                             child: SlideTransition(
                               position: groupBSlideAnimation,
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  top: isSearchActive
-                                      ? (22.0 *
-                                          (1 -
-                                              _searchAnimController
-                                                  .value)) // Animate to top (0) when searching
-                                      : 22.0, // Stay at position when not searching
-                                ),
+                              child: AnimatedBuilder(
+                                animation: _searchAnimController,
+                                builder: (context, child) {
+                                  // Apply a custom curve to the search bar movement
+                                  final animValue = CurvedAnimation(
+                                    parent: _searchAnimController,
+                                    curve: Curves
+                                        .easeOutQuart, // More pronounced ease out for smoother stop
+                                  ).value;
+
+                                  return Padding(
+                                    padding: EdgeInsets.only(
+                                      top: isSearchActive
+                                          ? (22.0 *
+                                              (1 -
+                                                  animValue)) // Smoother movement to top
+                                          : 22.0, // Original position
+                                    ),
+                                    child: child,
+                                  );
+                                },
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16),
@@ -301,13 +325,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                           ),
 
-                          // Search results that slide up with the search bar
+                          // Search results with improved fade in
                           if (isSearchActive)
                             AnimatedBuilder(
                               animation: _searchAnimController,
                               builder: (context, child) {
+                                // Smoother fade in for results
                                 return Opacity(
-                                  opacity: _searchAnimController.value,
+                                  opacity: Curves.easeOutQuad
+                                      .transform(_searchAnimController.value),
                                   child: child,
                                 );
                               },
