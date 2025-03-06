@@ -426,6 +426,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                     .contains('spotify.com') ||
                                                 linkLower.contains(
                                                     'apple.com/music') ||
+                                                linkLower.contains(
+                                                    'music.apple.com') ||
                                                 linkLower
                                                     .contains('deezer.com');
 
