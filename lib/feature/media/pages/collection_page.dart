@@ -57,26 +57,96 @@ class _CollectionPageState extends State<CollectionPage> {
   @override
   void initState() {
     super.initState();
+    print('===== CollectionPage initState =====');
+    print(
+        'CollectionPage type: ${widget.type}, id: ${widget.trackId}, postId: ${widget.postId}');
+    print('CollectionPage postData: ${widget.postData}');
+    print('CollectionPage postData keys: ${widget.postData?.keys.toList()}');
+
     isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
 
     // Initialize data from postData if available
     if (widget.postData != null) {
-      final details = widget.postData!['details'] as Map<String, dynamic>;
-      name = details['title'] as String;
-      artistName = details['artist'] as String;
-      coverArtUrl = details['coverArtUrl'] as String;
-      des = widget.postData!['caption'] as String?;
-      desUsername = widget.postData!['username'] as String?;
+      try {
+        final details = widget.postData!['details'] as Map<String, dynamic>?;
+        print('CollectionPage details: $details');
+        print('CollectionPage details keys: ${details?.keys.toList()}');
 
-      // Parse tracks if available
-      if (details.containsKey('tracks')) {
-        final tracks = details['tracks'] as List<dynamic>;
-        trackList =
-            tracks.map((track) => CollectionItem.fromJson(track)).toList();
+        if (details == null) {
+          print('ERROR: details field is null or not a map');
+          setState(() {
+            name =
+                'Error Loading ${widget.type == 'album' ? 'Album' : 'Playlist'}';
+            artistName = '';
+            coverArtUrl = '';
+          });
+          return;
+        }
+
+        name = details['title'] as String? ?? 'Untitled';
+        artistName = details['artist'] as String? ?? 'Unknown Artist';
+        coverArtUrl = details['coverArtUrl'] as String? ?? '';
+        des = widget.postData!['caption'] as String?;
+        desUsername = widget.postData!['username'] as String?;
+
+        print('Set name: $name');
+        print('Set artistName: $artistName');
+        print('Set coverArtUrl: $coverArtUrl');
+
+        // Parse tracks if available
+        if (details.containsKey('tracks')) {
+          final tracks = details['tracks'] as List<dynamic>?;
+          print('Tracks data available: ${tracks?.length ?? 0} tracks found');
+          if (tracks != null) {
+            try {
+              trackList = tracks
+                  .map((track) => CollectionItem.fromJson(track))
+                  .toList();
+              print('Successfully parsed ${trackList.length} tracks');
+            } catch (e) {
+              print('ERROR parsing tracks: $e');
+            }
+          }
+        } else {
+          print('No tracks data available in details');
+        }
+
+        // Generate palette from cover art
+        if (coverArtUrl.isNotEmpty) {
+          print('Generating palette from coverArtUrl: $coverArtUrl');
+          _generatePalette(coverArtUrl);
+        } else {
+          print('No cover art URL available for palette generation');
+
+          // Try to get coverArtUrl from platforms as fallback
+          final platforms =
+              widget.postData!['platforms'] as Map<String, dynamic>?;
+          if (platforms != null) {
+            print('Attempting to get cover art from platforms data');
+            for (final platform in platforms.values) {
+              if (platform is Map<String, dynamic> &&
+                  platform.containsKey('artworkUrl') &&
+                  platform['artworkUrl'] != null) {
+                coverArtUrl = platform['artworkUrl'];
+                print('Found cover art in platform data: $coverArtUrl');
+                _generatePalette(coverArtUrl);
+                break;
+              }
+            }
+          }
+        }
+      } catch (e, stackTrace) {
+        print('ERROR in CollectionPage initState: $e');
+        print('Stack trace: $stackTrace');
+        setState(() {
+          name =
+              'Error Loading ${widget.type == 'album' ? 'Album' : 'Playlist'}';
+          artistName = '';
+          coverArtUrl = '';
+        });
       }
-
-      // Generate palette from cover art
-      _generatePalette(coverArtUrl);
+    } else {
+      print('WARNING: No postData provided to CollectionPage');
     }
   }
 
