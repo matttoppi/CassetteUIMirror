@@ -155,6 +155,87 @@ class ApiService {
     };
   }
 
+  // Add helper function for string similarity
+  double _calculateSimilarity(String str1, String str2) {
+    // Convert both strings to lowercase for case-insensitive comparison
+    str1 = str1.toLowerCase();
+    str2 = str2.toLowerCase();
+
+    // Check for substring match first
+    if (str1.contains(str2) || str2.contains(str1)) {
+      return 1.0;
+    }
+
+    // Calculate Levenshtein distance
+    var distance = _levenshteinDistance(str1, str2);
+    var maxLength = str1.length > str2.length ? str1.length : str2.length;
+
+    // Convert distance to similarity score (0-1)
+    return 1 - (distance / maxLength);
+  }
+
+  int _levenshteinDistance(String str1, String str2) {
+    var m = str1.length;
+    var n = str2.length;
+    List<List<int>> dp = List.generate(m + 1, (_) => List.filled(n + 1, 0));
+
+    for (var i = 0; i <= m; i++) {
+      dp[i][0] = i;
+    }
+    for (var j = 0; j <= n; j++) {
+      dp[0][j] = j;
+    }
+
+    for (var i = 1; i <= m; i++) {
+      for (var j = 1; j <= n; j++) {
+        if (str1[i - 1] == str2[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1];
+        } else {
+          dp[i][j] = [
+            dp[i - 1][j - 1] + 1, // substitution
+            dp[i - 1][j] + 1, // deletion
+            dp[i][j - 1] + 1 // insertion
+          ].reduce(min);
+        }
+      }
+    }
+    return dp[m][n];
+  }
+
+  // Add helper function to determine if item should be prioritized
+  bool _shouldPrioritizeResult(Map<String, dynamic> item, String query) {
+    final matchScore = item['matchScore'] as double;
+    final queryLower = query.toLowerCase();
+
+    // Check if query contains type hints
+    final bool hasTrackHint =
+        queryLower.contains('track') || queryLower.contains('song');
+    final bool hasAlbumHint = queryLower.contains('album');
+    final bool hasArtistHint = queryLower.contains('artist');
+
+    // If type is explicitly mentioned in query, prioritize those results regardless of popularity
+    if (hasTrackHint && item['type'] == 'track') return true;
+    if (hasAlbumHint && item['type'] == 'album') return true;
+    if (hasArtistHint && item['type'] == 'artist') return true;
+
+    // Must have good match score as baseline
+    if (matchScore < 0.75) return false;
+
+    if (item['source'] == 'spotify') {
+      // For Spotify, use popularity score
+      final popularity = item['popularity'] ?? 0;
+      return popularity >= 60;
+    } else {
+      // For Apple Music, use ranking and other signals
+      final ranking =
+          item['ranking'] ?? 999; // Default to high number if not ranked
+
+      if (ranking <= 3) return true; // Top 3 in their category
+    }
+
+    return false;
+  }
+
   // Search using Apple Music API
   Future<Map<String, dynamic>> _searchAppleMusic(String query) async {
     print('🎵 [Apple Music] Searching for: "$query"');
@@ -188,12 +269,38 @@ class ApiService {
       final data = json.decode(response.body);
       final List<Map<String, dynamic>> results = [];
 
-      // Process songs
+      // Track category rankings
+      Map<String, List<String>> categoryIds = {
+        'track': [],
+        'artist': [],
+        'album': [],
+      };
+
+      // First pass: collect category rankings
+      if (data['results']?['songs']?['data'] != null) {
+        categoryIds['track'] = (data['results']['songs']['data'] as List)
+            .map((item) => item['id'].toString())
+            .toList();
+      }
+      if (data['results']?['artists']?['data'] != null) {
+        categoryIds['artist'] = (data['results']['artists']['data'] as List)
+            .map((item) => item['id'].toString())
+            .toList();
+      }
+      if (data['results']?['albums']?['data'] != null) {
+        categoryIds['album'] = (data['results']['albums']['data'] as List)
+            .map((item) => item['id'].toString())
+            .toList();
+      }
+
+      // Process all items with rankings
       if (data['results']?['songs']?['data'] != null) {
         final songs = data['results']['songs']['data'];
         print('📝 [Apple Music] Found ${songs.length} songs');
         for (var item in songs) {
           final attributes = item['attributes'];
+          final ranking =
+              categoryIds['track']!.indexOf(item['id'].toString()) + 1;
           results.add({
             'type': 'track',
             'id': item['id'],
@@ -205,39 +312,47 @@ class ApiService {
                 .toString()
                 .replaceAll('{w}x{h}', '500x500'),
             'previewUrl': attributes['previews']?.first?['url'],
+            'ranking': ranking,
+            'matchScore': _calculateSimilarity(attributes['name'], query),
           });
         }
       }
 
-      // Process artists
       if (data['results']?['artists']?['data'] != null) {
         final artists = data['results']['artists']['data'];
         print('👤 [Apple Music] Found ${artists.length} artists');
         for (var item in artists) {
           final attributes = item['attributes'];
+          final name = attributes['name'];
+          final ranking =
+              categoryIds['artist']!.indexOf(item['id'].toString()) + 1;
           results.add({
             'type': 'artist',
             'id': item['id'],
-            'title': attributes['name'],
+            'title': name,
             'artist': '',
             'coverArtUrl': attributes['artwork']?['url']
                 ?.toString()
                 .replaceAll('{w}x{h}', '500x500'),
             'genres': attributes['genreNames'] ?? [],
+            'ranking': ranking,
+            'matchScore': _calculateSimilarity(name, query),
           });
         }
       }
 
-      // Process albums
       if (data['results']?['albums']?['data'] != null) {
         final albums = data['results']['albums']['data'];
         print('💿 [Apple Music] Found ${albums.length} albums');
         for (var item in albums) {
           final attributes = item['attributes'];
+          final title = attributes['name'];
+          final ranking =
+              categoryIds['album']!.indexOf(item['id'].toString()) + 1;
           results.add({
             'type': 'album',
             'id': item['id'],
-            'title': attributes['name'],
+            'title': title,
             'artist': attributes['artistName'],
             'releaseDate': attributes['releaseDate'],
             'coverArtUrl': attributes['artwork']['url']
@@ -245,10 +360,35 @@ class ApiService {
                 .replaceAll('{w}x{h}', '500x500'),
             'url': attributes['url'],
             'trackCount': attributes['trackCount'],
-            'tracks': [], // Backend will fetch tracks
+            'tracks': [],
+            'ranking': ranking,
+            'matchScore': _calculateSimilarity(title, query),
           });
         }
       }
+
+      // Sort results based on type hints, match score, and popularity
+      results.sort((a, b) {
+        a['source'] = 'apple_music';
+        b['source'] = 'apple_music';
+
+        // First compare if both are high priority items
+        final aHighPriority = _shouldPrioritizeResult(a, query);
+        final bHighPriority = _shouldPrioritizeResult(b, query);
+
+        if (aHighPriority && !bHighPriority) return -1;
+        if (!aHighPriority && bHighPriority) return 1;
+
+        // If both are high priority or both are low priority, sort by match score
+        if ((a['type'] == 'artist' || a['type'] == 'album') &&
+            (b['type'] == 'artist' || b['type'] == 'album')) {
+          return (b['matchScore'] as double)
+              .compareTo(a['matchScore'] as double);
+        }
+
+        // Keep original order for other cases
+        return 0;
+      });
 
       print('✅ [Apple Music] Search completed successfully');
       return {'success': true, 'results': results, 'source': 'apple_music'};
@@ -309,7 +449,6 @@ class ApiService {
       final data = json.decode(response.body);
       final List<Map<String, dynamic>> results = [];
 
-      // Process tracks
       if (data['tracks']?['items'] != null) {
         final tracks = data['tracks']['items'];
         print('📝 [Spotify] Found ${tracks.length} tracks');
@@ -324,45 +463,71 @@ class ApiService {
                 ? item['album']['images'][0]['url']
                 : null,
             'previewUrl': item['preview_url'],
+            'matchScore': 0.0,
           });
         }
       }
 
-      // Process artists
       if (data['artists']?['items'] != null) {
         final artists = data['artists']['items'];
         print('👤 [Spotify] Found ${artists.length} artists');
         for (var item in artists) {
+          final name = item['name'];
           results.add({
             'type': 'artist',
             'id': item['id'],
-            'title': item['name'],
+            'title': name,
             'artist': '',
             'coverArtUrl':
                 item['images'].isNotEmpty ? item['images'][0]['url'] : null,
             'genres': item['genres'] ?? [],
             'popularity': item['popularity'],
+            'matchScore': _calculateSimilarity(name, query),
           });
         }
       }
 
-      // Process albums
       if (data['albums']?['items'] != null) {
         final albums = data['albums']['items'];
         print('💿 [Spotify] Found ${albums.length} albums');
         for (var item in albums) {
+          final title = item['name'];
           results.add({
             'type': 'album',
             'id': item['id'],
-            'title': item['name'],
+            'title': title,
             'artist': item['artists'][0]['name'],
             'coverArtUrl':
                 item['images'].isNotEmpty ? item['images'][0]['url'] : null,
             'tracks': [],
             'total_tracks': item['total_tracks'],
+            'matchScore': _calculateSimilarity(title, query),
           });
         }
       }
+
+      // Sort results based on type hints, match score, and popularity
+      results.sort((a, b) {
+        a['source'] = 'spotify';
+        b['source'] = 'spotify';
+
+        // First compare if both are high priority items
+        final aHighPriority = _shouldPrioritizeResult(a, query);
+        final bHighPriority = _shouldPrioritizeResult(b, query);
+
+        if (aHighPriority && !bHighPriority) return -1;
+        if (!aHighPriority && bHighPriority) return 1;
+
+        // If both are high priority or both are low priority, sort by match score
+        if ((a['type'] == 'artist' || a['type'] == 'album') &&
+            (b['type'] == 'artist' || b['type'] == 'album')) {
+          return (b['matchScore'] as double)
+              .compareTo(a['matchScore'] as double);
+        }
+
+        // Keep original order for other cases
+        return 0;
+      });
 
       print('✅ [Spotify] Search completed successfully');
       return {'success': true, 'results': results, 'source': 'spotify'};

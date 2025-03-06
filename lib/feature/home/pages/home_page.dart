@@ -587,12 +587,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               ),
                                               // Remove the previous standalone close button since we've integrated it into the header
                                               Flexible(
-                                                child: GestureDetector(
-                                                  onTap: () {},
-                                                  behavior:
-                                                      HitTestBehavior.opaque,
-                                                  child: _buildSearchResults(),
-                                                ),
+                                                child: _buildSearchResults(),
                                               ),
                                             ],
                                           ),
@@ -865,7 +860,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         itemCount: results.length,
         shrinkWrap: true,
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemBuilder: (context, index) {
           final item = results[index];
           return Material(
