@@ -90,7 +90,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _searchFocusNode.addListener(_handleSearchFocus);
     tfController.addListener(_handleTextChange);
 
-    // Load top charts when app starts
+    // Ensure these states are initialized to false
+    isSearchActive = false;
+    isShowingSearchResults = false;
+
+    // Load top charts when app starts - but don't show the search UI yet
     _loadTopCharts();
 
     // Test API connection
@@ -146,9 +150,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     groupCFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _fadeController,
-        // Start 1s after others finish (0.55 + 1s/6s = 0.55 + 0.167 = 0.717)
-        // End at same duration as group B (0.717 + 0.183 = 0.9)
-        curve: const Interval(0.717, 0.9, curve: Curves.easeOutCubic),
+        // Modified timing: Start earlier at 0.4 and end at 0.7
+        // This ensures the graphic fades in much earlier
+        curve: const Interval(0.4, 0.7, curve: Curves.easeOutCubic),
       ),
     );
     groupBSlideAnimation = Tween<Offset>(
@@ -290,7 +294,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final bool isSearchViewActive = isSearchActive ||
         isSearchFocused ||
         isSearching ||
-        searchResults != null ||
+        (searchResults != null &&
+            _searchAnimController.value >
+                0) || // Only consider searchResults when search animation is active
         (tfController.text.isNotEmpty && !isLoading);
 
     // When loading, we don't show search results, but we do show the search bar
@@ -622,8 +628,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         return Opacity(
                           opacity: 1 - _searchAnimController.value,
                           child: Visibility(
-                            visible: !shouldShowResults &&
-                                _searchAnimController.value < 0.5,
+                            visible: !shouldShowResults,
                             child: child!,
                           ),
                         );
@@ -1115,8 +1120,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           searchResults = results;
           isLoadingCharts = false;
           isShowingSearchResults = false;
-          isSearchActive =
-              true; // Make sure search stays active when top charts are loaded
+
+          // Only activate search UI if user has interacted with search
+          // Check if this is not the initial load (search animations have been triggered)
+          isSearchActive = isSearchFocused || _searchAnimController.value > 0;
         });
       }
     } catch (e) {
