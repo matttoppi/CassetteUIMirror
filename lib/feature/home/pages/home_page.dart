@@ -39,10 +39,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Timer? _autoConvertTimer;
   Map<String, dynamic>? searchResults;
   bool isSearching = false;
+  bool isShowingSearchResults = false;
   late final AnimationController _searchAnimController;
   late final Animation<double> _searchBarSlideAnimation;
   late final Animation<double> _logoFadeAnimation;
   bool isSearchFocused = false;
+  bool isSearchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
   late final AnimationController _logoFadeController;
   bool isLoadingCharts = true;
@@ -59,6 +61,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 450),
     );
+
+    _searchAnimController.addStatusListener(_handleSearchAnimationStatus);
 
     _logoFadeController = AnimationController(
       vsync: this,
@@ -158,56 +162,51 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     Future.delayed(const Duration(milliseconds: 400), () {
       _fadeController.forward();
     });
-  }
 
-  Future<void> _loadTopCharts() async {
-    try {
-      setState(() => isLoadingCharts = true);
-      final results = await _apiService.fetchTop50USAPlaylist();
-      if (mounted) {
-        setState(() {
-          searchResults = results;
-          isLoadingCharts = false;
-        });
-      }
-    } catch (e) {
-      print('Error loading top charts: $e');
-      if (mounted) {
-        setState(() => isLoadingCharts = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading charts: $e')),
-        );
-      }
-    }
+    // Register _handleTextChange to listen for changes in the text field
+    tfController.addListener(_handleTextChange);
   }
 
   void _handleSearchFocus() {
     setState(() {
       isSearchFocused = _searchFocusNode.hasFocus;
-    });
+      print(
+          '[_handleSearchFocus] isSearchFocused: $isSearchFocused, current text: "${tfController.text}"');
 
-    if (isSearchFocused && tfController.text.isEmpty) {
-      setState(() => isSearching = true);
-      _apiService.fetchTop50USAPlaylist().then((results) {
-        if (mounted) {
-          setState(() {
-            searchResults = results;
-            isSearching = false;
-          });
+      if (isSearchFocused) {
+        isSearchActive = true;
+
+        // When text is empty and search animation is complete, show top charts
+        if (tfController.text.isEmpty) {
+          print(
+              '[_handleSearchFocus] Focused with empty text, ensuring top charts are loaded');
+          isShowingSearchResults = false;
+
+          // Only load top charts if not already loaded
+          if (searchResults == null || isLoadingCharts) {
+            print('[_handleSearchFocus] Calling _loadTopCharts from focus');
+            _loadTopCharts();
+          } else {
+            print('[_handleSearchFocus] Top charts already loaded on focus');
+          }
         }
-      }).catchError((error) {
-        if (mounted) {
-          setState(() => isSearching = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error loading playlist: $error')),
-          );
+      } else {
+        // When losing focus with empty text, keep charts visible
+        if (tfController.text.isEmpty) {
+          print(
+              '[_handleSearchFocus] Lost focus but text is empty, keeping charts visible');
+          isSearchActive = true; // Maintain search container visible
+          isShowingSearchResults = false;
         }
-      });
-    }
+      }
+    });
 
     if (isSearchFocused) {
       _searchAnimController.forward();
       _logoFadeController.forward();
+    } else if (tfController.text.isEmpty) {
+      // Don't reverse animations when text is empty
+      print('[_handleSearchFocus] Not reversing animations for empty text');
     } else {
       _searchAnimController.reverse();
       _logoFadeController.reverse();
@@ -215,31 +214,69 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _handleTextChange() {
-    // Only clear search results if text is not empty (to keep showing charts)
+    // Log current text and state
+    print('[_handleTextChange] Current text: "${tfController.text}"');
+
     if (tfController.text.isNotEmpty) {
       setState(() {
-        searchResults = null;
+        searchResults = null; // Clear previous search results
         isSearching = false;
+        isShowingSearchResults = true;
+        isSearchActive = true; // Keep search view active
       });
-    }
 
-    // Handle animations
-    if (tfController.text.isNotEmpty && !_searchAnimController.isAnimating) {
-      _logoFadeController.duration = const Duration(milliseconds: 250);
-      _searchAnimController.forward();
-      _logoFadeController.forward();
-    } else if (tfController.text.isEmpty &&
-        !_searchFocusNode.hasFocus &&
-        !_searchAnimController.isAnimating) {
-      _logoFadeController.duration = const Duration(milliseconds: 800);
-      _searchAnimController.reverse();
-      _logoFadeController.reverse();
+      // Ensure animations are playing
+      if (!_searchAnimController.isAnimating &&
+          _searchAnimController.value < 1.0) {
+        _logoFadeController.duration = const Duration(milliseconds: 250);
+        _searchAnimController.forward();
+        _logoFadeController.forward();
+      }
+    } else {
+      // Log that text is empty
+      print(
+          '[_handleTextChange] Text is empty. Reloading top charts if needed.');
+
+      // When text is empty, maintain the search container and show charts
+      setState(() {
+        isShowingSearchResults = false;
+        isSearchActive = true; // Keep the search container visible
+
+        // Only clear searchResults if they're not top charts
+        if (searchResults != null &&
+            searchResults!['source'] != 'apple_music') {
+          searchResults = null;
+        }
+      });
+
+      // Reload the top charts only if not already loaded
+      if (searchResults == null || isLoadingCharts) {
+        print('[_handleTextChange] Calling _loadTopCharts');
+        _loadTopCharts();
+      } else {
+        print('[_handleTextChange] Top charts already loaded.');
+      }
     }
+  }
+
+  void _closeSearch() {
+    setState(() {
+      isSearchActive = false;
+      searchResults = null;
+      isSearching = false;
+      isShowingSearchResults = false;
+      _searchFocusNode.unfocus();
+    });
+    _searchAnimController.reverse();
+    _logoFadeController.reverse();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isSearchActive = isSearchFocused ||
+    // Ensure isSearchViewActive remains true when search is active
+    // This keeps the search results container visible
+    final bool isSearchViewActive = isSearchActive ||
+        isSearchFocused ||
         isSearching ||
         searchResults != null ||
         (tfController.text.isNotEmpty && !isLoading);
@@ -348,14 +385,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           focusNode: _searchFocusNode,
                                           textInputAction: TextInputAction.done,
                                           onSubmitted: (_) {
-                                            // Clear search and reset animations
-                                            setState(() {
-                                              searchResults = null;
-                                              isSearching = false;
-                                              isSearchFocused = false;
-                                            });
-                                            _searchAnimController.reverse();
-                                            _logoFadeController.reverse();
+                                            FocusScope.of(context).unfocus();
+
+                                            // If text is empty, ensure we're showing top charts
+                                            if (tfController.text.isEmpty) {
+                                              setState(() {
+                                                isShowingSearchResults = false;
+                                              });
+
+                                              if (searchResults == null) {
+                                                _loadTopCharts();
+                                              }
+                                            }
                                           },
                                           onPaste: (value) {
                                             _autoConvertTimer?.cancel();
@@ -374,7 +415,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                 mounted) {
                                               setState(() {
                                                 searchResults = null;
-                                                // Reset animations when starting conversion
                                                 _searchAnimController.reverse();
                                                 _logoFadeController.reverse();
                                               });
@@ -394,9 +434,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         ),
                                       ),
                                       if (isLoading)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 8.0),
+                                        const Padding(
+                                          padding: EdgeInsets.only(top: 8.0),
                                           child: Row(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
@@ -415,7 +454,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
+                                              SizedBox(width: 8),
                                               Text(
                                                 'Converting...',
                                                 style: TextStyle(
@@ -433,7 +472,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
 
                             // Search results with improved fade in
-                            if (isSearchActive)
+                            if (isSearchViewActive)
                               AnimatedBuilder(
                                 animation: _searchAnimController,
                                 builder: (context, child) {
@@ -451,20 +490,115 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   ),
                                   margin: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 5,
-                                        offset: Offset(0, 2),
+                                  child: Stack(
+                                    children: [
+                                      // Bottom "shadow" container
+                                      Container(
+                                        margin: const EdgeInsets.only(
+                                            top: 4), // Offset for 3D effect
+                                        decoration: BoxDecoration(
+                                          color: AppColors
+                                              .animatedBtnColorConvertBottom,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: AppColors
+                                                .animatedBtnColorConvertBottomBorder,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: const SizedBox(
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                        ),
+                                      ),
+                                      // Top content container
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: AppColors
+                                                .animatedBtnColorConvertTop,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              // Add a header row with title and close button
+                                              Container(
+                                                padding: const EdgeInsets.only(
+                                                    left: 16,
+                                                    top: 12,
+                                                    right: 8,
+                                                    bottom: 2),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      // Show different text based on whether this is search or charts
+                                                      isShowingSearchResults
+                                                          ? "Search Results"
+                                                          : "Top Charts",
+                                                      style: AppStyles
+                                                          .itemTypeTs
+                                                          .copyWith(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                        Icons.close,
+                                                        size: 20,
+                                                        color: AppColors
+                                                            .textPrimary,
+                                                      ),
+                                                      onPressed: _closeSearch,
+                                                      splashColor:
+                                                          Colors.transparent,
+                                                      highlightColor:
+                                                          Colors.transparent,
+                                                      padding: EdgeInsets.zero,
+                                                      constraints:
+                                                          const BoxConstraints(),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              // Add a divider
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 12),
+                                                child: Divider(
+                                                  color: AppColors
+                                                      .animatedBtnColorConvertTop
+                                                      .withOpacity(0.3),
+                                                  height: 1,
+                                                ),
+                                              ),
+                                              // Remove the previous standalone close button since we've integrated it into the header
+                                              Flexible(
+                                                child: GestureDetector(
+                                                  onTap: () {},
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  child: _buildSearchResults(),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: _buildSearchResults(),
                                   ),
                                 ),
                               ),
@@ -481,7 +615,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       return Opacity(
                         opacity: 1 - _searchAnimController.value,
                         child: Visibility(
-                          visible: !isSearchActive ||
+                          visible: !isSearchViewActive ||
                               _searchAnimController.value < 0.5,
                           child: child!,
                         ),
@@ -613,6 +747,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       setState(() {
         searchResults = null;
         isSearching = false;
+        isShowingSearchResults = false;
       });
       return;
     }
@@ -628,6 +763,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(() {
           searchResults = results;
           isSearching = false;
+          isShowingSearchResults = true;
         });
         print('✅ Search completed successfully');
       }
@@ -649,30 +785,74 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildSearchResults() {
+    // Logging state for debugging chart visibility
+    print(
+        '[_buildSearchResults] isShowingSearchResults: $isShowingSearchResults, isSearchActive: $isSearchActive, searchResults: $searchResults');
+
+    // Show loading indicator while loading charts or searching
     if (isLoadingCharts || isSearching) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppColors.animatedBtnColorConvertTop,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // If searchResults is null and we're not showing search results, schedule loading top charts
+    if (searchResults == null && !isShowingSearchResults && isSearchActive) {
+      // Schedule the loading after the build phase
+      if (!isLoadingCharts) {
+        print('[_buildSearchResults] Scheduling _loadTopCharts');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !isLoadingCharts && searchResults == null) {
+            print('[_buildSearchResults] Executing scheduled _loadTopCharts');
+            _loadTopCharts();
+          }
+        });
+      }
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppColors.animatedBtnColorConvertTop,
+            ),
+          ),
         ),
       );
     }
 
     if (searchResults == null) {
-      return const SizedBox.shrink();
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Loading charts...',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      );
     }
 
     final results = searchResults!['results'] as List<dynamic>? ?? [];
 
     if (results.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
           child: Text(
             'No results found',
-            style: TextStyle(
+            style: AppStyles.itemDesTs.copyWith(
               fontSize: 16,
-              color: Colors.black54,
+              color: AppColors.textPrimary,
             ),
           ),
         ),
@@ -680,7 +860,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         itemCount: results.length,
@@ -690,60 +870,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           final item = results[index];
           return Material(
             color: Colors.transparent,
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 4.0,
-              ),
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: item['coverArtUrl'] != null
-                    ? Image.network(
-                        item['coverArtUrl'],
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            width: 40,
-                            height: 40,
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : Container(
-                        width: 40,
-                        height: 40,
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.music_note,
-                          color: Colors.grey,
-                        ),
-                      ),
-              ),
-              title: Text(
-                item['title'] ?? 'Unknown',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              subtitle: Text(
-                item['artist'] ?? '',
-                style: const TextStyle(
-                  color: Colors.black54,
-                ),
-              ),
-              hoverColor: Colors.black.withOpacity(0.05),
+            child: InkWell(
               onTap: () {
                 final type = item['type'].toString().toLowerCase();
                 final id = item['id'];
@@ -753,7 +880,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 // Format URL based on the source
                 String url;
                 if (source == 'apple_music') {
-                  url = item['url'] ?? ''; // Use direct Apple Music URL
+                  url = item['url'] ?? '';
                   if (url.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -764,7 +891,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     return;
                   }
                 } else {
-                  // Construct Spotify URL
                   url = 'https://open.spotify.com/$type/$id';
                 }
 
@@ -777,6 +903,139 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 });
                 _handleLinkConversion(url);
               },
+              splashColor:
+                  AppColors.animatedBtnColorConvertTop.withOpacity(0.2),
+              highlightColor:
+                  AppColors.animatedBtnColorConvertTop.withOpacity(0.1),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: item['coverArtUrl'] != null
+                          ? Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: AppColors.animatedBtnColorConvertTop
+                                      .withOpacity(0.5),
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Image.network(
+                                item['coverArtUrl'],
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    width: 50,
+                                    height: 50,
+                                    color: Colors.grey[200],
+                                    child: const Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            AppColors
+                                                .animatedBtnColorConvertTop,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                          : Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.animatedBtnColorConvertTop
+                                      .withOpacity(0.5),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.music_note,
+                                color: AppColors.textPrimary.withOpacity(0.5),
+                              ),
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['title'] ?? 'Unknown',
+                            style: AppStyles.itemTitleTs,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                item['artist'] ?? '',
+                                style: AppStyles.itemDesTs,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (item['type'] != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors
+                                          .animatedBtnColorConvertTop
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: AppColors
+                                            .animatedBtnColorConvertTop
+                                            .withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      item['type']?.toString().toUpperCase() ??
+                                          '',
+                                      style: AppStyles.itemTypeTs.copyWith(
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: AppColors.textPrimary.withOpacity(0.5),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },
@@ -784,14 +1043,71 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // Handle animation status changes
+  void _handleSearchAnimationStatus(AnimationStatus status) {
+    print(
+        '[_handleSearchAnimationStatus] status: $status, current text: "${tfController.text}", isLoading: $isLoading');
+    // When the search animation completes (search bar fully visible)
+    if (status == AnimationStatus.completed) {
+      // If search field is empty, show top charts
+      if (tfController.text.isEmpty && !isLoading) {
+        setState(() {
+          isShowingSearchResults = false;
+          isSearchActive = true; // Keep search active
+          print(
+              '[_handleSearchAnimationStatus] Completed: Empty text. Setting isSearchActive true, isShowingSearchResults false.');
+        });
+
+        // Only load if we don't already have them
+        if (searchResults == null || isLoadingCharts) {
+          print(
+              '[_handleSearchAnimationStatus] Calling _loadTopCharts from animation status');
+          _loadTopCharts();
+        }
+      }
+    } else {
+      print('[_handleSearchAnimationStatus] Not completed, no action.');
+    }
+  }
+
   @override
   void dispose() {
     _fadeController.dispose();
+    _searchAnimController.removeStatusListener(_handleSearchAnimationStatus);
     _searchAnimController.dispose();
     _logoFadeController.dispose();
     _searchFocusNode.dispose();
     tfController.removeListener(_handleTextChange);
     _autoConvertTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadTopCharts() async {
+    try {
+      setState(() => isLoadingCharts = true);
+      final results = await _apiService.fetchTop50USAPlaylist();
+      // Only update top charts if the search text is still empty
+      if (tfController.text.isNotEmpty) {
+        // User started typing, so ignore these results
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          searchResults = results;
+          isLoadingCharts = false;
+          isShowingSearchResults = false;
+          isSearchActive =
+              true; // Make sure search stays active when top charts are loaded
+        });
+      }
+    } catch (e) {
+      print('Error loading top charts: $e');
+      if (mounted) {
+        setState(() => isLoadingCharts = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading charts: $e')),
+        );
+      }
+    }
   }
 }
