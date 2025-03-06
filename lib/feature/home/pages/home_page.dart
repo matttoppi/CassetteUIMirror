@@ -285,13 +285,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Ensure isSearchViewActive remains true when search is active
-    // This keeps the search results container visible
+    // Ensure isSearchViewActive is false during loading (to hide results)
+    // but keep search bar visible by keeping isSearchActive true
     final bool isSearchViewActive = isSearchActive ||
         isSearchFocused ||
         isSearching ||
         searchResults != null ||
         (tfController.text.isNotEmpty && !isLoading);
+
+    // When loading, we don't show search results, but we do show the search bar
+    final bool shouldShowResults = isSearchViewActive && !isLoading;
 
     return AppScaffold(
       showAnimatedBg: true,
@@ -303,11 +306,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       isMenuVisible: isMenuVisible,
       body: Stack(
         children: [
+          // Main scrollable content
           Scrollbar(
             controller: scrollController,
             child: SingleChildScrollView(
               controller: scrollController,
-              physics: isSearchViewActive
+              physics: shouldShowResults
                   ? const NeverScrollableScrollPhysics()
                   : const AlwaysScrollableScrollPhysics(),
               child: Column(
@@ -446,40 +450,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               _handleSearch(query);
                                             }
                                           },
+                                          isLoading: isLoading,
                                         ),
                                       ),
-                                      if (isLoading)
-                                        const Padding(
-                                          padding: EdgeInsets.only(top: 8.0),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor:
-                                                      AlwaysStoppedAnimation<
-                                                          Color>(
-                                                    AppColors
-                                                        .animatedBtnColorConvertTop,
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text(
-                                                'Converting...',
-                                                style: TextStyle(
-                                                  color: AppColors.textPrimary,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
                                     ],
                                   ),
                                 ),
@@ -487,7 +460,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
 
                             // Search results with improved fade in
-                            if (isSearchViewActive)
+                            if (shouldShowResults)
                               AnimatedBuilder(
                                 animation: _searchAnimController,
                                 builder: (context, child) {
@@ -640,14 +613,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
 
                   // Bottom graphics and create account button
-                  if (!isSearchViewActive) // Only show when search is not active
+                  if (!shouldShowResults) // Only show when search is not active
                     AnimatedBuilder(
                       animation: _searchAnimController,
                       builder: (context, child) {
                         return Opacity(
                           opacity: 1 - _searchAnimController.value,
                           child: Visibility(
-                            visible: !isSearchViewActive &&
+                            visible: !shouldShowResults &&
                                 _searchAnimController.value < 0.5,
                             child: child!,
                           ),
@@ -720,6 +693,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     setState(() {
       isLoading = true;
+      // Hide results but keep search interface visible in center position
+      isShowingSearchResults = false;
+      isSearchActive = true; // Keep search UI visible
     });
 
     try {
@@ -729,6 +705,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (mounted) {
         setState(() {
           isLoading = false;
+          // Close search interface after successful conversion
+          isSearchActive = false;
+          isShowingSearchResults = false;
         });
 
         print('✅ Conversion successful');
@@ -739,6 +718,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (mounted) {
         setState(() {
           isLoading = false;
+          // Close search interface on error
+          isSearchActive = false;
+          isShowingSearchResults = false;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -913,9 +895,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 tfController.text =
                     'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
 
+                // Return search UI to center position
+                _searchFocusNode.unfocus();
+                _searchAnimController
+                    .reverse(); // Reverse animation to move search bar back to center
+                _logoFadeController.reverse(); // Show logo again
+
                 setState(() {
                   searchResults = null;
                   isLoading = true;
+                  isShowingSearchResults = false;
+                  isSearchActive = true; // Keep search bar visible
                 });
                 _handleLinkConversion(url);
               },

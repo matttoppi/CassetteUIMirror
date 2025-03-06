@@ -14,6 +14,7 @@ class MusicSearchBar extends StatefulWidget {
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
   final Function(String)? onSubmitted;
+  final bool isLoading;
 
   const MusicSearchBar({
     super.key,
@@ -26,6 +27,7 @@ class MusicSearchBar extends StatefulWidget {
     this.focusNode,
     this.textInputAction,
     this.onSubmitted,
+    this.isLoading = false,
   });
 
   @override
@@ -160,6 +162,19 @@ class _MusicSearchBarState extends State<MusicSearchBar> {
                         onPressed: _clearText,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
+                      ),
+                    // Show loading indicator when in loading state
+                    if (widget.isLoading)
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        width: 20,
+                        height: 20,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.animatedBtnColorConvertTop,
+                          ),
+                        ),
                       ),
                   ],
                 ),
