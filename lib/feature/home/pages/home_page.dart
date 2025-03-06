@@ -774,7 +774,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 final type = item['type'].toString().toLowerCase();
                 final id = item['id'];
                 final title = item['title'] ?? 'Unknown';
-                final spotifyUrl = 'https://open.spotify.com/$type/$id';
+
+                // Use the direct URL from Apple Music if available, otherwise construct it
+                final url = searchResults!['source'] == 'apple_music'
+                    ? item['url'] // Use the direct URL from the API
+                    : 'https://open.spotify.com/$type/$id'; // Spotify URL format
 
                 tfController.text =
                     'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
@@ -783,7 +787,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   searchResults = null;
                   isLoading = true;
                 });
-                _handleLinkConversion(spotifyUrl);
+                _handleLinkConversion(url);
               },
             ),
           );

@@ -508,8 +508,8 @@ XLYa3Ssm
         // Transform tracks to match our search results format
         final List<Map<String, dynamic>> results = tracks.map((track) {
           final attributes = track['attributes'];
-          print(
-              'Processing track: ${attributes['name']} by ${attributes['artistName']}');
+          print('Full track attributes:');
+          print(json.encode(attributes));
 
           return {
             'type': 'track',
@@ -517,6 +517,7 @@ XLYa3Ssm
             'title': attributes['name'],
             'artist': attributes['artistName'],
             'album': attributes['albumName'],
+            'url': attributes['url'], // Add the direct URL from Apple Music
             'coverArtUrl': attributes['artwork']['url']
                 .toString()
                 .replaceAll('{w}x{h}', '500x500'),
@@ -529,6 +530,7 @@ XLYa3Ssm
         return {
           'success': true,
           'results': results,
+          'source': 'apple_music' // Add this to identify the source
         };
       } else {
         print('ERROR: Apple Music returned status code ${response.statusCode}');
