@@ -12,6 +12,8 @@ class ClipboardPasteButton extends StatefulWidget {
   final Function(String)? onPaste;
   final Function(String)? onSearch;
   final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final Function(String)? onSubmitted;
 
   const ClipboardPasteButton({
     super.key,
@@ -22,6 +24,8 @@ class ClipboardPasteButton extends StatefulWidget {
     this.onPaste,
     this.onSearch,
     this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   @override
@@ -68,6 +72,7 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton> {
 
   void _clearText() {
     widget.controller.clear();
+    _onTextChanged(); // Ensure text change handler is triggered
     setState(() {
       _hasContent = false;
     });
@@ -113,6 +118,14 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton> {
                       child: TextField(
                         controller: widget.controller,
                         focusNode: widget.focusNode,
+                        textInputAction: widget.textInputAction,
+                        onSubmitted: (value) {
+                          // Ensure keyboard is dismissed and prevent auto-focus
+                          FocusScope.of(context).unfocus();
+                          if (widget.onSubmitted != null) {
+                            widget.onSubmitted!(value);
+                          }
+                        },
                         decoration: InputDecoration(
                           hintText: widget.hint,
                           hintStyle: AppStyles.textFieldHintTextStyle,

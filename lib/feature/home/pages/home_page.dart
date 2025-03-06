@@ -156,24 +156,42 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _handleSearchFocus() {
-    setState(() {
-      isSearchFocused = _searchFocusNode.hasFocus;
-    });
+    final hasFocus = _searchFocusNode.hasFocus;
+    if (isSearchFocused != hasFocus) {
+      setState(() {
+        isSearchFocused = hasFocus;
+      });
 
-    if (_searchFocusNode.hasFocus) {
-      // Faster fade out (changed from 350ms to 250ms)
-      _logoFadeController.duration = const Duration(milliseconds: 250);
-      _searchAnimController.forward();
-      _logoFadeController.forward();
-    } else if (tfController.text.isEmpty) {
-      // Keep slower fade in at 800ms
-      _logoFadeController.duration = const Duration(milliseconds: 800);
-      _searchAnimController.reverse();
-      _logoFadeController.reverse();
+      if (hasFocus) {
+        // Faster fade out (changed from 350ms to 250ms)
+        _logoFadeController.duration = const Duration(milliseconds: 250);
+        _searchAnimController.forward();
+        _logoFadeController.forward();
+      } else {
+        // Keep slower fade in at 800ms
+        _logoFadeController.duration = const Duration(milliseconds: 800);
+        if (tfController.text.isEmpty) {
+          setState(() {
+            searchResults = null;
+            isSearching = false;
+          });
+          _searchAnimController.reverse();
+          _logoFadeController.reverse();
+        }
+      }
     }
   }
 
   void _handleTextChange() {
+    // Always clear search results if text is empty
+    if (tfController.text.isEmpty) {
+      setState(() {
+        searchResults = null;
+        isSearching = false;
+      });
+    }
+
+    // Handle animations
     if (tfController.text.isNotEmpty && !_searchAnimController.isAnimating) {
       // Faster fade out (changed from 350ms to 250ms)
       _logoFadeController.duration = const Duration(milliseconds: 250);
@@ -231,7 +249,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ).value;
 
                       // Calculate offset based on AuthToolbar height (40) plus padding
-                      final startOffset = 0.0;
+                      const startOffset = 0.0;
                       final endOffset =
                           -(MediaQuery.of(context).padding.top + 58.0 + 160.0);
                       final double verticalOffset =
@@ -296,6 +314,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           "Search or paste your music link here...",
                                       controller: tfController,
                                       focusNode: _searchFocusNode,
+                                      textInputAction: TextInputAction.done,
+                                      onSubmitted: (_) {
+                                        // Clear search and reset animations
+                                        setState(() {
+                                          searchResults = null;
+                                          isSearching = false;
+                                          isSearchFocused = false;
+                                        });
+                                        _searchAnimController.reverse();
+                                        _logoFadeController.reverse();
+                                      },
                                       onPaste: (value) {
                                         _autoConvertTimer?.cancel();
 
@@ -613,58 +642,78 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         physics: const BouncingScrollPhysics(),
         itemBuilder: (context, index) {
           final item = results[index];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 4.0,
-            ),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: item['coverArtUrl'] != null
-                  ? Image.network(
-                      item['coverArtUrl'],
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 40,
-                      height: 40,
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.music_note,
-                        color: Colors.grey,
+          return Material(
+            color: Colors.transparent,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 4.0,
+              ),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: item['coverArtUrl'] != null
+                    ? Image.network(
+                        item['coverArtUrl'],
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 40,
+                            height: 40,
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        width: 40,
+                        height: 40,
+                        color: Colors.grey[200],
+                        child: const Icon(
+                          Icons.music_note,
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
-            ),
-            title: Text(
-              item['title'] ?? 'Unknown',
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
               ),
-            ),
-            subtitle: Text(
-              item['artist'] ?? '',
-              style: const TextStyle(
-                color: Colors.black54,
+              title: Text(
+                item['title'] ?? 'Unknown',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
+              subtitle: Text(
+                item['artist'] ?? '',
+                style: const TextStyle(
+                  color: Colors.black54,
+                ),
+              ),
+              hoverColor: Colors.black.withOpacity(0.05),
+              onTap: () {
+                final type = item['type'].toString().toLowerCase();
+                final id = item['id'];
+                final title = item['title'] ?? 'Unknown';
+                final spotifyUrl = 'https://open.spotify.com/$type/$id';
+
+                tfController.text =
+                    'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
+
+                setState(() {
+                  searchResults = null;
+                  isLoading = true;
+                });
+                _handleLinkConversion(spotifyUrl);
+              },
             ),
-            hoverColor: Colors.black.withOpacity(0.05),
-            onTap: () {
-              final type = item['type'].toString().toLowerCase();
-              final id = item['id'];
-              final title = item['title'] ?? 'Unknown';
-              final spotifyUrl = 'https://open.spotify.com/$type/$id';
-
-              tfController.text =
-                  'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
-
-              setState(() {
-                searchResults = null;
-                isLoading = true;
-              });
-              _handleLinkConversion(spotifyUrl);
-            },
           );
         },
       ),
