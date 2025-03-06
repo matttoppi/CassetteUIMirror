@@ -45,6 +45,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool isSearchFocused = false;
   final FocusNode _searchFocusNode = FocusNode();
   late final AnimationController _logoFadeController;
+  bool isLoadingCharts = true;
 
   @override
   void initState() {
@@ -81,8 +82,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     ));
 
     _searchFocusNode.addListener(_handleSearchFocus);
-
     tfController.addListener(_handleTextChange);
+
+    // Load top charts when app starts
+    _loadTopCharts();
 
     // Test API connection
     _apiService.testConnection().then((isConnected) {
@@ -157,6 +160,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _loadTopCharts() async {
+    try {
+      setState(() => isLoadingCharts = true);
+      final results = await _apiService.fetchTop50USAPlaylist();
+      if (mounted) {
+        setState(() {
+          searchResults = results;
+          isLoadingCharts = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading top charts: $e');
+      if (mounted) {
+        setState(() => isLoadingCharts = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading charts: $e')),
+        );
+      }
+    }
+  }
+
   void _handleSearchFocus() {
     setState(() {
       isSearchFocused = _searchFocusNode.hasFocus;
@@ -191,27 +215,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _handleTextChange() {
-    // Always clear search results if text is empty and show Top 50 playlist
-    if (tfController.text.isEmpty && isSearchFocused) {
-      setState(() {
-        isSearching = true;
-      });
-      _apiService.fetchTop50USAPlaylist().then((results) {
-        if (mounted) {
-          setState(() {
-            searchResults = results;
-            isSearching = false;
-          });
-        }
-      }).catchError((error) {
-        if (mounted) {
-          setState(() {
-            searchResults = null;
-            isSearching = false;
-          });
-        }
-      });
-    } else if (tfController.text.isEmpty) {
+    // Only clear search results if text is not empty (to keep showing charts)
+    if (tfController.text.isNotEmpty) {
       setState(() {
         searchResults = null;
         isSearching = false;
@@ -220,14 +225,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // Handle animations
     if (tfController.text.isNotEmpty && !_searchAnimController.isAnimating) {
-      // Faster fade out (changed from 350ms to 250ms)
       _logoFadeController.duration = const Duration(milliseconds: 250);
       _searchAnimController.forward();
       _logoFadeController.forward();
     } else if (tfController.text.isEmpty &&
         !_searchFocusNode.hasFocus &&
         !_searchAnimController.isAnimating) {
-      // Keep slower fade in at 800ms
       _logoFadeController.duration = const Duration(milliseconds: 800);
       _searchAnimController.reverse();
       _logoFadeController.reverse();
@@ -672,7 +675,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildSearchResults() {
-    if (isSearching) {
+    if (isLoadingCharts || isSearching) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
