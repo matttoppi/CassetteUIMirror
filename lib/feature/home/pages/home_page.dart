@@ -499,6 +499,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 },
                                 child: Container(
                                   constraints: BoxConstraints(
+                                    minHeight: 100,
                                     maxHeight: MediaQuery.of(context)
                                             .size
                                             .height -
@@ -620,20 +621,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   ),
                                                 ),
                                                 // Remove the previous standalone close button since we've integrated it into the header
-                                                Flexible(
-                                                  child: GestureDetector(
-                                                    // Keep gestures from propagating outside
-                                                    onTap: () {},
-                                                    behavior:
-                                                        HitTestBehavior.opaque,
-                                                    child:
-                                                        SingleChildScrollView(
-                                                      physics:
-                                                          const AlwaysScrollableScrollPhysics(),
-                                                      child:
-                                                          _buildSearchResults(),
-                                                    ),
-                                                  ),
+                                                Expanded(
+                                                  child: _buildSearchResults(),
                                                 ),
                                               ],
                                             ),
@@ -892,9 +881,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         itemCount: results.length,
-        shrinkWrap: true,
-        physics:
-            const AlwaysScrollableScrollPhysics(), // Allow scrolling in the ListView
+        physics: const AlwaysScrollableScrollPhysics(),
         itemBuilder: (context, index) {
           final item = results[index];
           return Material(
