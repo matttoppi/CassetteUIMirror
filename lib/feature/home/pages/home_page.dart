@@ -484,10 +484,12 @@ class _HomePageState extends State<HomePage>
             // Generate Spotify URL based on type and ID
             final type = item['type'].toString().toLowerCase();
             final id = item['id'];
+            final title = item['title'] ?? 'Unknown';
             final spotifyUrl = 'https://open.spotify.com/$type/$id';
 
-            // Update text field with Spotify URL
-            tfController.text = spotifyUrl;
+            // Update text field with descriptive message
+            tfController.text =
+                'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
 
             // Clear search results and trigger conversion
             setState(() {
