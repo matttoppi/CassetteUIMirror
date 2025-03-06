@@ -297,6 +297,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             controller: scrollController,
             child: SingleChildScrollView(
               controller: scrollController,
+              physics: isSearchViewActive
+                  ? const NeverScrollableScrollPhysics()
+                  : const AlwaysScrollableScrollPhysics(),
               child: Column(
                 children: [
                   const SizedBox(height: 18),
@@ -488,8 +491,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   constraints: BoxConstraints(
                                     maxHeight: MediaQuery.of(context)
                                             .size
-                                            .height *
-                                        0.7, // Increased height for better scrolling
+                                            .height -
+                                        // Top nav bar height + padding
+                                        (58.0 +
+                                            MediaQuery.of(context)
+                                                .padding
+                                                .top) -
+                                        // Bottom padding to match top spacing
+                                        (75.0 +
+                                            MediaQuery.of(context)
+                                                .padding
+                                                .bottom) -
+                                        // Search bar height and padding
+                                        80,
                                   ),
                                   margin: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 8),
@@ -610,58 +624,64 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     },
                   ),
 
-                  // Bottom graphics and create account button (only visible when not searching)
-                  AnimatedBuilder(
-                    animation: _searchAnimController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: 1 - _searchAnimController.value,
-                        child: Visibility(
-                          visible: !isSearchViewActive ||
-                              _searchAnimController.value < 0.5,
-                          child: child!,
+                  // Bottom graphics and create account button
+                  if (!isSearchViewActive) // Only show when search is not active
+                    AnimatedBuilder(
+                      animation: _searchAnimController,
+                      builder: (context, child) {
+                        return Opacity(
+                          opacity: 1 - _searchAnimController.value,
+                          child: Visibility(
+                            visible: !isSearchViewActive &&
+                                _searchAnimController.value < 0.5,
+                            child: child!,
+                          ),
+                        );
+                      },
+                      child: FadeTransition(
+                        opacity: groupCFadeAnimation,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset(
+                              homeGraphics,
+                              fit: BoxFit.contain,
+                              width: double.infinity,
+                              height: MediaQuery.of(context).size.height / 1.5,
+                            ),
+                            const SizedBox(height: 30),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 36),
+                              child: AnimatedPrimaryButton(
+                                text: "Create Your Free Account!",
+                                onTap: () {
+                                  Future.delayed(
+                                    const Duration(milliseconds: 180),
+                                    () => context.go('/signup'),
+                                  );
+                                },
+                                height: 40,
+                                width:
+                                    MediaQuery.of(context).size.width - 46 + 16,
+                                radius: 10,
+                                initialPos: 6,
+                                topBorderWidth: 3,
+                                bottomBorderWidth: 3,
+                                colorTop: AppColors.animatedBtnColorConvertTop,
+                                textStyle:
+                                    AppStyles.animatedBtnFreeAccTextStyle,
+                                borderColorTop:
+                                    AppColors.animatedBtnColorConvertTop,
+                                colorBottom:
+                                    AppColors.animatedBtnColorConvertBottom,
+                                borderColorBottom: AppColors
+                                    .animatedBtnColorConvertBottomBorder,
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                    child: FadeTransition(
-                      opacity: groupCFadeAnimation,
-                      child: Column(
-                        children: [
-                          Image.asset(
-                            homeGraphics,
-                            fit: BoxFit.contain,
-                            width: double.infinity,
-                            height: MediaQuery.of(context).size.height / 1.05,
-                          ),
-                          const SizedBox(height: 50),
-                          AnimatedPrimaryButton(
-                            text: "Create Your Free Account!",
-                            onTap: () {
-                              Future.delayed(
-                                const Duration(milliseconds: 180),
-                                () => context.go('/signup'),
-                              );
-                            },
-                            height: 40,
-                            width: MediaQuery.of(context).size.width - 46 + 16,
-                            radius: 10,
-                            initialPos: 6,
-                            topBorderWidth: 3,
-                            bottomBorderWidth: 3,
-                            colorTop: AppColors.animatedBtnColorConvertTop,
-                            textStyle: AppStyles.animatedBtnFreeAccTextStyle,
-                            borderColorTop:
-                                AppColors.animatedBtnColorConvertTop,
-                            colorBottom:
-                                AppColors.animatedBtnColorConvertBottom,
-                            borderColorBottom:
-                                AppColors.animatedBtnColorConvertBottomBorder,
-                          ),
-                          const SizedBox(height: 36),
-                        ],
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
