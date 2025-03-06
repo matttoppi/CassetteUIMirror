@@ -486,9 +486,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 },
                                 child: Container(
                                   constraints: BoxConstraints(
-                                    maxHeight:
-                                        MediaQuery.of(context).size.height *
-                                            0.5,
+                                    maxHeight: MediaQuery.of(context)
+                                            .size
+                                            .height *
+                                        0.7, // Increased height for better scrolling
                                   ),
                                   margin: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 8),
@@ -589,7 +590,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               ),
                                               // Remove the previous standalone close button since we've integrated it into the header
                                               Flexible(
-                                                child: _buildSearchResults(),
+                                                child: SingleChildScrollView(
+                                                  physics:
+                                                      const AlwaysScrollableScrollPhysics(),
+                                                  child: _buildSearchResults(),
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -842,7 +847,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         itemCount: results.length,
         shrinkWrap: true,
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics:
+            const NeverScrollableScrollPhysics(), // Changed to prevent nested scrolling
         itemBuilder: (context, index) {
           final item = results[index];
           return Material(
