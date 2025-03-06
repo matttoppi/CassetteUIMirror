@@ -868,7 +868,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         itemCount: results.length,
         shrinkWrap: true,
         physics:
-            const NeverScrollableScrollPhysics(), // Changed to prevent nested scrolling
+            const AlwaysScrollableScrollPhysics(), // Allow scrolling in the ListView
         itemBuilder: (context, index) {
           final item = results[index];
           return Material(
