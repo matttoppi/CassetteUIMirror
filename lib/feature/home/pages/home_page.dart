@@ -545,21 +545,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _handleLinkConversion(String link) async {
     if (link.isEmpty) return;
 
-    print('START _handleLinkConversion with link: $link');
+    print('🔄 Starting conversion for link: $link');
 
     setState(() {
       isLoading = true;
     });
 
     try {
-      print('Making API request to convert link...');
-      // Make the conversion request
+      print('📡 Making API request to convert link...');
       final response = await _apiService.convertMusicLink(link);
-
-      // Log the response for debugging
-      print('API Response received: ${response.runtimeType}');
-      print('API Response keys: ${response.keys.toList()}');
-      print('API Response full data: $response');
 
       if (mounted) {
         setState(() {
@@ -573,66 +567,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           'postId',
           'details'
         ];
-
-        print('Validating required fields...');
-        for (final field in requiredFields) {
-          print(
-              'Field "$field": ${response.containsKey(field) ? "exists" : "MISSING"}, value: ${response[field]}');
-        }
-
-        final details = response['details'] as Map<String, dynamic>?;
-        if (details != null) {
-          print('Details fields: ${details.keys.toList()}');
-          print('Title: ${details['title']}');
-          print('Artist: ${details['artist']}');
-          print('Cover Art: ${details['coverArtUrl']}');
-        } else {
-          print('WARNING: Details is null or not a map');
-        }
-
         final missingFields = requiredFields
             .where((field) =>
                 !response.containsKey(field) || response[field] == null)
             .toList();
 
         if (missingFields.isNotEmpty) {
+          print('❌ Missing required fields: ${missingFields.join(", ")}');
           throw Exception(
-              'Missing required fields in response: ${missingFields.join(', ')}');
+              'Missing required fields in response: ${missingFields.join(", ")}');
         }
 
-        // Add the original link to the response data for later use in reports
+        // Add the original link to the response data
         response['originalLink'] = link;
 
-        print('Navigating to /post with data...');
-        // Navigate to PostPage which will handle routing to the appropriate page
+        print('✅ Conversion successful, navigating to post page');
         context.go('/post', extra: response);
       }
     } catch (e) {
-      print('ERROR in _handleLinkConversion: $e');
+      print('❌ Conversion error: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
         });
 
-        // Show error snackbar with more detailed message
-        final scaffoldContext = context;
-        if (mounted) {
-          ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-            SnackBar(
-              content: Text('Error converting link: ${e.toString()}'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-              action: SnackBarAction(
-                label: 'OK',
-                textColor: Colors.white,
-                onPressed: () {
-                  ScaffoldMessenger.of(scaffoldContext).hideCurrentSnackBar();
-                },
-              ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error converting link: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
             ),
-          );
-        }
-        print('Link conversion error: $e');
+          ),
+        );
       }
     }
   }
@@ -651,14 +623,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
 
     try {
+      print('🔍 Starting search for: "$query"');
       final results = await _apiService.searchMusic(query);
       if (mounted) {
         setState(() {
           searchResults = results;
           isSearching = false;
         });
+        print('✅ Search completed successfully');
       }
     } catch (e) {
+      print('❌ Search error: $e');
       if (mounted) {
         setState(() {
           searchResults = null;

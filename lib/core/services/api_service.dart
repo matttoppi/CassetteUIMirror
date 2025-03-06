@@ -261,14 +261,10 @@ class ApiService {
 
   // Search using Apple Music API
   Future<Map<String, dynamic>> _searchAppleMusic(String query) async {
-    print('===== _searchAppleMusic =====');
-    print('Searching Apple Music for: $query');
+    print('🎵 [Apple Music] Searching for: "$query"');
 
     try {
       final token = await _getAppleMusicToken();
-      print(
-          'Making request to Apple Music API with token length: ${token.length}');
-
       final url = Uri.parse(
         'https://api.music.apple.com/v1/catalog/us/search',
       ).replace(
@@ -278,7 +274,6 @@ class ApiService {
           'limit': '10',
         },
       );
-      print('Request URL: $url');
 
       final response = await http.get(
         url,
@@ -288,114 +283,100 @@ class ApiService {
         },
       );
 
-      print('Apple Music search response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        print('Raw response structure: ${data.runtimeType}');
-        print('Raw response keys: ${data.keys.toList()}');
-
-        final List<Map<String, dynamic>> results = [];
-
-        // Add songs (tracks)
-        if (data['results']?['songs']?['data'] != null) {
-          print('Found ${data['results']['songs']['data'].length} songs');
-          for (var item in data['results']['songs']['data']) {
-            final attributes = item['attributes'];
-            results.add({
-              'type': 'track',
-              'id': item['id'],
-              'title': attributes['name'],
-              'artist': attributes['artistName'],
-              'album': attributes['albumName'],
-              'url': attributes['url'], // Direct Apple Music URL
-              'coverArtUrl': attributes['artwork']['url']
-                  .toString()
-                  .replaceAll('{w}x{h}', '500x500'),
-              'previewUrl': attributes['previews']?.first?['url'],
-            });
-          }
-        }
-
-        // Add artists
-        if (data['results']?['artists']?['data'] != null) {
-          print('Found ${data['results']['artists']['data'].length} artists');
-          for (var item in data['results']['artists']['data']) {
-            final attributes = item['attributes'];
-            results.add({
-              'type': 'artist',
-              'id': item['id'],
-              'title': attributes['name'],
-              'artist': '', // Artists don't have an artist field
-              'coverArtUrl': attributes['artwork']?['url']
-                  ?.toString()
-                  .replaceAll('{w}x{h}', '500x500'),
-              'genres': attributes['genreNames'] ?? [],
-            });
-          }
-        }
-
-        // Add albums
-        if (data['results']?['albums']?['data'] != null) {
-          print('Found ${data['results']['albums']['data'].length} albums');
-          for (var item in data['results']['albums']['data']) {
-            final attributes = item['attributes'];
-
-            // Get album tracks if available
-            List<Map<String, dynamic>> tracks = [];
-            if (attributes['trackCount'] != null) {
-              // Note: We're not fetching tracks here as it requires another API call
-              // The backend will handle fetching tracks when converting
-              tracks = []; // Initialize empty tracks list
-            }
-
-            results.add({
-              'type': 'album',
-              'id': item['id'],
-              'title': attributes['name'],
-              'artist': attributes['artistName'],
-              'releaseDate': attributes['releaseDate'],
-              'coverArtUrl': attributes['artwork']['url']
-                  .toString()
-                  .replaceAll('{w}x{h}', '500x500'),
-              'url': attributes['url'], // Direct Apple Music URL
-              'trackCount': attributes['trackCount'],
-              'tracks': tracks, // Add empty tracks array
-            });
-          }
-        }
-
-        return {'success': true, 'results': results, 'source': 'apple_music'};
-      } else {
-        print('ERROR: Apple Music returned status code ${response.statusCode}');
-        print('Response body: ${response.body}');
+      if (response.statusCode != 200) {
+        print('❌ [Apple Music] Search failed: ${response.statusCode}');
+        print('Response: ${response.body}');
         throw Exception('Failed to search Apple Music: ${response.statusCode}');
       }
+
+      final data = json.decode(response.body);
+      final List<Map<String, dynamic>> results = [];
+
+      // Process songs
+      if (data['results']?['songs']?['data'] != null) {
+        final songs = data['results']['songs']['data'];
+        print('📝 [Apple Music] Found ${songs.length} songs');
+        for (var item in songs) {
+          final attributes = item['attributes'];
+          results.add({
+            'type': 'track',
+            'id': item['id'],
+            'title': attributes['name'],
+            'artist': attributes['artistName'],
+            'album': attributes['albumName'],
+            'url': attributes['url'],
+            'coverArtUrl': attributes['artwork']['url']
+                .toString()
+                .replaceAll('{w}x{h}', '500x500'),
+            'previewUrl': attributes['previews']?.first?['url'],
+          });
+        }
+      }
+
+      // Process artists
+      if (data['results']?['artists']?['data'] != null) {
+        final artists = data['results']['artists']['data'];
+        print('👤 [Apple Music] Found ${artists.length} artists');
+        for (var item in artists) {
+          final attributes = item['attributes'];
+          results.add({
+            'type': 'artist',
+            'id': item['id'],
+            'title': attributes['name'],
+            'artist': '',
+            'coverArtUrl': attributes['artwork']?['url']
+                ?.toString()
+                .replaceAll('{w}x{h}', '500x500'),
+            'genres': attributes['genreNames'] ?? [],
+          });
+        }
+      }
+
+      // Process albums
+      if (data['results']?['albums']?['data'] != null) {
+        final albums = data['results']['albums']['data'];
+        print('💿 [Apple Music] Found ${albums.length} albums');
+        for (var item in albums) {
+          final attributes = item['attributes'];
+          results.add({
+            'type': 'album',
+            'id': item['id'],
+            'title': attributes['name'],
+            'artist': attributes['artistName'],
+            'releaseDate': attributes['releaseDate'],
+            'coverArtUrl': attributes['artwork']['url']
+                .toString()
+                .replaceAll('{w}x{h}', '500x500'),
+            'url': attributes['url'],
+            'trackCount': attributes['trackCount'],
+            'tracks': [], // Backend will fetch tracks
+          });
+        }
+      }
+
+      print('✅ [Apple Music] Search completed successfully');
+      return {'success': true, 'results': results, 'source': 'apple_music'};
     } catch (e, stackTrace) {
-      print('ERROR in _searchAppleMusic: $e');
-      print('Stack trace: $stackTrace');
+      print('❌ [Apple Music] Search error: $e');
+      if (e.toString().contains('token')) {
+        print('Token-related error, stack trace: $stackTrace');
+      }
       throw Exception('Failed to search Apple Music: $e');
     }
   }
 
   // Modified searchMusic function to try Apple Music first
   Future<Map<String, dynamic>> searchMusic(String query) async {
-    print('===== searchMusic =====');
-    print('Attempting Apple Music search first for: $query');
+    print('🔍 Starting music search for: "$query"');
 
     try {
-      // Try Apple Music first
       return await _searchAppleMusic(query);
     } catch (e) {
-      print('Apple Music search failed, falling back to Spotify: $e');
-
+      print('⚠️ Apple Music search failed, trying Spotify');
       try {
-        // Fallback to Spotify search
-        final spotifyResults = await _searchSpotify(query);
-        return spotifyResults;
-      } catch (e, stackTrace) {
-        print('ERROR in searchMusic (both services failed): $e');
-        print('Stack trace: $stackTrace');
+        return await _searchSpotify(query);
+      } catch (e) {
+        print('❌ Both search services failed');
         throw Exception('Failed to search music (both services failed): $e');
       }
     }
@@ -403,14 +384,10 @@ class ApiService {
 
   // Renamed original Spotify search to _searchSpotify
   Future<Map<String, dynamic>> _searchSpotify(String query) async {
-    print('===== _searchSpotify =====');
-    print('Searching Spotify for: $query');
+    print('🎵 [Spotify] Searching for: "$query"');
 
     try {
       final token = await _getSpotifyAccessToken();
-      print(
-          'Making request to Spotify API with token: ${token.substring(0, 10)}...');
-
       final url = Uri.parse('https://api.spotify.com/v1/search').replace(
         queryParameters: {
           'q': query,
@@ -418,7 +395,6 @@ class ApiService {
           'limit': '10',
         },
       );
-      print('Request URL: $url');
 
       final response = await http.get(
         url,
@@ -428,73 +404,77 @@ class ApiService {
         },
       );
 
-      print('Spotify search response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<Map<String, dynamic>> results = [];
-
-        // Add tracks
-        if (data['tracks']?['items'] != null) {
-          print('Found ${data['tracks']['items'].length} tracks');
-          for (var item in data['tracks']['items']) {
-            results.add({
-              'type': 'track',
-              'id': item['id'],
-              'title': item['name'],
-              'artist': item['artists'][0]['name'],
-              'album': item['album']['name'],
-              'coverArtUrl': item['album']['images'].isNotEmpty
-                  ? item['album']['images'][0]['url']
-                  : null,
-              'previewUrl': item['preview_url'],
-            });
-          }
-        }
-
-        // Add artists
-        if (data['artists']?['items'] != null) {
-          print('Found ${data['artists']['items'].length} artists');
-          for (var item in data['artists']['items']) {
-            results.add({
-              'type': 'artist',
-              'id': item['id'],
-              'title': item['name'],
-              'artist': '',
-              'coverArtUrl':
-                  item['images'].isNotEmpty ? item['images'][0]['url'] : null,
-              'genres': item['genres'] ?? [],
-              'popularity': item['popularity'],
-            });
-          }
-        }
-
-        // Add albums
-        if (data['albums']?['items'] != null) {
-          print('Found ${data['albums']['items'].length} albums');
-          for (var item in data['albums']['items']) {
-            results.add({
-              'type': 'album',
-              'id': item['id'],
-              'title': item['name'],
-              'artist': item['artists'][0]['name'],
-              'coverArtUrl':
-                  item['images'].isNotEmpty ? item['images'][0]['url'] : null,
-              'tracks': [], // Initialize empty tracks array
-              'total_tracks': item['total_tracks'],
-            });
-          }
-        }
-
-        return {'success': true, 'results': results, 'source': 'spotify'};
-      } else {
-        print('ERROR: Spotify returned status code ${response.statusCode}');
-        print('Response body: ${response.body}');
+      if (response.statusCode != 200) {
+        print('❌ [Spotify] Search failed: ${response.statusCode}');
+        print('Response: ${response.body}');
         throw Exception('Failed to search Spotify: ${response.statusCode}');
       }
+
+      final data = json.decode(response.body);
+      final List<Map<String, dynamic>> results = [];
+
+      // Process tracks
+      if (data['tracks']?['items'] != null) {
+        final tracks = data['tracks']['items'];
+        print('📝 [Spotify] Found ${tracks.length} tracks');
+        for (var item in tracks) {
+          results.add({
+            'type': 'track',
+            'id': item['id'],
+            'title': item['name'],
+            'artist': item['artists'][0]['name'],
+            'album': item['album']['name'],
+            'coverArtUrl': item['album']['images'].isNotEmpty
+                ? item['album']['images'][0]['url']
+                : null,
+            'previewUrl': item['preview_url'],
+          });
+        }
+      }
+
+      // Process artists
+      if (data['artists']?['items'] != null) {
+        final artists = data['artists']['items'];
+        print('👤 [Spotify] Found ${artists.length} artists');
+        for (var item in artists) {
+          results.add({
+            'type': 'artist',
+            'id': item['id'],
+            'title': item['name'],
+            'artist': '',
+            'coverArtUrl':
+                item['images'].isNotEmpty ? item['images'][0]['url'] : null,
+            'genres': item['genres'] ?? [],
+            'popularity': item['popularity'],
+          });
+        }
+      }
+
+      // Process albums
+      if (data['albums']?['items'] != null) {
+        final albums = data['albums']['items'];
+        print('💿 [Spotify] Found ${albums.length} albums');
+        for (var item in albums) {
+          results.add({
+            'type': 'album',
+            'id': item['id'],
+            'title': item['name'],
+            'artist': item['artists'][0]['name'],
+            'coverArtUrl':
+                item['images'].isNotEmpty ? item['images'][0]['url'] : null,
+            'tracks': [],
+            'total_tracks': item['total_tracks'],
+          });
+        }
+      }
+
+      print('✅ [Spotify] Search completed successfully');
+      return {'success': true, 'results': results, 'source': 'spotify'};
     } catch (e, stackTrace) {
-      print('ERROR in _searchSpotify: $e');
-      print('Stack trace: $stackTrace');
+      print('❌ [Spotify] Search error: $e');
+      if (e.toString().contains('token')) {
+        print('Token-related error, stack trace: $stackTrace');
+      }
       throw Exception('Failed to search Spotify: $e');
     }
   }
