@@ -199,6 +199,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               '[_handleSearchFocus] Lost focus but text is empty, keeping charts visible');
           isSearchActive = true; // Maintain search container visible
           isShowingSearchResults = false;
+        } else if (searchResults != null) {
+          // Keep search results visible when scrolling
+          print(
+              '[_handleSearchFocus] Lost focus but keeping search results visible');
+          isSearchActive = true;
+          isShowingSearchResults = true;
         }
       }
     });
@@ -209,6 +215,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } else if (tfController.text.isEmpty) {
       // Don't reverse animations when text is empty
       print('[_handleSearchFocus] Not reversing animations for empty text');
+    } else if (searchResults != null) {
+      // Don't reverse animations when we have search results (to keep them visible during scrolling)
+      print(
+          '[_handleSearchFocus] Not reversing animations when there are search results');
     } else {
       _searchAnimController.reverse();
       _logoFadeController.reverse();
@@ -507,114 +517,130 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   ),
                                   margin: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 8),
-                                  child: Stack(
-                                    children: [
-                                      // Bottom "shadow" container
-                                      Container(
-                                        margin: const EdgeInsets.only(
-                                            top: 4), // Offset for 3D effect
-                                        decoration: BoxDecoration(
-                                          color: AppColors
-                                              .animatedBtnColorConvertBottom,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          border: Border.all(
+                                  child: GestureDetector(
+                                    // Prevent taps in this area from dismissing the search
+                                    onTap: () {},
+                                    // Prevent scroll gestures from being interpreted as taps
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Stack(
+                                      children: [
+                                        // Bottom "shadow" container
+                                        Container(
+                                          margin: const EdgeInsets.only(
+                                              top: 4), // Offset for 3D effect
+                                          decoration: BoxDecoration(
                                             color: AppColors
-                                                .animatedBtnColorConvertBottomBorder,
-                                            width: 2,
+                                                .animatedBtnColorConvertBottom,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: AppColors
+                                                  .animatedBtnColorConvertBottomBorder,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: const SizedBox(
+                                            width: double.infinity,
+                                            height: double.infinity,
                                           ),
                                         ),
-                                        child: const SizedBox(
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                        ),
-                                      ),
-                                      // Top content container
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          border: Border.all(
-                                            color: AppColors
-                                                .animatedBtnColorConvertTop,
-                                            width: 2,
+                                        // Top content container
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: AppColors
+                                                  .animatedBtnColorConvertTop,
+                                              width: 2,
+                                            ),
                                           ),
-                                        ),
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              // Add a header row with title and close button
-                                              Container(
-                                                padding: const EdgeInsets.only(
-                                                    left: 16,
-                                                    top: 12,
-                                                    right: 8,
-                                                    bottom: 2),
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      // Show different text based on whether this is search or charts
-                                                      isShowingSearchResults
-                                                          ? "Search Results"
-                                                          : "Top Charts",
-                                                      style: AppStyles
-                                                          .itemTypeTs
-                                                          .copyWith(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.bold,
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                // Add a header row with title and close button
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          left: 16,
+                                                          top: 12,
+                                                          right: 8,
+                                                          bottom: 2),
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        // Show different text based on whether this is search or charts
+                                                        isShowingSearchResults
+                                                            ? "Search Results"
+                                                            : "Top Charts",
+                                                        style: AppStyles
+                                                            .itemTypeTs
+                                                            .copyWith(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
                                                       ),
-                                                    ),
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                        Icons.close,
-                                                        size: 20,
-                                                        color: AppColors
-                                                            .textPrimary,
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.close,
+                                                          size: 20,
+                                                          color: AppColors
+                                                              .textPrimary,
+                                                        ),
+                                                        onPressed: _closeSearch,
+                                                        splashColor:
+                                                            Colors.transparent,
+                                                        highlightColor:
+                                                            Colors.transparent,
+                                                        padding:
+                                                            EdgeInsets.zero,
+                                                        constraints:
+                                                            const BoxConstraints(),
                                                       ),
-                                                      onPressed: _closeSearch,
-                                                      splashColor:
-                                                          Colors.transparent,
-                                                      highlightColor:
-                                                          Colors.transparent,
-                                                      padding: EdgeInsets.zero,
-                                                      constraints:
-                                                          const BoxConstraints(),
+                                                    ],
+                                                  ),
+                                                ),
+                                                // Add a divider
+                                                Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 12),
+                                                  child: Divider(
+                                                    color: AppColors
+                                                        .animatedBtnColorConvertTop
+                                                        .withOpacity(0.3),
+                                                    height: 1,
+                                                  ),
+                                                ),
+                                                // Remove the previous standalone close button since we've integrated it into the header
+                                                Flexible(
+                                                  child: GestureDetector(
+                                                    // Keep gestures from propagating outside
+                                                    onTap: () {},
+                                                    behavior:
+                                                        HitTestBehavior.opaque,
+                                                    child:
+                                                        SingleChildScrollView(
+                                                      physics:
+                                                          const AlwaysScrollableScrollPhysics(),
+                                                      child:
+                                                          _buildSearchResults(),
                                                     ),
-                                                  ],
+                                                  ),
                                                 ),
-                                              ),
-                                              // Add a divider
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 12),
-                                                child: Divider(
-                                                  color: AppColors
-                                                      .animatedBtnColorConvertTop
-                                                      .withOpacity(0.3),
-                                                  height: 1,
-                                                ),
-                                              ),
-                                              // Remove the previous standalone close button since we've integrated it into the header
-                                              Flexible(
-                                                child: SingleChildScrollView(
-                                                  physics:
-                                                      const AlwaysScrollableScrollPhysics(),
-                                                  child: _buildSearchResults(),
-                                                ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
