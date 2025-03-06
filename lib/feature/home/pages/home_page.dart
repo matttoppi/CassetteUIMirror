@@ -230,7 +230,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         curve: Curves.easeOutQuart,
                       ).value;
                       final double verticalOffset =
-                          lerpDouble(0, -160, animValue)!;
+                          lerpDouble(0, -250, animValue)!;
 
                       return Transform.translate(
                         offset: Offset(0, verticalOffset),
