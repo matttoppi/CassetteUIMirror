@@ -21,8 +21,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   bool isMenuVisible = false;
   late final AnimationController _fadeController;
@@ -37,6 +36,11 @@ class _HomePageState extends State<HomePage>
   Timer? _autoConvertTimer;
   Map<String, dynamic>? searchResults;
   bool isSearching = false;
+  late final AnimationController _searchAnimController;
+  late final Animation<double> _searchBarSlideAnimation;
+  late final Animation<double> _logoFadeAnimation;
+  bool isSearchFocused = false;
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -45,6 +49,31 @@ class _HomePageState extends State<HomePage>
       vsync: this,
       duration: const Duration(milliseconds: 6000),
     );
+
+    _searchAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _searchBarSlideAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _searchAnimController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _logoFadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _searchAnimController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _searchFocusNode.addListener(_handleSearchFocus);
+
+    tfController.addListener(_handleTextChange);
 
     // Test API connection
     _apiService.testConnection().then((isConnected) {
@@ -119,8 +148,35 @@ class _HomePageState extends State<HomePage>
     });
   }
 
+  void _handleSearchFocus() {
+    setState(() {
+      isSearchFocused = _searchFocusNode.hasFocus;
+    });
+
+    if (_searchFocusNode.hasFocus) {
+      _searchAnimController.forward();
+    } else if (tfController.text.isEmpty) {
+      _searchAnimController.reverse();
+    }
+  }
+
+  void _handleTextChange() {
+    if (tfController.text.isNotEmpty && !_searchAnimController.isAnimating) {
+      _searchAnimController.forward();
+    } else if (tfController.text.isEmpty &&
+        !_searchFocusNode.hasFocus &&
+        !_searchAnimController.isAnimating) {
+      _searchAnimController.reverse();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isSearchActive = isSearchFocused ||
+        isSearching ||
+        searchResults != null ||
+        tfController.text.isNotEmpty;
+
     return AppScaffold(
       showAnimatedBg: true,
       onBurgerPop: () {
@@ -129,126 +185,219 @@ class _HomePageState extends State<HomePage>
         });
       },
       isMenuVisible: isMenuVisible,
-      body: Scrollbar(
-        controller: scrollController,
-        child: SingleChildScrollView(
-          controller: scrollController,
-          child: Column(
-            children: [
-              FadeTransition(
-                opacity: groupAFadeAnimation,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 18),
-                    AuthToolbar(
-                      burgerMenuFnc: () {
-                        setState(() {
-                          isMenuVisible = !isMenuVisible;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 22),
-                    SlideTransition(
-                      position: _logoSlideAnimation,
-                      child: Column(
-                        children: [
-                          textGraphics(),
-                          const SizedBox(height: 5),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12 + 16),
-                            child: Text(
-                              "Express yourself through your favorite songs and playlists - wherever you stream them",
-                              textAlign: TextAlign.center,
-                              style: AppStyles.homeCenterTextStyle,
+      body: Stack(
+        children: [
+          Scrollbar(
+            controller: scrollController,
+            child: SingleChildScrollView(
+              controller: scrollController,
+              child: Column(
+                children: [
+                  const SizedBox(height: 18),
+                  AuthToolbar(
+                    burgerMenuFnc: () {
+                      setState(() {
+                        isMenuVisible = !isMenuVisible;
+                      });
+                    },
+                  ),
+                  FadeTransition(
+                    opacity: groupAFadeAnimation,
+                    child: Column(
+                      children: [
+                        SlideTransition(
+                          position: _logoSlideAnimation,
+                          child: AnimatedBuilder(
+                            animation: _logoFadeAnimation,
+                            builder: (context, child) {
+                              return Opacity(
+                                opacity: _logoFadeAnimation.value,
+                                child: child,
+                              );
+                            },
+                            child: Column(
+                              children: [
+                                textGraphics(),
+                                const SizedBox(height: 5),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12 + 16),
+                                  child: Text(
+                                    "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                    textAlign: TextAlign.center,
+                                    style: AppStyles.homeCenterTextStyle,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              FadeTransition(
-                opacity: groupBFadeAnimation,
-                child: SlideTransition(
-                  position: groupBSlideAnimation,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 28),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ClipboardPasteButton(
-                          hint: "Search or paste your music link here...",
-                          controller: tfController,
-                          onPaste: (value) {
-                            // Cancel any existing timer
-                            _autoConvertTimer?.cancel();
+                  ),
+                  FadeTransition(
+                    opacity: groupBFadeAnimation,
+                    child: SlideTransition(
+                      position: groupBSlideAnimation,
+                      child: AnimatedBuilder(
+                        animation: _searchAnimController,
+                        builder: (context, child) {
+                          final double topPosition = isSearchActive
+                              ? 0.0 // When search is active, position at top
+                              : 22.0; // Original position below logo
 
-                            // Only auto-convert if the link is from a supported service
-                            final linkLower = value.toLowerCase();
-                            final isSupported =
-                                linkLower.contains('spotify.com') ||
-                                    linkLower.contains('apple.com/music') ||
-                                    linkLower.contains('deezer.com');
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              top: topPosition *
+                                  (1 - _searchAnimController.value),
+                            ),
+                            child: child,
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ClipboardPasteButton(
+                            hint: "Search or paste your music link here...",
+                            controller: tfController,
+                            focusNode: _searchFocusNode,
+                            onPaste: (value) {
+                              _autoConvertTimer?.cancel();
 
-                            if (isSupported && !isLoading && mounted) {
-                              // Clear any existing search results
-                              setState(() {
-                                searchResults = null;
-                              });
+                              final linkLower = value.toLowerCase();
+                              final isSupported =
+                                  linkLower.contains('spotify.com') ||
+                                      linkLower.contains('apple.com/music') ||
+                                      linkLower.contains('deezer.com');
 
-                              // Start a shorter timer for better UX
-                              _autoConvertTimer =
-                                  Timer(const Duration(milliseconds: 300), () {
-                                _handleLinkConversion(value);
-                              });
-                            }
-                          },
-                          onSearch: (query) {
-                            if (!isLoading) {
-                              _handleSearch(query);
-                            }
-                          },
+                              if (isSupported && !isLoading && mounted) {
+                                setState(() {
+                                  searchResults = null;
+                                });
+
+                                _autoConvertTimer = Timer(
+                                    const Duration(milliseconds: 300), () {
+                                  _handleLinkConversion(value);
+                                });
+                              }
+                            },
+                            onSearch: (query) {
+                              if (!isLoading) {
+                                _handleSearch(query);
+                              }
+                            },
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      _buildSearchResults(),
-                      if (!isSearching && searchResults == null) ...[
-                        const SizedBox(height: 28),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: AnimatedPrimaryButton(
-                            text: isLoading ? null : "Convert",
-                            centerWidget: isLoading
-                                ? const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  Colors.white),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : null,
-                            onTap: isLoading
-                                ? () {} // Empty function when loading
-                                : () =>
-                                    _handleLinkConversion(tfController.text),
-                            height: 32,
-                            width: 200,
+                    ),
+                  ),
+                  AnimatedBuilder(
+                    animation: _searchAnimController,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: 1 - _searchAnimController.value,
+                        child: Visibility(
+                          visible: !isSearchActive,
+                          child: child!,
+                        ),
+                      );
+                    },
+                    child: FadeTransition(
+                      opacity: groupBFadeAnimation,
+                      child: SlideTransition(
+                        position: groupBSlideAnimation,
+                        child: Column(
+                          children: [
+                            if (!isSearching && searchResults == null) ...[
+                              const SizedBox(height: 28),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: AnimatedPrimaryButton(
+                                  text: isLoading ? null : "Convert",
+                                  centerWidget: isLoading
+                                      ? const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : null,
+                                  onTap: isLoading
+                                      ? () {}
+                                      : () => _handleLinkConversion(
+                                          tfController.text),
+                                  height: 32,
+                                  width: 200,
+                                  radius: 10,
+                                  initialPos: 5,
+                                  topBorderWidth: 3,
+                                  bottomBorderWidth: 3,
+                                  colorTop:
+                                      AppColors.animatedBtnColorConvertTop,
+                                  textStyle:
+                                      AppStyles.animatedBtnConvertTextStyle,
+                                  borderColorTop:
+                                      AppColors.animatedBtnColorConvertTop,
+                                  colorBottom:
+                                      AppColors.animatedBtnColorConvertBottom,
+                                  borderColorBottom: AppColors
+                                      .animatedBtnColorConvertBottomBorder,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  AnimatedBuilder(
+                    animation: _searchAnimController,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: 1 - _searchAnimController.value,
+                        child: Visibility(
+                          visible: !isSearchActive,
+                          child: child!,
+                        ),
+                      );
+                    },
+                    child: FadeTransition(
+                      opacity: groupCFadeAnimation,
+                      child: Column(
+                        children: [
+                          Image.asset(
+                            homeGraphics,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: MediaQuery.of(context).size.height / 1.05,
+                          ),
+                          const SizedBox(height: 50),
+                          AnimatedPrimaryButton(
+                            text: "Create Your Free Account!",
+                            onTap: () {
+                              Future.delayed(
+                                const Duration(milliseconds: 180),
+                                () => context.go('/signup'),
+                              );
+                            },
+                            height: 40,
+                            width: MediaQuery.of(context).size.width - 46 + 16,
                             radius: 10,
-                            initialPos: 5,
+                            initialPos: 6,
                             topBorderWidth: 3,
                             bottomBorderWidth: 3,
                             colorTop: AppColors.animatedBtnColorConvertTop,
-                            textStyle: AppStyles.animatedBtnConvertTextStyle,
+                            textStyle: AppStyles.animatedBtnFreeAccTextStyle,
                             borderColorTop:
                                 AppColors.animatedBtnColorConvertTop,
                             colorBottom:
@@ -256,51 +405,50 @@ class _HomePageState extends State<HomePage>
                             borderColorBottom:
                                 AppColors.animatedBtnColorConvertBottomBorder,
                           ),
-                        ),
-                      ],
-                    ],
+                          const SizedBox(height: 36),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              FadeTransition(
-                opacity: groupCFadeAnimation,
-                child: Column(
-                  children: [
-                    Image.asset(
-                      homeGraphics,
-                      fit: BoxFit.contain,
-                      width: double.infinity,
-                      height: MediaQuery.of(context).size.height / 1.05,
+                  AnimatedBuilder(
+                    animation: _searchAnimController,
+                    builder: (context, child) {
+                      return Visibility(
+                        visible: isSearchActive,
+                        child: Opacity(
+                          opacity: _searchAnimController.value,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.5,
+                      ),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 5,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: _buildSearchResults(),
+                      ),
                     ),
-                    const SizedBox(height: 50),
-                    AnimatedPrimaryButton(
-                      text: "Create Your Free Account!",
-                      onTap: () {
-                        Future.delayed(
-                          const Duration(milliseconds: 180),
-                          () => context.go('/signup'),
-                        );
-                      },
-                      height: 40,
-                      width: MediaQuery.of(context).size.width - 46 + 16,
-                      radius: 10,
-                      initialPos: 6,
-                      topBorderWidth: 3,
-                      bottomBorderWidth: 3,
-                      colorTop: AppColors.animatedBtnColorConvertTop,
-                      textStyle: AppStyles.animatedBtnFreeAccTextStyle,
-                      borderColorTop: AppColors.animatedBtnColorConvertTop,
-                      colorBottom: AppColors.animatedBtnColorConvertBottom,
-                      borderColorBottom:
-                          AppColors.animatedBtnColorConvertBottomBorder,
-                    ),
-                    const SizedBox(height: 36),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -447,7 +595,10 @@ class _HomePageState extends State<HomePage>
   Widget _buildSearchResults() {
     if (isSearching) {
       return const Center(
-        child: CircularProgressIndicator(),
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
@@ -459,56 +610,92 @@ class _HomePageState extends State<HomePage>
 
     if (results.isEmpty) {
       return const Center(
-        child: Text('No results found'),
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'No results found',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.black54,
+            ),
+          ),
+        ),
       );
     }
 
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final item = results[index];
-        return ListTile(
-          leading: item['coverArtUrl'] != null
-              ? Image.network(
-                  item['coverArtUrl'],
-                  width: 40,
-                  height: 40,
-                  fit: BoxFit.cover,
-                )
-              : const Icon(Icons.music_note),
-          title: Text(item['title'] ?? 'Unknown'),
-          subtitle: Text(item['artist'] ?? ''),
-          onTap: () {
-            // Generate Spotify URL based on type and ID
-            final type = item['type'].toString().toLowerCase();
-            final id = item['id'];
-            final title = item['title'] ?? 'Unknown';
-            final spotifyUrl = 'https://open.spotify.com/$type/$id';
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        itemCount: results.length,
+        shrinkWrap: true,
+        physics: const BouncingScrollPhysics(),
+        itemBuilder: (context, index) {
+          final item = results[index];
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 4.0,
+            ),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: item['coverArtUrl'] != null
+                  ? Image.network(
+                      item['coverArtUrl'],
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 40,
+                      height: 40,
+                      color: Colors.grey[200],
+                      child: const Icon(
+                        Icons.music_note,
+                        color: Colors.grey,
+                      ),
+                    ),
+            ),
+            title: Text(
+              item['title'] ?? 'Unknown',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              item['artist'] ?? '',
+              style: const TextStyle(
+                color: Colors.black54,
+              ),
+            ),
+            hoverColor: Colors.black.withOpacity(0.05),
+            onTap: () {
+              final type = item['type'].toString().toLowerCase();
+              final id = item['id'];
+              final title = item['title'] ?? 'Unknown';
+              final spotifyUrl = 'https://open.spotify.com/$type/$id';
 
-            // Update text field with descriptive message
-            tfController.text =
-                'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
+              tfController.text =
+                  'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
 
-            // Clear search results and trigger conversion
-            setState(() {
-              searchResults = null;
-              isLoading = true; // Show loading state
-            });
-
-            // Use the existing conversion flow with the backend API
-            // This ensures we get all required fields for routing
-            _handleLinkConversion(spotifyUrl);
-          },
-        );
-      },
+              setState(() {
+                searchResults = null;
+                isLoading = true;
+              });
+              _handleLinkConversion(spotifyUrl);
+            },
+          );
+        },
+      ),
     );
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
+    _searchAnimController.dispose();
+    _searchFocusNode.dispose();
+    tfController.removeListener(_handleTextChange);
     _autoConvertTimer?.cancel();
     super.dispose();
   }

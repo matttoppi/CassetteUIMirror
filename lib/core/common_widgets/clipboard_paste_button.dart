@@ -11,6 +11,7 @@ class ClipboardPasteButton extends StatefulWidget {
   final TextEditingController controller;
   final Function(String)? onPaste;
   final Function(String)? onSearch;
+  final FocusNode? focusNode;
 
   const ClipboardPasteButton({
     super.key,
@@ -20,6 +21,7 @@ class ClipboardPasteButton extends StatefulWidget {
     this.height2,
     this.onPaste,
     this.onSearch,
+    this.focusNode,
   });
 
   @override
@@ -110,6 +112,7 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton> {
                     Expanded(
                       child: TextField(
                         controller: widget.controller,
+                        focusNode: widget.focusNode,
                         decoration: InputDecoration(
                           hintText: widget.hint,
                           hintStyle: AppStyles.textFieldHintTextStyle,
