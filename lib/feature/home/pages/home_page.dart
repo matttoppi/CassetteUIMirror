@@ -878,9 +878,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 // Format URL based on the source and type
                 String url;
                 if (source == 'apple_music') {
-                  // For artists, use their Apple Music profile URL
+                  // For artists, use their Apple Music profile URL with region code and name
                   if (type == 'artist') {
-                    url = 'https://music.apple.com/artist/$id';
+                    // Convert artist name to URL-safe format (lowercase, spaces to hyphens)
+                    final urlSafeName = title
+                        .toLowerCase()
+                        .replaceAll(' ', '-')
+                        .replaceAll(
+                            RegExp(r'[^\w-]'), ''); // Remove special characters
+                    url = 'https://music.apple.com/us/artist/$urlSafeName/$id';
                   } else {
                     url = item['url'] ?? '';
                   }

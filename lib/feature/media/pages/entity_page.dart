@@ -75,43 +75,62 @@ class _EntityPageState extends State<EntityPage> {
 
         if (details != null) {
           setState(() {
-            name = details['title']?.toString() ?? 'Unknown Title';
-            artistName = details['artist']?.toString() ?? 'Unknown Artist';
-            imageUrl = details['coverArtUrl']?.toString() ?? '';
+            // For artists, use name directly from details
+            if (widget.type == 'artist') {
+              name = details['name']?.toString() ?? 'Unknown Artist';
+              // For artists, we don't set artistName since they are the artist
+              artistName = '';
+
+              // Try to get image URL from details first
+              imageUrl = details['imageUrl']?.toString() ?? '';
+
+              // If no imageUrl in details, try platforms
+              if (imageUrl.isEmpty) {
+                print('No imageUrl in details, trying platforms');
+                final platforms =
+                    widget.postData!['platforms'] as Map<String, dynamic>?;
+                if (platforms != null) {
+                  // Try each platform in order of preference
+                  final deezer = platforms['deezer'] as Map<String, dynamic>?;
+                  final spotify = platforms['spotify'] as Map<String, dynamic>?;
+                  final appleMusic =
+                      platforms['applemusic'] as Map<String, dynamic>?;
+
+                  // For artists, try artworkUrl or imageUrl from each platform
+                  imageUrl = deezer?['artworkUrl']?.toString() ??
+                      spotify?['imageUrl']?.toString() ??
+                      appleMusic?['imageUrl']?.toString() ??
+                      // Fallback to Spotify's default artist image if available
+                      'https://i.scdn.co/image/${spotify?['platformSpecificId']}' ??
+                      '';
+                }
+              }
+            } else {
+              // For tracks, use existing logic
+              name = details['title']?.toString() ?? 'Unknown Title';
+              artistName = details['artist']?.toString() ?? 'Unknown Artist';
+              imageUrl = details['coverArtUrl']?.toString() ?? '';
+
+              if (imageUrl.isEmpty) {
+                final platforms =
+                    widget.postData!['platforms'] as Map<String, dynamic>?;
+                if (platforms != null) {
+                  final deezer = platforms['deezer'] as Map<String, dynamic>?;
+                  final spotify = platforms['spotify'] as Map<String, dynamic>?;
+                  final appleMusic =
+                      platforms['applemusic'] as Map<String, dynamic>?;
+
+                  imageUrl = deezer?['artworkUrl']?.toString() ??
+                      spotify?['artworkUrl']?.toString() ??
+                      appleMusic?['artworkUrl']?.toString() ??
+                      '';
+                }
+              }
+            }
 
             print('Set name: $name');
             print('Set artistName: $artistName');
             print('Set imageUrl: $imageUrl');
-
-            // If no coverArtUrl in details, try to get it from platforms
-            if (imageUrl.isEmpty) {
-              print('No coverArtUrl in details, trying platforms');
-              final platforms =
-                  widget.postData!['platforms'] as Map<String, dynamic>?;
-              if (platforms != null) {
-                // Try each platform in order: Deezer, Spotify, Apple Music
-                final deezer = platforms['deezer'] as Map<String, dynamic>?;
-                final spotify = platforms['spotify'] as Map<String, dynamic>?;
-                final appleMusic =
-                    platforms['applemusic'] as Map<String, dynamic>?;
-
-                imageUrl = deezer?['artworkUrl']?.toString() ??
-                    spotify?['artworkUrl']?.toString() ??
-                    appleMusic?['artworkUrl']?.toString() ??
-                    '';
-                print('Got imageUrl from platforms: $imageUrl');
-
-                // For artists, also try to get additional info if not already set
-                if (widget.type == 'artist') {
-                  // Get genres from Apple Music if available
-                  final genres = appleMusic?['genres'] as List<dynamic>? ?? [];
-                  if (genres.isNotEmpty) {
-                    print('Got genres from Apple Music: $genres');
-                    // Store genres in details if needed
-                  }
-                }
-              }
-            }
 
             des = widget.postData!['caption']?.toString();
             desUsername = widget.postData!['username']?.toString();
