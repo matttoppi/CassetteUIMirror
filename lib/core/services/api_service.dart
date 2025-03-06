@@ -10,8 +10,7 @@ class ApiService {
   // Get the base URL from environment configuration
   static String get baseUrl {
     // Read the API_ENV from dart-define, default to 'prod' if not set
-    const apiEnv =
-        String.fromEnvironment('API_ENV', defaultValue: 'prod');
+    const apiEnv = String.fromEnvironment('API_ENV', defaultValue: 'prod');
     print('Current API Environment: $apiEnv'); // Helpful for debugging
     const baseDomain = apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
     return '$baseDomain/api/v1';
@@ -19,8 +18,7 @@ class ApiService {
 
   // Base domain without path for connection testing
   static String get baseDomain {
-    const apiEnv =
-        String.fromEnvironment('API_ENV', defaultValue: 'prod');
+    const apiEnv = String.fromEnvironment('API_ENV', defaultValue: 'prod');
     return apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
   }
 

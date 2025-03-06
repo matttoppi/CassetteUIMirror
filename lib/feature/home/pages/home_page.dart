@@ -875,10 +875,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 final title = item['title'] ?? 'Unknown';
                 final source = searchResults?['source'] ?? 'spotify';
 
-                // Format URL based on the source
+                // Format URL based on the source and type
                 String url;
                 if (source == 'apple_music') {
-                  url = item['url'] ?? '';
+                  // For artists, use their Apple Music profile URL
+                  if (type == 'artist') {
+                    url = 'https://music.apple.com/artist/$id';
+                  } else {
+                    url = item['url'] ?? '';
+                  }
                   if (url.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
