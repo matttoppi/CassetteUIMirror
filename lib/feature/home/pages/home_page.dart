@@ -201,102 +201,154 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       });
                     },
                   ),
-                  FadeTransition(
-                    opacity: groupAFadeAnimation,
-                    child: Column(
-                      children: [
-                        SlideTransition(
-                          position: _logoSlideAnimation,
-                          child: AnimatedBuilder(
-                            animation: _logoFadeAnimation,
-                            builder: (context, child) {
-                              return Opacity(
-                                opacity: _logoFadeAnimation.value,
-                                child: child,
-                              );
-                            },
-                            child: Column(
-                              children: [
-                                textGraphics(),
-                                const SizedBox(height: 5),
-                                Padding(
+
+                  // Search bar that can animate up to just below the nav bar
+                  AnimatedBuilder(
+                    animation: _searchAnimController,
+                    builder: (context, searchBarChild) {
+                      // When not searching, position search bar below the logo
+                      // When searching, position it just below the toolbar
+                      return Column(
+                        children: [
+                          // Content that appears/fades when not searching
+                          Opacity(
+                            opacity: 1 - _searchAnimController.value,
+                            child: Visibility(
+                              visible: _searchAnimController.value < 0.5,
+                              child: FadeTransition(
+                                opacity: groupAFadeAnimation,
+                                child: Column(
+                                  children: [
+                                    SlideTransition(
+                                      position: _logoSlideAnimation,
+                                      child: Column(
+                                        children: [
+                                          textGraphics(),
+                                          const SizedBox(height: 5),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12 + 16),
+                                            child: Text(
+                                              "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                              textAlign: TextAlign.center,
+                                              style:
+                                                  AppStyles.homeCenterTextStyle,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Search bar with sliding animation
+                          FadeTransition(
+                            opacity: groupBFadeAnimation,
+                            child: SlideTransition(
+                              position: groupBSlideAnimation,
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  top: isSearchActive
+                                      ? (22.0 *
+                                          (1 -
+                                              _searchAnimController
+                                                  .value)) // Animate to top (0) when searching
+                                      : 22.0, // Stay at position when not searching
+                                ),
+                                child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 12 + 16),
-                                  child: Text(
-                                    "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                    textAlign: TextAlign.center,
-                                    style: AppStyles.homeCenterTextStyle,
+                                      horizontal: 16),
+                                  child: ClipboardPasteButton(
+                                    hint:
+                                        "Search or paste your music link here...",
+                                    controller: tfController,
+                                    focusNode: _searchFocusNode,
+                                    onPaste: (value) {
+                                      _autoConvertTimer?.cancel();
+
+                                      final linkLower = value.toLowerCase();
+                                      final isSupported = linkLower
+                                              .contains('spotify.com') ||
+                                          linkLower
+                                              .contains('apple.com/music') ||
+                                          linkLower.contains('deezer.com');
+
+                                      if (isSupported &&
+                                          !isLoading &&
+                                          mounted) {
+                                        setState(() {
+                                          searchResults = null;
+                                        });
+
+                                        _autoConvertTimer = Timer(
+                                            const Duration(milliseconds: 300),
+                                            () {
+                                          _handleLinkConversion(value);
+                                        });
+                                      }
+                                    },
+                                    onSearch: (query) {
+                                      if (!isLoading) {
+                                        _handleSearch(query);
+                                      }
+                                    },
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FadeTransition(
-                    opacity: groupBFadeAnimation,
-                    child: SlideTransition(
-                      position: groupBSlideAnimation,
-                      child: AnimatedBuilder(
-                        animation: _searchAnimController,
-                        builder: (context, child) {
-                          final double topPosition = isSearchActive
-                              ? 0.0 // When search is active, position at top
-                              : 22.0; // Original position below logo
 
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              top: topPosition *
-                                  (1 - _searchAnimController.value),
+                          // Search results that slide up with the search bar
+                          if (isSearchActive)
+                            AnimatedBuilder(
+                              animation: _searchAnimController,
+                              builder: (context, child) {
+                                return Opacity(
+                                  opacity: _searchAnimController.value,
+                                  child: child,
+                                );
+                              },
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxHeight:
+                                      MediaQuery.of(context).size.height * 0.5,
+                                ),
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 5,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: _buildSearchResults(),
+                                ),
+                              ),
                             ),
-                            child: child,
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: ClipboardPasteButton(
-                            hint: "Search or paste your music link here...",
-                            controller: tfController,
-                            focusNode: _searchFocusNode,
-                            onPaste: (value) {
-                              _autoConvertTimer?.cancel();
-
-                              final linkLower = value.toLowerCase();
-                              final isSupported =
-                                  linkLower.contains('spotify.com') ||
-                                      linkLower.contains('apple.com/music') ||
-                                      linkLower.contains('deezer.com');
-
-                              if (isSupported && !isLoading && mounted) {
-                                setState(() {
-                                  searchResults = null;
-                                });
-
-                                _autoConvertTimer = Timer(
-                                    const Duration(milliseconds: 300), () {
-                                  _handleLinkConversion(value);
-                                });
-                              }
-                            },
-                            onSearch: (query) {
-                              if (!isLoading) {
-                                _handleSearch(query);
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
+                        ],
+                      );
+                    },
                   ),
+
+                  // Convert button (only visible when not searching)
                   AnimatedBuilder(
                     animation: _searchAnimController,
                     builder: (context, child) {
                       return Opacity(
                         opacity: 1 - _searchAnimController.value,
                         child: Visibility(
-                          visible: !isSearchActive,
+                          visible: !isSearchActive ||
+                              _searchAnimController.value < 0.5,
                           child: child!,
                         ),
                       );
@@ -360,13 +412,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+
+                  // Bottom graphics and create account button (only visible when not searching)
                   AnimatedBuilder(
                     animation: _searchAnimController,
                     builder: (context, child) {
                       return Opacity(
                         opacity: 1 - _searchAnimController.value,
                         child: Visibility(
-                          visible: !isSearchActive,
+                          visible: !isSearchActive ||
+                              _searchAnimController.value < 0.5,
                           child: child!,
                         ),
                       );
@@ -407,40 +462,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 36),
                         ],
-                      ),
-                    ),
-                  ),
-                  AnimatedBuilder(
-                    animation: _searchAnimController,
-                    builder: (context, child) {
-                      return Visibility(
-                        visible: isSearchActive,
-                        child: Opacity(
-                          opacity: _searchAnimController.value,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.5,
-                      ),
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 5,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: _buildSearchResults(),
                       ),
                     ),
                   ),
