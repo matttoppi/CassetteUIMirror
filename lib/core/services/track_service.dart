@@ -14,14 +14,14 @@ class TrackService {
     Map<String, dynamic> trackData;
 
     if (['track1', 'track2', 'track3'].contains(trackId)) {
-      print("Using dummy data for $trackId");
+      print("📝 Using dummy track data");
       trackData = await _getDummyTrackData(trackId);
     } else {
-      print("Fetching data from API for $trackId");
+      print("📡 Fetching track data");
       try {
         trackData = await _apiService.fetchTrackData(trackId);
       } catch (e) {
-        print("Error fetching track data: $e");
+        print("❌ Failed to fetch track data");
         rethrow;
       }
     }
@@ -29,19 +29,18 @@ class TrackService {
     _currentTrackData = trackData;
 
     try {
-      // Extract artwork URL
       String? artworkUrl = _extractArtworkUrl(trackData);
 
       if (artworkUrl != null && artworkUrl.isNotEmpty) {
-        print("Getting dominant color from artwork: $artworkUrl");
+        print("🎨 Generating color from artwork");
         Color dominantColor = await getDominantColor(artworkUrl);
         trackData['dominantColor'] = dominantColor.value;
       } else {
-        print("No valid artwork URL found for color generation");
+        print("⚠️ No artwork found, using default color");
         trackData['dominantColor'] = Colors.blue.value;
       }
     } catch (e) {
-      print("Error generating dominant color: $e");
+      print("❌ Color generation failed, using default");
       trackData['dominantColor'] = Colors.blue.value;
     }
 

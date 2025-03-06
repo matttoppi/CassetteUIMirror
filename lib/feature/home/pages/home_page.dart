@@ -545,14 +545,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _handleLinkConversion(String link) async {
     if (link.isEmpty) return;
 
-    print('🔄 Starting conversion for link: $link');
+    print('🔄 Starting music conversion');
 
     setState(() {
       isLoading = true;
     });
 
     try {
-      print('📡 Making API request to convert link...');
+      print('📡 Making conversion request...');
       final response = await _apiService.convertMusicLink(link);
 
       if (mounted) {
@@ -573,19 +573,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             .toList();
 
         if (missingFields.isNotEmpty) {
-          print('❌ Missing required fields: ${missingFields.join(", ")}');
-          throw Exception(
-              'Missing required fields in response: ${missingFields.join(", ")}');
+          print('❌ Missing required fields in response');
+          throw Exception('Missing required fields in response');
         }
 
         // Add the original link to the response data
         response['originalLink'] = link;
 
-        print('✅ Conversion successful, navigating to post page');
+        print('✅ Conversion successful');
         context.go('/post', extra: response);
       }
     } catch (e) {
-      print('❌ Conversion error: $e');
+      print('❌ Conversion failed');
       if (mounted) {
         setState(() {
           isLoading = false;

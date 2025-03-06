@@ -10,6 +10,11 @@ class ApiService {
   String? _appleMusicToken;
   DateTime? _appleMusicTokenExpiryTime;
 
+  // Cache for charts data
+  Map<String, dynamic>? _cachedChartsData;
+  DateTime? _chartsLastFetched;
+  static const Duration _chartsCacheDuration = Duration(minutes: 30);
+
   // API URLs for different environments
   static const String _prodBaseUrl =
       'https://nm2uheummh.us-east-1.awsapprunner.com';
@@ -49,7 +54,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> convertMusicLink(String sourceLink) async {
-    print('Converting link: $sourceLink');
+    print('🔄 Converting music link');
 
     try {
       final response = await http.post(
@@ -58,140 +63,37 @@ class ApiService {
         body: json.encode({'sourceLink': sourceLink}),
       );
 
-      print('Request URL: ${Uri.parse('$baseUrl/convert')}');
-      print('Request headers: ${response.request?.headers}');
-      print('Request body: ${json.encode({'sourceLink': sourceLink})}');
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('Raw response data keys: ${data.keys.toList()}');
-        print('Raw response data: $data');
 
         if (data['success'] == true) {
-          print('API confirmed success=true');
-
-          // Check for required fields
+          // Validate required fields
           final requiredFields = [
             'elementType',
             'musicElementId',
             'postId',
             'details'
           ];
+
           final missingFields = requiredFields
               .where((field) => !data.containsKey(field) || data[field] == null)
               .toList();
 
           if (missingFields.isNotEmpty) {
-            print(
-                'WARNING: Missing required fields in API response: $missingFields');
             throw Exception(
-                'API response missing required fields: ${missingFields.join(", ")}');
+                'Missing required fields: ${missingFields.join(", ")}');
           }
 
-          // Validate details structure
-          final details = data['details'] as Map<String, dynamic>?;
-          if (details == null) {
-            print('ERROR: details field is null or not a map');
-            throw Exception('API response has invalid details structure');
-          }
-
-          // Validate element type is one of the supported types
-          final elementType = data['elementType']?.toString().toLowerCase();
-          if (elementType != 'track' &&
-              elementType != 'artist' &&
-              elementType != 'album' &&
-              elementType != 'playlist') {
-            print('ERROR: Unsupported element type: $elementType');
-            throw Exception('Unsupported element type: $elementType');
-          }
-
-          // Ensure required fields in details based on element type
-          final detailsRequiredFields = ['title'];
-          if (elementType != 'artist') {
-            detailsRequiredFields.add('artist');
-          }
-
-          final coverArtField =
-              elementType == 'artist' ? 'imageUrl' : 'coverArtUrl';
-          detailsRequiredFields.add(coverArtField);
-
-          final missingDetailsFields = detailsRequiredFields
-              .where((field) =>
-                  !details.containsKey(field) || details[field] == null)
-              .toList();
-
-          if (missingDetailsFields.isNotEmpty) {
-            print(
-                'WARNING: Missing required fields in details: $missingDetailsFields');
-            // Try to fix missing fields with defaults or from platforms data if possible
-            // ...
-          }
-
-          // Validate and transform the response
-          final responseData = {
-            'elementType': data['elementType'],
-            'musicElementId': data['musicElementId'],
-            'postId': data['postId'],
-            'details': {
-              'title': data['elementType']?.toLowerCase() == 'artist'
-                  ? details['name']?.toString() ??
-                      details['title']?.toString() ??
-                      'Unknown Artist'
-                  : details['title']?.toString() ?? 'Unknown Title',
-              'artist': data['elementType']?.toLowerCase() == 'artist'
-                  ? '' // Artists don't have an artist field
-                  : details['artist']?.toString() ?? 'Unknown Artist',
-              'coverArtUrl': data['elementType']?.toLowerCase() == 'artist'
-                  ? details['imageUrl']?.toString() ?? ''
-                  : details['coverArtUrl']?.toString() ?? '',
-              // Add additional artist-specific fields
-              if (data['elementType']?.toLowerCase() ==
-                  'artist') ...<String, dynamic>{
-                'followers': details['followers'],
-                'genres': details['genres'],
-                'popularity': details['popularity'],
-              },
-              // Optional fields for collections
-              if (details['tracks'] != null) 'tracks': details['tracks'],
-            },
-            'platforms': data['platforms'],
-            'userId': data['userId'],
-            'username': data['username'],
-            'caption': data['caption'],
-          };
-
-          print('Transformed response keys: ${responseData.keys.toList()}');
-          print('Transformed response: $responseData');
-
-          // Final validation before returning
-          final transformedMissingFields = requiredFields
-              .where((field) =>
-                  !responseData.containsKey(field) ||
-                  responseData[field] == null)
-              .toList();
-
-          if (transformedMissingFields.isNotEmpty) {
-            print(
-                'ERROR: Transformed response missing fields: $transformedMissingFields');
-            throw Exception(
-                'Failed to create valid response data: missing ${transformedMissingFields.join(", ")}');
-          }
-
-          return responseData;
+          return data;
         } else {
           final error = data['errorMessage'] ?? 'Failed to convert link';
-          print('API error: $error');
           throw Exception(error);
         }
       } else {
-        final error = 'Failed to convert link: ${response.statusCode}';
-        print(error);
-        throw Exception(error);
+        throw Exception('Failed to convert link: ${response.statusCode}');
       }
     } catch (e) {
-      print('API request error: $e');
+      print('❌ [Convert] Error: $e');
       throw Exception('Failed to connect to API: $e');
     }
   }
@@ -209,7 +111,6 @@ class ApiService {
 
   // Get Spotify access token using Client Credentials flow
   Future<String> _getSpotifyAccessToken() async {
-    // Check if we have a valid token
     if (_spotifyAccessToken != null && _tokenExpiryTime != null) {
       if (_tokenExpiryTime!.isAfter(DateTime.now())) {
         return _spotifyAccessToken!;
@@ -220,8 +121,6 @@ class ApiService {
       final credentials = base64Encode(
         utf8.encode('${Env.spotifyClientId}:${Env.spotifyClientSecret}'),
       );
-
-      print('Using Client ID: ${Env.spotifyClientId}'); // Debug log
 
       final response = await http.post(
         Uri.parse('https://accounts.spotify.com/api/token'),
@@ -234,19 +133,16 @@ class ApiService {
         },
       );
 
-      print('Token response status: ${response.statusCode}'); // Debug log
-      print('Token response body: ${response.body}'); // Debug log
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         _spotifyAccessToken = data['access_token'];
         _tokenExpiryTime = DateTime.now().add(const Duration(minutes: 50));
         return _spotifyAccessToken!;
       } else {
-        throw Exception('Failed to get Spotify access token: ${response.body}');
+        throw Exception('Failed to get Spotify access token');
       }
     } catch (e) {
-      print('Error getting Spotify token: $e'); // Debug log
+      print('❌ [Spotify] Authentication error');
       rethrow;
     }
   }
@@ -481,8 +377,6 @@ class ApiService {
 
   // Generate Apple Music developer token
   Future<String> _getAppleMusicToken() async {
-    // Check if we have a valid token that's not expired
-    // We'll refresh the token when it's within 24 hours of expiry
     if (_appleMusicToken != null && _appleMusicTokenExpiryTime != null) {
       final now = DateTime.now();
       if (_appleMusicTokenExpiryTime!
@@ -492,31 +386,27 @@ class ApiService {
     }
 
     try {
-      // Verify environment variables
       final teamId = Env.appleMusicTeamId;
       final keyId = Env.appleMusicKeyId;
+      String privateKey = Env.appleMusicPrivateKey;
 
-      print('Apple Music Environment Variables:');
-      print('Team ID: ${teamId.isEmpty ? 'EMPTY' : teamId}');
-      print('Key ID: ${keyId.isEmpty ? 'EMPTY' : keyId}');
-
-      if (teamId.isEmpty || keyId.isEmpty) {
+      if (teamId.isEmpty || keyId.isEmpty || privateKey.isEmpty) {
         throw Exception(
             'Apple Music credentials not properly configured. Please check your environment variables.');
       }
 
-      // Get the raw key content with proper line breaks
-      final rawKey = '''-----BEGIN PRIVATE KEY-----
-MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQggOXvS/JS+Edal6Nm
-DMaf28O+Dry7Vzc8JL7eeq9+E36gCgYIKoZIzj0DAQehRANCAAQv23Z+0/dPzL1i
-lk0xocL2QK0Ug83lqRQYDEiJIGGGB16oGN9EfM2Ek/Q7MWeNfqB+ZKdoiMSQ+sUN
-XLYa3Ssm
------END PRIVATE KEY-----''';
+      // Clean up the private key - handle both \n and actual newlines
+      privateKey = privateKey
+          .replaceAll('\\n', '\n') // Replace \n with actual newlines
+          .trim(); // Remove any extra whitespace
 
-      print('Using private key:');
-      print(rawKey);
+      // Verify the private key is in PEM format
+      if (!privateKey.contains('-----BEGIN PRIVATE KEY-----') ||
+          !privateKey.contains('-----END PRIVATE KEY-----')) {
+        throw Exception(
+            'Invalid private key format. Must be in PEM format with BEGIN and END markers.');
+      }
 
-      // Prepare the claims for the JWT
       final claims = {
         'iss': teamId,
         'iat': DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -526,63 +416,60 @@ XLYa3Ssm
             1000,
       };
 
-      // Create the JWT
       final jwt = JWT(
         claims,
         header: {'alg': 'ES256', 'kid': keyId, 'typ': 'JWT'},
       );
 
-      print('JWT Header: ${jwt.header}');
-      print('JWT Claims: $claims');
+      try {
+        final token = jwt.sign(
+          ECPrivateKey(privateKey),
+          algorithm: JWTAlgorithm.ES256,
+        );
 
-      // Sign the JWT with the private key
-      final token = jwt.sign(
-        ECPrivateKey(rawKey),
-        algorithm: JWTAlgorithm.ES256,
-      );
+        _appleMusicToken = token;
+        _appleMusicTokenExpiryTime =
+            DateTime.now().add(const Duration(days: 180));
 
-      print('JWT Claims: $claims'); // Debug log to verify claims
-
-      // Store the token and its expiry time
-      _appleMusicToken = token;
-      _appleMusicTokenExpiryTime =
-          DateTime.now().add(const Duration(days: 180));
-
-      print('Generated new Apple Music token');
-      return token;
-    } catch (e, stackTrace) {
-      print('ERROR generating Apple Music token: $e');
-      print('Stack trace: $stackTrace');
-      rethrow;
+        return token;
+      } catch (e) {
+        print('❌ [Apple Music] Token signing error: $e');
+        throw Exception(
+            'Failed to sign Apple Music token. Please check your private key format.');
+      }
+    } catch (e) {
+      print('❌ [Apple Music] Authentication error: $e');
+      throw Exception('Failed to generate Apple Music token: $e');
     }
   }
 
-  // Fetch Apple Music Top Charts
+  // Fetch Apple Music Top Charts with caching
   Future<Map<String, dynamic>> fetchTop50USAPlaylist() async {
-    print('===== fetchAppleMusicCharts =====');
+    print('🎵 [Charts] Requesting top charts');
+
+    // Check if we have valid cached data
+    if (_cachedChartsData != null && _chartsLastFetched != null) {
+      final cacheAge = DateTime.now().difference(_chartsLastFetched!);
+      if (cacheAge < _chartsCacheDuration) {
+        print('📦 [Charts] Using cached data (${cacheAge.inMinutes}m old)');
+        return _cachedChartsData!;
+      } else {
+        print('⌛ [Charts] Cache expired (${cacheAge.inMinutes}m old)');
+      }
+    }
 
     try {
       final token = await _getAppleMusicToken();
-      print('Generated Apple Music token length: ${token.length}');
-      print(
-          'Token starts with: ${token.substring(0, min(50, token.length))}...');
-
-      // Construct URL with required parameters
       final url = Uri.parse(
         'https://api.music.apple.com/v1/catalog/us/charts',
       ).replace(
         queryParameters: {
-          'types': 'songs', // Required parameter
+          'types': 'songs',
           'limit': '50',
           'chart': 'most-played',
-          'with': 'dailyGlobalTopCharts', // Add this to get global charts
+          'with': 'dailyGlobalTopCharts',
         },
       );
-      print('Request URL: $url');
-      print('Request headers:');
-      print(
-          'Authorization: Bearer ${token.substring(0, min(20, token.length))}...');
-      print('Music-User-Token: [Not required for catalog endpoints]');
 
       final response = await http.get(
         url,
@@ -592,65 +479,66 @@ XLYa3Ssm
         },
       );
 
-      print('Apple Music charts response status: ${response.statusCode}');
-      print('Response headers: ${response.headers}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        print('Parsed response data: $data');
-
-        if (data['results'] == null || !data['results'].containsKey('songs')) {
-          print('Invalid response structure. Data: $data');
-          throw Exception('Invalid response structure from Apple Music API');
-        }
-
-        final charts = data['results']['songs'] as List;
-        if (charts.isEmpty) {
-          print('No charts data found in response');
-          throw Exception('No charts data found in response');
-        }
-
-        final tracks = charts[0]['data'] as List;
-        print('Number of tracks received: ${tracks.length}');
-
-        // Transform tracks to match our search results format
-        final List<Map<String, dynamic>> results = tracks.map((track) {
-          final attributes = track['attributes'];
-          print('Full track attributes:');
-          print(json.encode(attributes));
-
-          return {
-            'type': 'track',
-            'id': track['id'],
-            'title': attributes['name'],
-            'artist': attributes['artistName'],
-            'album': attributes['albumName'],
-            'url': attributes['url'], // Add the direct URL from Apple Music
-            'coverArtUrl': attributes['artwork']['url']
-                .toString()
-                .replaceAll('{w}x{h}', '500x500'),
-            'previewUrl': attributes['previews']?.first?['url'],
-            'popularity': track['rank'] ?? 0,
-          };
-        }).toList();
-
-        print('Successfully transformed ${results.length} tracks');
-        return {
-          'success': true,
-          'results': results,
-          'source': 'apple_music' // Add this to identify the source
-        };
-      } else {
-        print('ERROR: Apple Music returned status code ${response.statusCode}');
-        print('Response headers: ${response.headers}');
-        print('Response body: ${response.body}');
-        throw Exception(
-            'Failed to fetch charts: ${response.statusCode} - ${response.body}');
+      if (response.statusCode != 200) {
+        print('❌ [Charts] Failed to fetch: ${response.statusCode}');
+        print('Response: ${response.body}');
+        throw Exception('Failed to fetch charts: ${response.statusCode}');
       }
+
+      final data = json.decode(response.body);
+      if (data['results'] == null || !data['results'].containsKey('songs')) {
+        throw Exception('Invalid response structure from Apple Music API');
+      }
+
+      final charts = data['results']['songs'] as List;
+      if (charts.isEmpty) {
+        throw Exception('No charts data found in response');
+      }
+
+      final tracks = charts[0]['data'] as List;
+      print('📝 [Charts] Processing ${tracks.length} tracks');
+
+      final List<Map<String, dynamic>> results = tracks.map((track) {
+        final attributes = track['attributes'];
+        return {
+          'type': 'track',
+          'id': track['id'],
+          'title': attributes['name'],
+          'artist': attributes['artistName'],
+          'album': attributes['albumName'],
+          'url': attributes['url'],
+          'coverArtUrl': attributes['artwork']['url']
+              .toString()
+              .replaceAll('{w}x{h}', '500x500'),
+          'previewUrl': attributes['previews']?.first?['url'],
+          'popularity': track['rank'] ?? 0,
+        };
+      }).toList();
+
+      final transformedData = {
+        'success': true,
+        'results': results,
+        'source': 'apple_music'
+      };
+
+      // Cache the data
+      _cachedChartsData = transformedData;
+      _chartsLastFetched = DateTime.now();
+      print('✅ [Charts] Data cached successfully');
+
+      return transformedData;
     } catch (e, stackTrace) {
-      print('ERROR in fetchAppleMusicCharts: $e');
-      print('Stack trace: $stackTrace');
+      print('❌ [Charts] Error: $e');
+      if (e.toString().contains('token')) {
+        print('Token-related error, stack trace: $stackTrace');
+      }
+
+      // If we have cached data and encounter an error, return the cached data
+      if (_cachedChartsData != null) {
+        print('⚠️ [Charts] Error occurred, falling back to cached data');
+        return _cachedChartsData!;
+      }
+
       throw Exception('Failed to fetch charts: $e');
     }
   }
