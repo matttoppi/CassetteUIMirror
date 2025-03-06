@@ -12,47 +12,121 @@ class PostPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('===== PostPage BUILD =====');
+    print('PostPage received data type: ${postData.runtimeType}');
+    print('PostPage received data keys: ${postData.keys.toList()}');
     print('PostPage received data: $postData');
 
-    // Validate required fields
-    final elementType = postData['elementType'] as String?;
-    final musicElementId = postData['musicElementId'] as String?;
-    final postId = postData['postId'] as String?;
-    final details = postData['details'] as Map<String, dynamic>?;
+    try {
+      // Validate required fields
+      final elementType = postData['elementType'] as String?;
+      final musicElementId = postData['musicElementId'] as String?;
+      final postId = postData['postId'] as String?;
+      final details = postData['details'] as Map<String, dynamic>?;
 
-    if (elementType == null ||
-        musicElementId == null ||
-        postId == null ||
-        details == null) {
-      print('Missing required fields in postData');
-      return Center(child: Text('Error: Invalid post data'));
-    }
+      print('Extracted values:');
+      print('- elementType: $elementType (${elementType.runtimeType})');
+      print(
+          '- musicElementId: $musicElementId (${musicElementId?.runtimeType})');
+      print('- postId: $postId (${postId?.runtimeType})');
+      print('- details: ${details?.runtimeType}');
 
-    print('Routing to ${elementType.toLowerCase()} page');
+      if (details != null) {
+        print('- details keys: ${details.keys.toList()}');
+        print('- details.title: ${details['title']}');
+        print('- details.artist: ${details['artist']}');
+      }
 
-    // Route to the appropriate page based on element type
-    switch (elementType.toLowerCase()) {
-      case 'track':
-      case 'artist':
-        return EntityPage(
-          type: elementType.toLowerCase(),
-          trackId: musicElementId,
-          postId: postId,
-          postData: postData,
-        );
-      case 'album':
-      case 'playlist':
-        return CollectionPage(
-          type: elementType.toLowerCase(),
-          trackId: musicElementId,
-          postId: postId,
-          postData: postData,
-        );
-      default:
-        print('Unknown element type: $elementType');
+      // Check for missing fields and provide specific error message
+      List<String> missingFields = [];
+      if (elementType == null) missingFields.add('elementType');
+      if (musicElementId == null) missingFields.add('musicElementId');
+      if (postId == null) missingFields.add('postId');
+      if (details == null) missingFields.add('details');
+
+      if (missingFields.isNotEmpty) {
+        final errorMessage =
+            'Missing required fields: ${missingFields.join(', ')}';
+        print('ERROR: $errorMessage');
         return Center(
-          child: Text('Error: Unknown element type "$elementType"'),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Error: Invalid post data',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  errorMessage,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         );
+      }
+
+      print('Routing to ${elementType!.toLowerCase()} page');
+
+      // Route to the appropriate page based on element type
+      switch (elementType.toLowerCase()) {
+        case 'track':
+        case 'artist':
+          print(
+              'Creating EntityPage with type=${elementType.toLowerCase()}, trackId=$musicElementId, postId=$postId');
+          return EntityPage(
+            type: elementType.toLowerCase(),
+            trackId: musicElementId,
+            postId: postId,
+            postData: postData,
+          );
+        case 'album':
+        case 'playlist':
+          print(
+              'Creating CollectionPage with type=${elementType.toLowerCase()}, trackId=$musicElementId, postId=$postId');
+          return CollectionPage(
+            type: elementType.toLowerCase(),
+            trackId: musicElementId,
+            postId: postId,
+            postData: postData,
+          );
+        default:
+          print('ERROR: Unknown element type: $elementType');
+          return Center(
+            child: Text('Error: Unknown element type "$elementType"'),
+          );
+      }
+    } catch (e, stackTrace) {
+      print('ERROR in PostPage: $e');
+      print('Stack trace: $stackTrace');
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                'Error processing data',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                e.toString(),
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
     }
   }
 }

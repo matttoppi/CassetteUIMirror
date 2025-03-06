@@ -7,28 +7,51 @@
   </script>
   <script src="https://js-cdn.music.apple.com/musickit/v3/musickit.js"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", async function () {
-        const response = await fetch("https://your-backend.com/musickit-token");
-        const data = await response.json();
-        const developerToken = data.token;
+    // Initialize MusicKit without blocking other functionality
+    async function initializeMusicKit() {
+      try {
+        // Only initialize if we have a valid endpoint
+        if (window.musickitEndpoint) {
+          const response = await fetch(window.musickitEndpoint);
+          const data = await response.json();
+          const developerToken = data.token;
 
-        MusicKit.configure({
-            developerToken: developerToken,
-            app: {
-                name: "YourApp",
-                build: "1.0.0"
-            }
-        });
-        window.MusicKit = MusicKit.getInstance();
+          MusicKit.configure({
+              developerToken: developerToken,
+              app: {
+                  name: "Cassette",
+                  build: "1.0.0"
+              }
+          });
+          window.MusicKit = MusicKit.getInstance();
+        }
+      } catch (error) {
+        console.log('MusicKit initialization skipped or failed:', error);
+      }
+    }
+
+    // Handle clipboard permissions
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize MusicKit in background
+      initializeMusicKit();
+
+      // Request clipboard permissions
+      if (navigator.clipboard) {
+        navigator.clipboard.readText()
+          .then(() => console.log('Clipboard permission granted'))
+          .catch(err => console.log('Clipboard permission denied:', err));
+      }
     });
 
     async function requestUserToken() {
-        try {
-            const musicUserToken = await window.MusicKit.authorize();
-            window.postMessage(musicUserToken, "*");
-        } catch (error) {
-            console.error("MusicKit Auth Error:", error);
+      try {
+        if (window.MusicKit) {
+          const musicUserToken = await window.MusicKit.authorize();
+          window.postMessage(musicUserToken, "*");
         }
+      } catch (error) {
+        console.error("MusicKit Auth Error:", error);
+      }
     }
   </script>
   <meta charset="UTF-8">
@@ -36,6 +59,8 @@
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="clipboard-read" content="*">
+  <meta name="clipboard-write" content="*">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
   <link rel="icon" type="image/png" href="app_ogo_mall.png">
   <base href="/">

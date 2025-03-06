@@ -57,8 +57,10 @@ class _EntityPageState extends State<EntityPage> {
   @override
   void initState() {
     super.initState();
+    print('===== EntityPage initState =====');
     print(
-        'EntityPage initState - type: ${widget.type}, trackId: ${widget.trackId}');
+        'EntityPage initState - type: ${widget.type}, trackId: ${widget.trackId}, postId: ${widget.postId}');
+    print('EntityPage postData keys: ${widget.postData?.keys.toList()}');
     print('EntityPage postData: ${widget.postData}');
 
     isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
@@ -69,6 +71,7 @@ class _EntityPageState extends State<EntityPage> {
         print('Processing postData: ${widget.postData}');
         final details = widget.postData!['details'] as Map<String, dynamic>?;
         print('Details from postData: $details');
+        print('Details type: ${details?.runtimeType}');
 
         if (details != null) {
           setState(() {
