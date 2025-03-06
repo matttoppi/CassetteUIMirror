@@ -221,156 +221,152 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     },
                   ),
 
-                  // Search bar that can animate up to just below the nav bar
+                  // Search bar and results container
                   AnimatedBuilder(
                     animation: _searchAnimController,
                     builder: (context, searchBarChild) {
-                      return Column(
-                        children: [
-                          // Content that appears/fades when not searching
-                          FadeTransition(
-                            opacity: groupAFadeAnimation,
-                            child: Column(
-                              children: [
-                                SlideTransition(
-                                  position: _logoSlideAnimation,
-                                  child: AnimatedBuilder(
-                                    animation: _logoFadeController,
-                                    builder: (context, child) {
-                                      return Opacity(
-                                        opacity: 1 - _logoFadeController.value,
-                                        child: child,
-                                      );
-                                    },
-                                    child: Column(
-                                      children: [
-                                        textGraphics(),
-                                        const SizedBox(height: 5),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12 + 16),
-                                          child: Text(
-                                            "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                            textAlign: TextAlign.center,
-                                            style:
-                                                AppStyles.homeCenterTextStyle,
+                      final animValue = CurvedAnimation(
+                        parent: _searchAnimController,
+                        curve: Curves.easeOutQuart,
+                      ).value;
+                      final double verticalOffset =
+                          lerpDouble(0, -160, animValue)!;
+
+                      return Transform.translate(
+                        offset: Offset(0, verticalOffset),
+                        child: Column(
+                          children: [
+                            // Content that appears/fades when not searching
+                            FadeTransition(
+                              opacity: groupAFadeAnimation,
+                              child: Column(
+                                children: [
+                                  SlideTransition(
+                                    position: _logoSlideAnimation,
+                                    child: AnimatedBuilder(
+                                      animation: _logoFadeController,
+                                      builder: (context, child) {
+                                        return Opacity(
+                                          opacity:
+                                              1 - _logoFadeController.value,
+                                          child: child,
+                                        );
+                                      },
+                                      child: Column(
+                                        children: [
+                                          textGraphics(),
+                                          const SizedBox(height: 5),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12 + 16),
+                                            child: Text(
+                                              "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                              textAlign: TextAlign.center,
+                                              style:
+                                                  AppStyles.homeCenterTextStyle,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
 
-                          // Search bar with independent sliding animation
-                          FadeTransition(
-                            opacity: groupBFadeAnimation,
-                            child: SlideTransition(
-                              position: groupBSlideAnimation,
-                              child: AnimatedBuilder(
-                                animation: _searchAnimController,
-                                builder: (context, child) {
-                                  // Calculate a smooth top padding from 22.0 to 5.0 based on animation value
-                                  final animValue = CurvedAnimation(
-                                    parent: _searchAnimController,
-                                    curve: Curves.easeOutQuart,
-                                  ).value;
-                                  final double topPadding =
-                                      lerpDouble(22.0, 5.0, animValue)!;
-                                  final double verticalOffset =
-                                      lerpDouble(0, -160, animValue)!;
-
-                                  return Transform.translate(
-                                    offset: Offset(0, verticalOffset),
-                                    child: Padding(
-                                      padding: EdgeInsets.only(top: topPadding),
-                                      child: child,
-                                    ),
-                                  );
-                                },
+                            // Search bar with independent sliding animation
+                            FadeTransition(
+                              opacity: groupBFadeAnimation,
+                              child: SlideTransition(
+                                position: groupBSlideAnimation,
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                  child: ClipboardPasteButton(
-                                    hint:
-                                        "Search or paste your music link here...",
-                                    controller: tfController,
-                                    focusNode: _searchFocusNode,
-                                    onPaste: (value) {
-                                      _autoConvertTimer?.cancel();
+                                  padding: EdgeInsets.only(
+                                    top: lerpDouble(22.0, 5.0, animValue)!,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    child: ClipboardPasteButton(
+                                      hint:
+                                          "Search or paste your music link here...",
+                                      controller: tfController,
+                                      focusNode: _searchFocusNode,
+                                      onPaste: (value) {
+                                        _autoConvertTimer?.cancel();
 
-                                      final linkLower = value.toLowerCase();
-                                      final isSupported = linkLower
-                                              .contains('spotify.com') ||
-                                          linkLower
-                                              .contains('apple.com/music') ||
-                                          linkLower.contains('deezer.com');
+                                        final linkLower = value.toLowerCase();
+                                        final isSupported = linkLower
+                                                .contains('spotify.com') ||
+                                            linkLower
+                                                .contains('apple.com/music') ||
+                                            linkLower.contains('deezer.com');
 
-                                      if (isSupported &&
-                                          !isLoading &&
-                                          mounted) {
-                                        setState(() {
-                                          searchResults = null;
-                                        });
+                                        if (isSupported &&
+                                            !isLoading &&
+                                            mounted) {
+                                          setState(() {
+                                            searchResults = null;
+                                          });
 
-                                        _autoConvertTimer = Timer(
-                                            const Duration(milliseconds: 300),
-                                            () {
-                                          _handleLinkConversion(value);
-                                        });
-                                      }
-                                    },
-                                    onSearch: (query) {
-                                      if (!isLoading) {
-                                        _handleSearch(query);
-                                      }
-                                    },
+                                          _autoConvertTimer = Timer(
+                                              const Duration(milliseconds: 300),
+                                              () {
+                                            _handleLinkConversion(value);
+                                          });
+                                        }
+                                      },
+                                      onSearch: (query) {
+                                        if (!isLoading) {
+                                          _handleSearch(query);
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+
+                            // Search results with improved fade in
+                            if (isSearchActive)
+                              AnimatedBuilder(
+                                animation: _searchAnimController,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: Curves.easeOutQuad
+                                        .transform(_searchAnimController.value),
+                                    child: child,
+                                  );
+                                },
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxHeight:
+                                        MediaQuery.of(context).size.height *
+                                            0.5,
+                                  ),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 5,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: _buildSearchResults(),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       );
                     },
                   ),
-
-                  // Search results with improved fade in
-                  if (isSearchActive)
-                    AnimatedBuilder(
-                      animation: _searchAnimController,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: Curves.easeOutQuad
-                              .transform(_searchAnimController.value),
-                          child: child,
-                        );
-                      },
-                      child: Container(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.5,
-                        ),
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 5,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: _buildSearchResults(),
-                        ),
-                      ),
-                    ),
 
                   // Bottom graphics and create account button (only visible when not searching)
                   AnimatedBuilder(
