@@ -7,7 +7,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pasteboard/pasteboard.dart';
 import 'dart:js' as js;
 import 'dart:js_util' show promiseToFuture, callMethod, hasProperty;
-import 'dart:async' show Completer;
+import 'dart:async';
+import 'package:cassettefrontend/core/services/api_service.dart';
 
 class ClipboardPasteButton extends StatefulWidget {
   final String hint;
@@ -15,6 +16,7 @@ class ClipboardPasteButton extends StatefulWidget {
   final double? height2;
   final TextEditingController controller;
   final Function(String)? onPaste;
+  final Function(String)? onSearch;
   final VoidCallback? onTap;
 
   const ClipboardPasteButton({
@@ -24,6 +26,7 @@ class ClipboardPasteButton extends StatefulWidget {
     this.height,
     this.height2,
     this.onPaste,
+    this.onSearch,
     this.onTap,
   });
 
@@ -31,15 +34,12 @@ class ClipboardPasteButton extends StatefulWidget {
   State<ClipboardPasteButton> createState() => _ClipboardPasteButtonState();
 }
 
-class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
-    with SingleTickerProviderStateMixin {
+class _ClipboardPasteButtonState extends State<ClipboardPasteButton> {
   bool _hasContent = false;
   bool _isLoading = false;
-  bool _isHovering = false;
-  bool _isPressed = false;
   String _displayText = "";
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
+  Timer? _searchDebounce;
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -48,19 +48,7 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
     if (_hasContent) {
       _updateDisplayText(widget.controller.text);
     }
-    widget.controller.addListener(_updateHasContent);
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOut,
-      ),
-    );
+    widget.controller.addListener(_onTextChanged);
   }
 
   bool _isDesktopWithContext(BuildContext context) {
@@ -76,7 +64,7 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
     }
   }
 
-  void _updateHasContent() {
+  void _onTextChanged() {
     final hasContent = widget.controller.text.isNotEmpty;
     if (_hasContent != hasContent) {
       setState(() {
@@ -85,6 +73,38 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
           _updateDisplayText(widget.controller.text);
         }
       });
+    }
+
+    // Check if the text looks like a music service URL
+    final text = widget.controller.text.toLowerCase();
+    final isUrl = text.contains('spotify.com') ||
+        text.contains('apple.com/music') ||
+        text.contains('deezer.com');
+
+    if (hasContent) {
+      if (isUrl && widget.onPaste != null) {
+        // If it's a URL, immediately trigger the paste handler
+        widget.onPaste!(widget.controller.text);
+      } else if (!isUrl && widget.onSearch != null) {
+        // If it's not a URL and doesn't look empty, debounce and trigger search
+        _searchDebounce?.cancel();
+        _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+          _handleSearch(widget.controller.text);
+        });
+      }
+    }
+  }
+
+  Future<void> _handleSearch(String query) async {
+    if (query.isEmpty) return;
+
+    // Check again if the input still doesn't look like a URL
+    final isUrl = query.toLowerCase().contains('spotify.com') ||
+        query.toLowerCase().contains('apple.com/music') ||
+        query.toLowerCase().contains('deezer.com');
+
+    if (!isUrl && widget.onSearch != null) {
+      widget.onSearch!(query);
     }
   }
 
@@ -125,10 +145,6 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
 
   Future<void> _pasteFromClipboard() async {
     print('Starting paste operation...'); // Debug log
-
-    _animationController.forward().then((_) {
-      _animationController.reverse();
-    });
 
     setState(() {
       _isLoading = true;
@@ -246,10 +262,6 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
 
   @override
   Widget build(BuildContext context) {
-    print(
-        'Building ClipboardPasteButton, hasContent: $_hasContent'); // Debug log
-    final isDesktop = _isDesktopWithContext(context);
-
     return SizedBox(
       height: widget.height ?? 54,
       width: MediaQuery.of(context).size.width - 32,
@@ -267,158 +279,58 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
               ),
             ),
           ),
-          ScaleTransition(
-            scale: _scaleAnimation,
-            child: GestureDetector(
-              onTap: () {
-                print('Button tapped, hasContent: $_hasContent'); // Debug log
-                if (!_hasContent) {
-                  _pasteFromClipboard();
-                }
-              },
-              onTapDown: _hasContent
-                  ? null
-                  : (details) {
-                      print('Button pressed down'); // Debug log
-                      _animationController.forward();
-                      setState(() => _isPressed = true);
-                    },
-              onTapUp: _hasContent
-                  ? null
-                  : (details) {
-                      print('Button released'); // Debug log
-                      _animationController.reverse();
-                      setState(() => _isPressed = false);
-                    },
-              onTapCancel: _hasContent
-                  ? null
-                  : () {
-                      print('Button tap cancelled'); // Debug log
-                      _animationController.reverse();
-                      setState(() => _isPressed = false);
-                    },
-              child: MouseRegion(
-                onEnter: (_) => setState(() => _isHovering = true),
-                onExit: (_) => setState(() => _isHovering = false),
-                child: Container(
-                  height: widget.height2 ?? 50,
-                  width: MediaQuery.of(context).size.width - 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(
-                      color: _shouldHighlight(isDesktop)
-                          ? AppColors.primary
-                          : AppColors.textPrimary,
-                      width: _shouldHighlight(isDesktop) ? 2 : 1,
-                    ),
-                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _isLoading
-                              ? const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Pasting...",
-                                      style: TextStyle(
-                                        color: AppColors.textPrimary,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : _hasContent
-                                  ? Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            _displayText,
-                                            style: AppStyles
-                                                .textFieldHintTextStyle
-                                                .copyWith(
-                                              color: AppColors.textPrimary,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Icon(
-                                          Icons.check_circle_outline,
-                                          color: AppColors.primary,
-                                          size: 16,
-                                        ),
-                                      ],
-                                    )
-                                  : Row(
-                                      children: [
-                                        Text(
-                                          widget.hint,
-                                          style:
-                                              AppStyles.textFieldHintTextStyle,
-                                        ),
-                                        if (isDesktop &&
-                                            _isHovering &&
-                                            !_hasContent) ...[
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            "(tap to paste)",
-                                            style: AppStyles
-                                                .textFieldHintTextStyle
-                                                .copyWith(
-                                              fontStyle: FontStyle.italic,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                        ),
-                        if (!_isLoading)
-                          _hasContent
-                              ? IconButton(
-                                  icon: const Icon(
-                                    Icons.clear,
-                                    color: AppColors.textPrimary,
-                                    size: 20,
-                                  ),
-                                  onPressed: _clearText,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                )
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.content_paste_rounded,
-                                        color: _shouldHighlight(isDesktop)
-                                            ? AppColors.primary
-                                            : AppColors.textPrimary,
-                                        size: 20,
-                                      ),
-                                      onPressed: _pasteFromClipboard,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                  ],
-                                ),
-                      ],
+          Container(
+            height: widget.height2 ?? 50,
+            width: MediaQuery.of(context).size.width - 36,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(
+                color: AppColors.textPrimary,
+                width: 1,
+              ),
+              borderRadius: const BorderRadius.all(Radius.circular(8)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: widget.controller,
+                      decoration: InputDecoration(
+                        hintText: widget.hint,
+                        hintStyle: AppStyles.textFieldHintTextStyle,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      style: AppStyles.textFieldHintTextStyle.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
-                ),
+                  if (!_isLoading)
+                    _hasContent
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.clear,
+                              color: AppColors.textPrimary,
+                              size: 20,
+                            ),
+                            onPressed: _clearText,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          )
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.content_paste_rounded,
+                              color: AppColors.textPrimary,
+                              size: 20,
+                            ),
+                            onPressed: _pasteFromClipboard,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                ],
               ),
             ),
           ),
@@ -427,18 +339,10 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton>
     );
   }
 
-  bool _shouldHighlight(bool isDesktop) {
-    if (isDesktop) {
-      return _isHovering && !_hasContent;
-    } else {
-      return _isPressed && !_hasContent;
-    }
-  }
-
   @override
   void dispose() {
-    widget.controller.removeListener(_updateHasContent);
-    _animationController.dispose();
+    widget.controller.removeListener(_onTextChanged);
+    _searchDebounce?.cancel();
     super.dispose();
   }
 }

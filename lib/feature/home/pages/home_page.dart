@@ -35,6 +35,8 @@ class _HomePageState extends State<HomePage>
   final TextEditingController tfController = TextEditingController();
   bool isLoading = false;
   Timer? _autoConvertTimer;
+  Map<String, dynamic>? searchResults;
+  bool isSearching = false;
 
   @override
   void initState() {
@@ -177,7 +179,7 @@ class _HomePageState extends State<HomePage>
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: ClipboardPasteButton(
-                          hint: "Paste your music link here...",
+                          hint: "Search or paste your music link here...",
                           controller: tfController,
                           onPaste: (value) {
                             // Cancel any existing timer
@@ -185,11 +187,17 @@ class _HomePageState extends State<HomePage>
 
                             // Only auto-convert if the link is from a supported service
                             final linkLower = value.toLowerCase();
-                            final isSupported = linkLower.contains('spotify') ||
-                                linkLower.contains('apple') ||
-                                linkLower.contains('deezer');
+                            final isSupported =
+                                linkLower.contains('spotify.com') ||
+                                    linkLower.contains('apple.com/music') ||
+                                    linkLower.contains('deezer.com');
 
                             if (isSupported && !isLoading && mounted) {
+                              // Clear any existing search results
+                              setState(() {
+                                searchResults = null;
+                              });
+
                               // Start a shorter timer for better UX
                               _autoConvertTimer =
                                   Timer(const Duration(milliseconds: 300), () {
@@ -197,105 +205,59 @@ class _HomePageState extends State<HomePage>
                               });
                             }
                           },
+                          onSearch: (query) {
+                            if (!isLoading) {
+                              _handleSearch(query);
+                            }
+                          },
                         ),
                       ),
-                      if (tfController.text.isNotEmpty && !isLoading)
+                      const SizedBox(height: 16),
+                      _buildSearchResults(),
+                      if (!isSearching && searchResults == null) ...[
+                        const SizedBox(height: 28),
                         Padding(
-                          padding: const EdgeInsets.only(top: 8, right: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  // Cancel auto-convert timer when manually editing
-                                  _autoConvertTimer?.cancel();
-
-                                  // Show a dialog to edit the link
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) {
-                                      final TextEditingController
-                                          editController =
-                                          TextEditingController(
-                                              text: tfController.text);
-                                      return AlertDialog(
-                                        title: const Text('Edit Link'),
-                                        content: TextField(
-                                          controller: editController,
-                                          decoration: const InputDecoration(
-                                            hintText: 'Edit your music link',
-                                          ),
-                                          autofocus: true,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: AnimatedPrimaryButton(
+                            text: isLoading ? null : "Convert",
+                            centerWidget: isLoading
+                                ? const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
                                         ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            child: const Text('Cancel'),
-                                          ),
-                                          TextButton(
-                                            onPressed: () {
-                                              tfController.text =
-                                                  editController.text;
-                                              Navigator.pop(context);
-                                            },
-                                            child: const Text('Save'),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                },
-                                child: const Text(
-                                  'Edit',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ),
-                            ],
+                                      ),
+                                    ],
+                                  )
+                                : null,
+                            onTap: isLoading
+                                ? () {} // Empty function when loading
+                                : () =>
+                                    _handleLinkConversion(tfController.text),
+                            height: 32,
+                            width: 200,
+                            radius: 10,
+                            initialPos: 5,
+                            topBorderWidth: 3,
+                            bottomBorderWidth: 3,
+                            colorTop: AppColors.animatedBtnColorConvertTop,
+                            textStyle: AppStyles.animatedBtnConvertTextStyle,
+                            borderColorTop:
+                                AppColors.animatedBtnColorConvertTop,
+                            colorBottom:
+                                AppColors.animatedBtnColorConvertBottom,
+                            borderColorBottom:
+                                AppColors.animatedBtnColorConvertBottomBorder,
                           ),
                         ),
-                      const SizedBox(height: 28),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: AnimatedPrimaryButton(
-                          text: isLoading ? null : "Convert",
-                          centerWidget: isLoading
-                              ? const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : null,
-                          onTap: isLoading
-                              ? () {} // Empty function when loading
-                              : () => _handleLinkConversion(tfController.text),
-                          height: 32,
-                          width: 200,
-                          radius: 10,
-                          initialPos: 5,
-                          topBorderWidth: 3,
-                          bottomBorderWidth: 3,
-                          colorTop: AppColors.animatedBtnColorConvertTop,
-                          textStyle: AppStyles.animatedBtnConvertTextStyle,
-                          borderColorTop: AppColors.animatedBtnColorConvertTop,
-                          colorBottom: AppColors.animatedBtnColorConvertBottom,
-                          borderColorBottom:
-                              AppColors.animatedBtnColorConvertBottomBorder,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -353,61 +315,193 @@ class _HomePageState extends State<HomePage>
   Future<void> _handleLinkConversion(String link) async {
     if (link.isEmpty) return;
 
+    print('START _handleLinkConversion with link: $link');
+
     setState(() {
       isLoading = true;
     });
 
     try {
+      print('Making API request to convert link...');
       // Make the conversion request
       final response = await _apiService.convertMusicLink(link);
 
       // Log the response for debugging
-      print('API Response: $response');
+      print('API Response received: ${response.runtimeType}');
+      print('API Response keys: ${response.keys.toList()}');
+      print('API Response full data: $response');
 
       if (mounted) {
         setState(() {
           isLoading = false;
         });
 
-        // Verify required fields are present
-        final elementType = response['elementType'] as String?;
-        final postId = response['postId'] as String?;
-        final details = response['details'] as Map<String, dynamic>?;
+        // Validate required fields
+        final requiredFields = [
+          'elementType',
+          'musicElementId',
+          'postId',
+          'details'
+        ];
 
-        if (elementType == null || postId == null || details == null) {
-          throw Exception('Missing required fields in response');
+        print('Validating required fields...');
+        for (final field in requiredFields) {
+          print(
+              'Field "$field": ${response.containsKey(field) ? "exists" : "MISSING"}, value: ${response[field]}');
+        }
+
+        final details = response['details'] as Map<String, dynamic>?;
+        if (details != null) {
+          print('Details fields: ${details.keys.toList()}');
+          print('Title: ${details['title']}');
+          print('Artist: ${details['artist']}');
+          print('Cover Art: ${details['coverArtUrl']}');
+        } else {
+          print('WARNING: Details is null or not a map');
+        }
+
+        final missingFields = requiredFields
+            .where((field) =>
+                !response.containsKey(field) || response[field] == null)
+            .toList();
+
+        if (missingFields.isNotEmpty) {
+          throw Exception(
+              'Missing required fields in response: ${missingFields.join(', ')}');
         }
 
         // Add the original link to the response data for later use in reports
         response['originalLink'] = link;
 
-        // Navigate based on element type
-        final type = elementType.toLowerCase();
-        if (type == 'track' ||
-            type == 'artist' ||
-            type == 'album' ||
-            type == 'playlist') {
-          print('Navigating to /$type/$postId with data: $response');
-          context.go('/$type/$postId', extra: response);
-        } else {
-          throw Exception('Unsupported element type: $elementType');
-        }
+        print('Navigating to /post with data...');
+        // Navigate to PostPage which will handle routing to the appropriate page
+        context.go('/post', extra: response);
       }
     } catch (e) {
+      print('ERROR in _handleLinkConversion: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
         });
+
         // Show error snackbar with more detailed message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error converting link: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        final scaffoldContext = context;
+        if (mounted) {
+          ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+            SnackBar(
+              content: Text('Error converting link: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'OK',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(scaffoldContext).hideCurrentSnackBar();
+                },
+              ),
+            ),
+          );
+        }
         print('Link conversion error: $e');
       }
     }
+  }
+
+  Future<void> _handleSearch(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        searchResults = null;
+        isSearching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      isSearching = true;
+    });
+
+    try {
+      final results = await _apiService.searchMusic(query);
+      if (mounted) {
+        setState(() {
+          searchResults = results;
+          isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          searchResults = null;
+          isSearching = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error searching: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildSearchResults() {
+    if (isSearching) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (searchResults == null) {
+      return const SizedBox.shrink();
+    }
+
+    final results = searchResults!['results'] as List<dynamic>? ?? [];
+
+    if (results.isEmpty) {
+      return const Center(
+        child: Text('No results found'),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final item = results[index];
+        return ListTile(
+          leading: item['coverArtUrl'] != null
+              ? Image.network(
+                  item['coverArtUrl'],
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                )
+              : const Icon(Icons.music_note),
+          title: Text(item['title'] ?? 'Unknown'),
+          subtitle: Text(item['artist'] ?? ''),
+          onTap: () {
+            // Generate Spotify URL based on type and ID
+            final type = item['type'].toString().toLowerCase();
+            final id = item['id'];
+            final spotifyUrl = 'https://open.spotify.com/$type/$id';
+
+            // Update text field with Spotify URL
+            tfController.text = spotifyUrl;
+
+            // Clear search results and trigger conversion
+            setState(() {
+              searchResults = null;
+              isLoading = true; // Show loading state
+            });
+
+            // Use the existing conversion flow with the backend API
+            // This ensures we get all required fields for routing
+            _handleLinkConversion(spotifyUrl);
+          },
+        );
+      },
+    );
   }
 
   @override

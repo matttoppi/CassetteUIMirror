@@ -158,11 +158,56 @@ class AppRouter {
         ),
         GoRoute(
           name: 'post',
+          path: '/post',
+          builder: (context, state) {
+            print('===== GoRouter /post route =====');
+            final postData = state.extra as Map<String, dynamic>?;
+            print('Router received extra data: $postData');
+
+            if (postData == null) {
+              print('ERROR: No extra data provided to post route');
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: Colors.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error: No data provided',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Could not load music information. Please try again.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            print('Creating PostPage with data: $postData');
+            return PostPage(postData: postData);
+          },
+        ),
+        GoRoute(
+          name: 'post_with_id',
           path: '/p/:postId',
           builder: (context, state) {
+            print('===== GoRouter /p/:postId route =====');
             final postId = state.pathParameters['postId'];
             final postData = state.extra as Map<String, dynamic>?;
-            return PostPage(postData: postData ?? {'postId': postId});
+            print('Router received postId: $postId');
+            print('Router received extra data: $postData');
+
+            final data = postData ?? {'postId': postId};
+            print('Creating PostPage with data: $data');
+            return PostPage(postData: data);
           },
         ),
       ],

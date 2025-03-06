@@ -16,8 +16,6 @@ class Env {
   // static const prodSupabaseAnonKey = "...";
 
   // Spotify configuration
-  static String get spotifyApiKey =>
-      const String.fromEnvironment('SPOTIFY_API_KEY', defaultValue: '');
   static String get spotifyClientId =>
       const String.fromEnvironment('SPOTIFY_CLIENT_ID', defaultValue: '');
   static String get spotifyClientSecret =>
