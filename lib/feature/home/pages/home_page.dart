@@ -161,9 +161,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
 
     if (_searchFocusNode.hasFocus) {
+      // Fast fade out
+      _logoFadeController.duration = const Duration(milliseconds: 350);
       _searchAnimController.forward();
       _logoFadeController.forward();
     } else if (tfController.text.isEmpty) {
+      // Slower fade in
+      _logoFadeController.duration = const Duration(milliseconds: 800);
       _searchAnimController.reverse();
       _logoFadeController.reverse();
     }
@@ -171,11 +175,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   void _handleTextChange() {
     if (tfController.text.isNotEmpty && !_searchAnimController.isAnimating) {
+      // Fast fade out
+      _logoFadeController.duration = const Duration(milliseconds: 350);
       _searchAnimController.forward();
       _logoFadeController.forward();
     } else if (tfController.text.isEmpty &&
         !_searchFocusNode.hasFocus &&
         !_searchAnimController.isAnimating) {
+      // Slower fade in
+      _logoFadeController.duration = const Duration(milliseconds: 800);
       _searchAnimController.reverse();
       _logoFadeController.reverse();
     }
@@ -334,7 +342,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     AnimatedBuilder(
                       animation: _searchAnimController,
                       builder: (context, child) {
-                        // Smoother fade in for results
                         return Opacity(
                           opacity: Curves.easeOutQuad
                               .transform(_searchAnimController.value),
@@ -364,79 +371,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-
-                  // Convert button (only visible when not searching)
-                  AnimatedBuilder(
-                    animation: _logoFadeController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: 1 - _logoFadeController.value,
-                        child: Visibility(
-                          visible: !isSearchActive ||
-                              _logoFadeController.value < 0.5,
-                          child: child!,
-                        ),
-                      );
-                    },
-                    child: FadeTransition(
-                      opacity: groupBFadeAnimation,
-                      child: SlideTransition(
-                        position: groupBSlideAnimation,
-                        child: Column(
-                          children: [
-                            if (!isSearching && searchResults == null) ...[
-                              const SizedBox(height: 28),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                child: AnimatedPrimaryButton(
-                                  text: isLoading ? null : "Convert",
-                                  centerWidget: isLoading
-                                      ? const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                        Color>(Colors.white),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : null,
-                                  onTap: isLoading
-                                      ? () {}
-                                      : () => _handleLinkConversion(
-                                          tfController.text),
-                                  height: 32,
-                                  width: 200,
-                                  radius: 10,
-                                  initialPos: 5,
-                                  topBorderWidth: 3,
-                                  bottomBorderWidth: 3,
-                                  colorTop:
-                                      AppColors.animatedBtnColorConvertTop,
-                                  textStyle:
-                                      AppStyles.animatedBtnConvertTextStyle,
-                                  borderColorTop:
-                                      AppColors.animatedBtnColorConvertTop,
-                                  colorBottom:
-                                      AppColors.animatedBtnColorConvertBottom,
-                                  borderColorBottom: AppColors
-                                      .animatedBtnColorConvertBottomBorder,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
 
                   // Bottom graphics and create account button (only visible when not searching)
                   AnimatedBuilder(
