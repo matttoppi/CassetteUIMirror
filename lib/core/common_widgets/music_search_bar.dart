@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 
-class ClipboardPasteButton extends StatefulWidget {
+class MusicSearchBar extends StatefulWidget {
   final String hint;
   final double? height;
   final double? height2;
@@ -15,7 +15,7 @@ class ClipboardPasteButton extends StatefulWidget {
   final TextInputAction? textInputAction;
   final Function(String)? onSubmitted;
 
-  const ClipboardPasteButton({
+  const MusicSearchBar({
     super.key,
     required this.hint,
     required this.controller,
@@ -29,10 +29,10 @@ class ClipboardPasteButton extends StatefulWidget {
   });
 
   @override
-  State<ClipboardPasteButton> createState() => _ClipboardPasteButtonState();
+  State<MusicSearchBar> createState() => _MusicSearchBarState();
 }
 
-class _ClipboardPasteButtonState extends State<ClipboardPasteButton> {
+class _MusicSearchBarState extends State<MusicSearchBar> {
   bool _hasContent = false;
   Timer? _searchDebounce;
 

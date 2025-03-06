@@ -2,7 +2,7 @@ import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
 import 'package:cassettefrontend/core/common_widgets/auth_toolbar.dart';
 import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/common_widgets/auto_paste_text_field_widget.dart';
-import 'package:cassettefrontend/core/common_widgets/clipboard_paste_button.dart';
+import 'package:cassettefrontend/core/common_widgets/music_search_bar.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
@@ -11,6 +11,7 @@ import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/core/services/api_service.dart';
+import 'package:cassettefrontend/core/services/music_search_service.dart';
 import 'package:cassettefrontend/core/constants/element_type.dart';
 import 'dart:async';
 import 'dart:ui' show lerpDouble;
@@ -26,6 +27,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
+  final MusicSearchService _musicSearchService = MusicSearchService();
   bool isMenuVisible = false;
   late final AnimationController _fadeController;
   late final Animation<double> groupAFadeAnimation;
@@ -378,7 +380,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 16),
-                                        child: ClipboardPasteButton(
+                                        child: MusicSearchBar(
                                           hint:
                                               "Search or paste your music link here...",
                                           controller: tfController,
@@ -689,26 +691,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           isLoading = false;
         });
 
-        // Validate required fields
-        final requiredFields = [
-          'elementType',
-          'musicElementId',
-          'postId',
-          'details'
-        ];
-        final missingFields = requiredFields
-            .where((field) =>
-                !response.containsKey(field) || response[field] == null)
-            .toList();
-
-        if (missingFields.isNotEmpty) {
-          print('❌ Missing required fields in response');
-          throw Exception('Missing required fields in response');
-        }
-
-        // Add the original link to the response data
-        response['originalLink'] = link;
-
         print('✅ Conversion successful');
         context.go('/post', extra: response);
       }
@@ -753,7 +735,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     try {
       print('🔍 Starting search for: "$query"');
-      final results = await _apiService.searchMusic(query);
+      final results = await _musicSearchService.searchMusic(query);
       if (mounted) {
         setState(() {
           searchResults = results;
@@ -1080,7 +1062,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _loadTopCharts() async {
     try {
       setState(() => isLoadingCharts = true);
-      final results = await _apiService.fetchTop50USAPlaylist();
+      final results = await _musicSearchService.fetchTop50USAPlaylist();
       // Only update top charts if the search text is still empty
       if (tfController.text.isNotEmpty) {
         // User started typing, so ignore these results
