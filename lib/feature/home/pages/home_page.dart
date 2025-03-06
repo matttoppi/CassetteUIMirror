@@ -161,12 +161,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
 
     if (_searchFocusNode.hasFocus) {
-      // Fast fade out
-      _logoFadeController.duration = const Duration(milliseconds: 350);
+      // Faster fade out (changed from 350ms to 250ms)
+      _logoFadeController.duration = const Duration(milliseconds: 250);
       _searchAnimController.forward();
       _logoFadeController.forward();
     } else if (tfController.text.isEmpty) {
-      // Slower fade in
+      // Keep slower fade in at 800ms
       _logoFadeController.duration = const Duration(milliseconds: 800);
       _searchAnimController.reverse();
       _logoFadeController.reverse();
@@ -175,14 +175,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   void _handleTextChange() {
     if (tfController.text.isNotEmpty && !_searchAnimController.isAnimating) {
-      // Fast fade out
-      _logoFadeController.duration = const Duration(milliseconds: 350);
+      // Faster fade out (changed from 350ms to 250ms)
+      _logoFadeController.duration = const Duration(milliseconds: 250);
       _searchAnimController.forward();
       _logoFadeController.forward();
     } else if (tfController.text.isEmpty &&
         !_searchFocusNode.hasFocus &&
         !_searchAnimController.isAnimating) {
-      // Slower fade in
+      // Keep slower fade in at 800ms
       _logoFadeController.duration = const Duration(milliseconds: 800);
       _searchAnimController.reverse();
       _logoFadeController.reverse();
