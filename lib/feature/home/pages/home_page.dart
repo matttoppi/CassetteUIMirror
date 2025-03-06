@@ -229,8 +229,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         parent: _searchAnimController,
                         curve: Curves.easeOutQuart,
                       ).value;
+
+                      // Calculate offset based on AuthToolbar height (40) plus padding
+                      final startOffset = 0.0;
+                      final endOffset =
+                          -(MediaQuery.of(context).padding.top + 58.0 + 160.0);
                       final double verticalOffset =
-                          lerpDouble(0, -250, animValue)!;
+                          lerpDouble(startOffset, endOffset, animValue)!;
 
                       return Transform.translate(
                         offset: Offset(0, verticalOffset),
