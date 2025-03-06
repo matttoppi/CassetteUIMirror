@@ -24,4 +24,15 @@ class Env {
   // Webhook configuration
   static String get reportWebhookUrl =>
       const String.fromEnvironment('REPORT_WEBHOOK_URL', defaultValue: '');
+
+  // Apple Music configuration
+  static String get appleMusicDeveloperToken =>
+      const String.fromEnvironment('APPLE_MUSIC_DEVELOPER_TOKEN',
+          defaultValue: '');
+  static String get appleMusicKeyId =>
+      const String.fromEnvironment('APPLE_MUSIC_KEY_ID', defaultValue: '');
+  static String get appleMusicTeamId =>
+      const String.fromEnvironment('APPLE_MUSIC_TEAM_ID', defaultValue: '');
+  static String get appleMusicPrivateKey =>
+      const String.fromEnvironment('APPLE_MUSIC_PRIVATE_KEY', defaultValue: '');
 }

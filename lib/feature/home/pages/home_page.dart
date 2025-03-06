@@ -14,6 +14,8 @@ import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/constants/element_type.dart';
 import 'dart:async';
 import 'dart:ui' show lerpDouble;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uni_links/uni_links.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -156,35 +158,60 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _handleSearchFocus() {
-    final hasFocus = _searchFocusNode.hasFocus;
-    if (isSearchFocused != hasFocus) {
-      setState(() {
-        isSearchFocused = hasFocus;
-      });
+    setState(() {
+      isSearchFocused = _searchFocusNode.hasFocus;
+    });
 
-      if (hasFocus) {
-        // Faster fade out (changed from 350ms to 250ms)
-        _logoFadeController.duration = const Duration(milliseconds: 250);
-        _searchAnimController.forward();
-        _logoFadeController.forward();
-      } else {
-        // Keep slower fade in at 800ms
-        _logoFadeController.duration = const Duration(milliseconds: 800);
-        if (tfController.text.isEmpty) {
+    if (isSearchFocused && tfController.text.isEmpty) {
+      setState(() => isSearching = true);
+      _apiService.fetchTop50USAPlaylist().then((results) {
+        if (mounted) {
           setState(() {
-            searchResults = null;
+            searchResults = results;
             isSearching = false;
           });
-          _searchAnimController.reverse();
-          _logoFadeController.reverse();
         }
-      }
+      }).catchError((error) {
+        if (mounted) {
+          setState(() => isSearching = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error loading playlist: $error')),
+          );
+        }
+      });
+    }
+
+    if (isSearchFocused) {
+      _searchAnimController.forward();
+      _logoFadeController.forward();
+    } else {
+      _searchAnimController.reverse();
+      _logoFadeController.reverse();
     }
   }
 
   void _handleTextChange() {
-    // Always clear search results if text is empty
-    if (tfController.text.isEmpty) {
+    // Always clear search results if text is empty and show Top 50 playlist
+    if (tfController.text.isEmpty && isSearchFocused) {
+      setState(() {
+        isSearching = true;
+      });
+      _apiService.fetchTop50USAPlaylist().then((results) {
+        if (mounted) {
+          setState(() {
+            searchResults = results;
+            isSearching = false;
+          });
+        }
+      }).catchError((error) {
+        if (mounted) {
+          setState(() {
+            searchResults = null;
+            isSearching = false;
+          });
+        }
+      });
+    } else if (tfController.text.isEmpty) {
       setState(() {
         searchResults = null;
         isSearching = false;
@@ -212,7 +239,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final bool isSearchActive = isSearchFocused ||
         isSearching ||
         searchResults != null ||
-        tfController.text.isNotEmpty;
+        (tfController.text.isNotEmpty && !isLoading);
 
     return AppScaffold(
       showAnimatedBg: true,
@@ -306,55 +333,97 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   padding: EdgeInsets.only(
                                     top: lerpDouble(22.0, 5.0, animValue)!,
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16),
-                                    child: ClipboardPasteButton(
-                                      hint:
-                                          "Search or paste your music link here...",
-                                      controller: tfController,
-                                      focusNode: _searchFocusNode,
-                                      textInputAction: TextInputAction.done,
-                                      onSubmitted: (_) {
-                                        // Clear search and reset animations
-                                        setState(() {
-                                          searchResults = null;
-                                          isSearching = false;
-                                          isSearchFocused = false;
-                                        });
-                                        _searchAnimController.reverse();
-                                        _logoFadeController.reverse();
-                                      },
-                                      onPaste: (value) {
-                                        _autoConvertTimer?.cancel();
+                                  child: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16),
+                                        child: ClipboardPasteButton(
+                                          hint:
+                                              "Search or paste your music link here...",
+                                          controller: tfController,
+                                          focusNode: _searchFocusNode,
+                                          textInputAction: TextInputAction.done,
+                                          onSubmitted: (_) {
+                                            // Clear search and reset animations
+                                            setState(() {
+                                              searchResults = null;
+                                              isSearching = false;
+                                              isSearchFocused = false;
+                                            });
+                                            _searchAnimController.reverse();
+                                            _logoFadeController.reverse();
+                                          },
+                                          onPaste: (value) {
+                                            _autoConvertTimer?.cancel();
 
-                                        final linkLower = value.toLowerCase();
-                                        final isSupported = linkLower
-                                                .contains('spotify.com') ||
-                                            linkLower
-                                                .contains('apple.com/music') ||
-                                            linkLower.contains('deezer.com');
+                                            final linkLower =
+                                                value.toLowerCase();
+                                            final isSupported = linkLower
+                                                    .contains('spotify.com') ||
+                                                linkLower.contains(
+                                                    'apple.com/music') ||
+                                                linkLower
+                                                    .contains('deezer.com');
 
-                                        if (isSupported &&
-                                            !isLoading &&
-                                            mounted) {
-                                          setState(() {
-                                            searchResults = null;
-                                          });
+                                            if (isSupported &&
+                                                !isLoading &&
+                                                mounted) {
+                                              setState(() {
+                                                searchResults = null;
+                                                // Reset animations when starting conversion
+                                                _searchAnimController.reverse();
+                                                _logoFadeController.reverse();
+                                              });
 
-                                          _autoConvertTimer = Timer(
-                                              const Duration(milliseconds: 300),
-                                              () {
-                                            _handleLinkConversion(value);
-                                          });
-                                        }
-                                      },
-                                      onSearch: (query) {
-                                        if (!isLoading) {
-                                          _handleSearch(query);
-                                        }
-                                      },
-                                    ),
+                                              _autoConvertTimer = Timer(
+                                                  const Duration(
+                                                      milliseconds: 300), () {
+                                                _handleLinkConversion(value);
+                                              });
+                                            }
+                                          },
+                                          onSearch: (query) {
+                                            if (!isLoading) {
+                                              _handleSearch(query);
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      if (isLoading)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 8.0),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(
+                                                    AppColors
+                                                        .animatedBtnColorConvertTop,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Converting...',
+                                                style: TextStyle(
+                                                  color: AppColors.textPrimary,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ),
