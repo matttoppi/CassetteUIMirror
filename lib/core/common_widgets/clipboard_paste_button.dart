@@ -63,7 +63,7 @@ class _ClipboardPasteButtonState extends State<ClipboardPasteButton> {
         widget.onPaste!(widget.controller.text);
       } else if (!isUrl && widget.onSearch != null) {
         _searchDebounce?.cancel();
-        _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+        _searchDebounce = Timer(const Duration(milliseconds: 750), () {
           widget.onSearch!(widget.controller.text);
         });
       }

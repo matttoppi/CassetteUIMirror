@@ -214,9 +214,15 @@ class ApiService {
     final bool hasArtistHint = queryLower.contains('artist');
 
     // If type is explicitly mentioned in query, prioritize those results regardless of popularity
-    if (hasTrackHint && item['type'] == 'track') return true;
-    if (hasAlbumHint && item['type'] == 'album') return true;
-    if (hasArtistHint && item['type'] == 'artist') return true;
+    if (hasTrackHint &&
+        (item['type'] == 'track' ||
+            item['type'] == 'song' ||
+            item['type'] == 'tracks' ||
+            item['type'] == 'songs')) return true;
+    if (hasAlbumHint && (item['type'] == 'album' || item['type'] == 'albums'))
+      return true;
+    if (hasArtistHint &&
+        (item['type'] == 'artist' || item['type'] == 'artists')) return true;
 
     // Must have good match score as baseline
     if (matchScore < 0.75) return false;
@@ -386,7 +392,6 @@ class ApiService {
               .compareTo(a['matchScore'] as double);
         }
 
-        // Keep original order for other cases
         return 0;
       });
 
@@ -525,7 +530,6 @@ class ApiService {
               .compareTo(a['matchScore'] as double);
         }
 
-        // Keep original order for other cases
         return 0;
       });
 
