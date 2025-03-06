@@ -774,11 +774,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 final type = item['type'].toString().toLowerCase();
                 final id = item['id'];
                 final title = item['title'] ?? 'Unknown';
+                final source = searchResults?['source'] ?? 'spotify';
 
-                // Use the direct URL from Apple Music if available, otherwise construct it
-                final url = searchResults!['source'] == 'apple_music'
-                    ? item['url'] // Use the direct URL from the API
-                    : 'https://open.spotify.com/$type/$id'; // Spotify URL format
+                // Format URL based on the source
+                String url;
+                if (source == 'apple_music') {
+                  url = item['url'] ?? ''; // Use direct Apple Music URL
+                  if (url.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error: No valid Apple Music URL found'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                } else {
+                  // Construct Spotify URL
+                  url = 'https://open.spotify.com/$type/$id';
+                }
 
                 tfController.text =
                     'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
