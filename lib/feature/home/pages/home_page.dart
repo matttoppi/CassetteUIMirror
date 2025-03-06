@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/constants/element_type.dart';
 import 'dart:async';
+import 'dart:ui' show lerpDouble;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -41,6 +42,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final Animation<double> _logoFadeAnimation;
   bool isSearchFocused = false;
   final FocusNode _searchFocusNode = FocusNode();
+  late final AnimationController _logoFadeController;
 
   @override
   void initState() {
@@ -55,6 +57,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 450),
     );
 
+    _logoFadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+
     _searchBarSlideAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -67,8 +74,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       begin: 1.0,
       end: 0.0,
     ).animate(CurvedAnimation(
-      parent: _searchAnimController,
-      curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
+      parent: _logoFadeController,
+      curve: Curves.easeOutCubic,
     ));
 
     _searchFocusNode.addListener(_handleSearchFocus);
@@ -155,18 +162,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     if (_searchFocusNode.hasFocus) {
       _searchAnimController.forward();
+      _logoFadeController.forward();
     } else if (tfController.text.isEmpty) {
       _searchAnimController.reverse();
+      _logoFadeController.reverse();
     }
   }
 
   void _handleTextChange() {
     if (tfController.text.isNotEmpty && !_searchAnimController.isAnimating) {
       _searchAnimController.forward();
+      _logoFadeController.forward();
     } else if (tfController.text.isEmpty &&
         !_searchFocusNode.hasFocus &&
         !_searchAnimController.isAnimating) {
       _searchAnimController.reverse();
+      _logoFadeController.reverse();
     }
   }
 
@@ -206,57 +217,46 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   AnimatedBuilder(
                     animation: _searchAnimController,
                     builder: (context, searchBarChild) {
-                      // When not searching, position search bar below the logo
-                      // When searching, position it just below the toolbar
                       return Column(
                         children: [
                           // Content that appears/fades when not searching
-                          Opacity(
-                            opacity: Curves.easeInOutCubic
-                                .transform(1 - _searchAnimController.value),
-                            child: Visibility(
-                              visible: _searchAnimController.value < 0.8,
-                              child: FadeTransition(
-                                opacity: groupAFadeAnimation,
-                                child: Column(
-                                  children: [
-                                    SlideTransition(
-                                      position: _logoSlideAnimation,
-                                      child: AnimatedBuilder(
-                                        animation: _logoFadeAnimation,
-                                        builder: (context, child) {
-                                          // Apply a more gradual fade out
-                                          return Opacity(
-                                            opacity: _logoFadeAnimation.value,
-                                            child: child,
-                                          );
-                                        },
-                                        child: Column(
-                                          children: [
-                                            textGraphics(),
-                                            const SizedBox(height: 5),
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 12 + 16),
-                                              child: Text(
-                                                "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                                textAlign: TextAlign.center,
-                                                style: AppStyles
-                                                    .homeCenterTextStyle,
-                                              ),
-                                            ),
-                                          ],
+                          FadeTransition(
+                            opacity: groupAFadeAnimation,
+                            child: Column(
+                              children: [
+                                SlideTransition(
+                                  position: _logoSlideAnimation,
+                                  child: AnimatedBuilder(
+                                    animation: _logoFadeController,
+                                    builder: (context, child) {
+                                      return Opacity(
+                                        opacity: 1 - _logoFadeController.value,
+                                        child: child,
+                                      );
+                                    },
+                                    child: Column(
+                                      children: [
+                                        textGraphics(),
+                                        const SizedBox(height: 5),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12 + 16),
+                                          child: Text(
+                                            "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                            textAlign: TextAlign.center,
+                                            style:
+                                                AppStyles.homeCenterTextStyle,
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
 
-                          // Search bar with improved sliding animation
+                          // Search bar with independent sliding animation
                           FadeTransition(
                             opacity: groupBFadeAnimation,
                             child: SlideTransition(
@@ -264,22 +264,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               child: AnimatedBuilder(
                                 animation: _searchAnimController,
                                 builder: (context, child) {
-                                  // Apply a custom curve to the search bar movement
+                                  // Calculate a smooth top padding from 22.0 to 5.0 based on animation value
                                   final animValue = CurvedAnimation(
                                     parent: _searchAnimController,
-                                    curve: Curves
-                                        .easeOutQuart, // More pronounced ease out for smoother stop
+                                    curve: Curves.easeOutQuart,
                                   ).value;
+                                  final double topPadding =
+                                      lerpDouble(22.0, 5.0, animValue)!;
+                                  final double verticalOffset =
+                                      lerpDouble(0, -160, animValue)!;
 
-                                  return Padding(
-                                    padding: EdgeInsets.only(
-                                      top: isSearchActive
-                                          ? (22.0 *
-                                              (1 -
-                                                  animValue)) // Smoother movement to top
-                                          : 22.0, // Original position
+                                  return Transform.translate(
+                                    offset: Offset(0, verticalOffset),
+                                    child: Padding(
+                                      padding: EdgeInsets.only(top: topPadding),
+                                      child: child,
                                     ),
-                                    child: child,
                                   );
                                 },
                                 child: Padding(
@@ -324,57 +324,56 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ),
                             ),
                           ),
-
-                          // Search results with improved fade in
-                          if (isSearchActive)
-                            AnimatedBuilder(
-                              animation: _searchAnimController,
-                              builder: (context, child) {
-                                // Smoother fade in for results
-                                return Opacity(
-                                  opacity: Curves.easeOutQuad
-                                      .transform(_searchAnimController.value),
-                                  child: child,
-                                );
-                              },
-                              child: Container(
-                                constraints: BoxConstraints(
-                                  maxHeight:
-                                      MediaQuery.of(context).size.height * 0.5,
-                                ),
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 5,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: _buildSearchResults(),
-                                ),
-                              ),
-                            ),
                         ],
                       );
                     },
                   ),
 
+                  // Search results with improved fade in
+                  if (isSearchActive)
+                    AnimatedBuilder(
+                      animation: _searchAnimController,
+                      builder: (context, child) {
+                        // Smoother fade in for results
+                        return Opacity(
+                          opacity: Curves.easeOutQuad
+                              .transform(_searchAnimController.value),
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.5,
+                        ),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 5,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: _buildSearchResults(),
+                        ),
+                      ),
+                    ),
+
                   // Convert button (only visible when not searching)
                   AnimatedBuilder(
-                    animation: _searchAnimController,
+                    animation: _logoFadeController,
                     builder: (context, child) {
                       return Opacity(
-                        opacity: 1 - _searchAnimController.value,
+                        opacity: 1 - _logoFadeController.value,
                         child: Visibility(
                           visible: !isSearchActive ||
-                              _searchAnimController.value < 0.5,
+                              _logoFadeController.value < 0.5,
                           child: child!,
                         ),
                       );
@@ -441,13 +440,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                   // Bottom graphics and create account button (only visible when not searching)
                   AnimatedBuilder(
-                    animation: _searchAnimController,
+                    animation: _logoFadeController,
                     builder: (context, child) {
                       return Opacity(
-                        opacity: 1 - _searchAnimController.value,
+                        opacity: 1 - _logoFadeController.value,
                         child: Visibility(
                           visible: !isSearchActive ||
-                              _searchAnimController.value < 0.5,
+                              _logoFadeController.value < 0.5,
                           child: child!,
                         ),
                       );
@@ -741,6 +740,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void dispose() {
     _fadeController.dispose();
     _searchAnimController.dispose();
+    _logoFadeController.dispose();
     _searchFocusNode.dispose();
     tfController.removeListener(_handleTextChange);
     _autoConvertTimer?.cancel();
