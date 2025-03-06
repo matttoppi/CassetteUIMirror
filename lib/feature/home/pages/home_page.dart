@@ -370,13 +370,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                   // Bottom graphics and create account button (only visible when not searching)
                   AnimatedBuilder(
-                    animation: _logoFadeController,
+                    animation: _searchAnimController,
                     builder: (context, child) {
                       return Opacity(
-                        opacity: 1 - _logoFadeController.value,
+                        opacity: 1 - _searchAnimController.value,
                         child: Visibility(
                           visible: !isSearchActive ||
-                              _logoFadeController.value < 0.5,
+                              _searchAnimController.value < 0.5,
                           child: child!,
                         ),
                       );
