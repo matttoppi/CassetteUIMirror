@@ -184,9 +184,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // Always show search UI when focused
         isSearchActive = true;
 
-        // Animate search bar to position directly below toolbar - use forward() to ensure full animation
+        // Animate search bar to position directly below toolbar
         if (_searchAnimController.value < 1.0) {
-          _searchAnimController.forward(); // animate fully over 250ms
+          _searchAnimController.forward().then((_) {
+            // Re-request focus after animation completes
+            if (mounted && isSearchFocused) {
+              _searchFocusNode.requestFocus();
+            }
+          });
         }
 
         // Fade out the logo
@@ -383,10 +388,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         final minPadding = screenHeight * 0.05;
 
                         // Calculate the end position - right below the toolbar
-                        final toolbarHeight = 58.0; // AuthToolbar height
-                        final navBarTopPadding = 18.0; // SizedBox above toolbar
+                        const toolbarHeight = 65.0; // AuthToolbar height
+                        const navBarTopPadding = 18.0; // SizedBox above toolbar
                         final safeTop = topPadding; // Use actual safe area
-                        final logoHeight = 140.0; // Estimated logo block height
+                        const logoHeight = 140.0; // Estimated logo block height
 
                         // Calculate the exact offset to position the search bar below the toolbar
                         // Include toolbar height, padding, and minimum spacing
@@ -539,17 +544,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   child: Container(
                                     constraints: BoxConstraints(
                                       minHeight: 100,
+                                      // Calculate height to extend to bottom of screen with consistent padding
                                       maxHeight: screenSize.height -
-                                          (topPadding +
-                                              76 +
-                                              0 +
-                                              58 +
-                                              16 +
-                                              bottomPadding),
+                                          (safeTop + // Top safe area
+                                              toolbarHeight + // AuthToolbar height
+                                              navBarTopPadding + // Padding above toolbar
+                                              minPadding + // Min padding below toolbar (matches top)
+                                              58 + // Search bar height
+                                              minPadding + // Same padding at bottom
+                                              bottomPadding // Bottom safe area
+                                          ),
                                     ),
                                     margin: EdgeInsets.symmetric(
                                         horizontal: kIsWeb ? 24 : 16,
-                                        vertical: 8),
+                                        vertical: minPadding *
+                                            0.25), // Smaller vertical margin for visual balance
                                     child: GestureDetector(
                                       onTap: () {},
                                       behavior: HitTestBehavior.opaque,
