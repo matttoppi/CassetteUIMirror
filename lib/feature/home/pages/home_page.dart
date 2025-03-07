@@ -63,7 +63,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _searchAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 450),
+      duration: const Duration(milliseconds: 250),
+      value: 0.0,
     );
 
     _searchAnimController.addStatusListener(_handleSearchAnimationStatus);
@@ -178,57 +179,59 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _handleSearchFocus() {
     setState(() {
       isSearchFocused = _searchFocusNode.hasFocus;
-      print(
-          '[_handleSearchFocus] isSearchFocused: $isSearchFocused, current text: "${tfController.text}"');
 
       if (isSearchFocused) {
+        // Always show search UI when focused
         isSearchActive = true;
 
-        // When text is empty and search animation is complete, show top charts
+        // Animate search bar to position directly below toolbar - use forward() to ensure full animation
+        if (_searchAnimController.value < 1.0) {
+          _searchAnimController.forward(); // animate fully over 250ms
+        }
+
+        // Fade out the logo
+        if (_logoFadeController.value < 1.0) {
+          _logoFadeController.forward();
+        }
+
+        // Show appropriate content based on text
         if (tfController.text.isEmpty) {
-          print(
-              '[_handleSearchFocus] Focused with empty text, ensuring top charts are loaded');
+          // With empty text, show top charts
           isShowingSearchResults = false;
 
-          // Only load top charts if not already loaded
+          // Load charts if needed
           if (searchResults == null || isLoadingCharts) {
-            print('[_handleSearchFocus] Calling _loadTopCharts from focus');
             _loadTopCharts();
-          } else {
-            print('[_handleSearchFocus] Top charts already loaded on focus');
           }
+        } else {
+          // With text, show search results
+          isShowingSearchResults = true;
         }
       } else {
-        // When losing focus with empty text, keep charts visible
+        // When losing focus, behavior depends on text and results
         if (tfController.text.isEmpty) {
-          print(
-              '[_handleSearchFocus] Lost focus but text is empty, keeping charts visible');
-          isSearchActive = true; // Maintain search container visible
-          isShowingSearchResults = false;
+          if (searchResults != null && _searchAnimController.value > 0.5) {
+            // Keep the charts visible if we've expanded the search
+            isSearchActive = true;
+            isShowingSearchResults = false;
+          } else {
+            // No text, no results or not expanded, reset UI
+            isSearchActive = false;
+            isShowingSearchResults = false;
+            _searchAnimController.reverse();
+            _logoFadeController.reverse();
+          }
         } else if (searchResults != null) {
-          // Keep search results visible when scrolling
-          print(
-              '[_handleSearchFocus] Lost focus but keeping search results visible');
+          // Keep search results visible when there's text and results
           isSearchActive = true;
           isShowingSearchResults = true;
+        } else {
+          // No results but has text, maintain the search UI
+          isSearchActive = true;
+          isShowingSearchResults = false;
         }
       }
     });
-
-    if (isSearchFocused) {
-      _searchAnimController.forward();
-      _logoFadeController.forward();
-    } else if (tfController.text.isEmpty) {
-      // Don't reverse animations when text is empty
-      print('[_handleSearchFocus] Not reversing animations for empty text');
-    } else if (searchResults != null) {
-      // Don't reverse animations when we have search results (to keep them visible during scrolling)
-      print(
-          '[_handleSearchFocus] Not reversing animations when there are search results');
-    } else {
-      _searchAnimController.reverse();
-      _logoFadeController.reverse();
-    }
   }
 
   void _handleTextChange() {
@@ -278,15 +281,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _closeSearch() {
+    // First unfocus the search field to dismiss keyboard
+    _searchFocusNode.unfocus();
+
+    // Clear any ongoing search
+    _autoConvertTimer?.cancel();
+
     setState(() {
+      // Reset all search-related state variables
       isSearchActive = false;
       searchResults = null;
       isSearching = false;
       isShowingSearchResults = false;
-      _searchFocusNode.unfocus();
+
+      // If there's text in the search field, clear it
+      if (tfController.text.isNotEmpty) {
+        tfController.clear();
+      }
     });
-    _searchAnimController.reverse();
-    _logoFadeController.reverse();
+
+    // Execute animations in sequence for smooth transition
+    _searchAnimController.reverse().then((_) {
+      // Only after search animation is complete, restore the logo
+      if (!_searchFocusNode.hasFocus) {
+        _logoFadeController.reverse();
+      }
+    });
   }
 
   @override
@@ -355,66 +375,80 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           curve: Curves.easeOutQuart,
                         ).value;
 
-                        // Calculate offset based on screen size and SafeArea
-                        // This ensures search bar doesn't overlap with nav bar
+                        // Starting position (no offset)
                         const startOffset = 0.0;
-                        // Calculate a responsive endOffset that considers device size
-                        final toolbarHeight = 58.0; // AuthToolbar height
-                        final safeTop = topPadding > 0 ? topPadding : 20.0;
-                        // Use percentage of screen height instead of fixed value
-                        final percentOffset = screenSize.height * 0.18;
-                        final endOffset =
-                            -(safeTop + toolbarHeight + percentOffset);
 
-                        final double verticalOffset =
-                            lerpDouble(startOffset, endOffset, animValue)!;
+                        // Calculate minimum padding (5% of screen height)
+                        final screenHeight = MediaQuery.of(context).size.height;
+                        final minPadding = screenHeight * 0.05;
+
+                        // Calculate the end position - right below the toolbar
+                        final toolbarHeight = 58.0; // AuthToolbar height
+                        final navBarTopPadding = 18.0; // SizedBox above toolbar
+                        final safeTop = topPadding; // Use actual safe area
+                        final logoHeight = 140.0; // Estimated logo block height
+
+                        // Calculate the exact offset to position the search bar below the toolbar
+                        // Include toolbar height, padding, and minimum spacing
+                        final endOffset = -(logoHeight -
+                            (toolbarHeight + navBarTopPadding + minPadding));
+
+                        // Smoothly interpolate between start and end positions
+                        final double verticalOffset = lerpDouble(
+                            startOffset,
+                            endOffset,
+                            Curves.easeOutCubic.transform(animValue))!;
+
+                        // For debugging
+                        print(
+                            'Animating search bar to offset: $verticalOffset, Min Padding: $minPadding, Toolbar Height: ${toolbarHeight + navBarTopPadding}');
 
                         return Transform.translate(
                           offset: Offset(0, verticalOffset),
                           child: Column(
                             children: [
-                              // Content that appears/fades when not searching
-                              FadeTransition(
-                                opacity: groupAFadeAnimation,
-                                child: Column(
-                                  children: [
-                                    SlideTransition(
-                                      position: _logoSlideAnimation,
-                                      child: AnimatedBuilder(
-                                        animation: _logoFadeController,
-                                        builder: (context, child) {
-                                          return Opacity(
-                                            opacity:
-                                                1 - _logoFadeController.value,
-                                            child: child,
-                                          );
-                                        },
-                                        child: Column(
-                                          children: [
-                                            textGraphics(),
-                                            const SizedBox(height: 5),
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 12 + 16),
-                                              child: Text(
-                                                "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                                textAlign: TextAlign.center,
-                                                style: AppStyles
-                                                    .homeCenterTextStyle,
-                                                // Add overflow handling
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 2,
+                              // Show text logo only if search is not active
+                              if (!isSearchActive)
+                                FadeTransition(
+                                  opacity: groupAFadeAnimation,
+                                  child: Column(
+                                    children: [
+                                      SlideTransition(
+                                        position: _logoSlideAnimation,
+                                        child: AnimatedBuilder(
+                                          animation: _logoFadeController,
+                                          builder: (context, child) {
+                                            return Opacity(
+                                              opacity:
+                                                  1 - _logoFadeController.value,
+                                              child: child,
+                                            );
+                                          },
+                                          child: Column(
+                                            children: [
+                                              textGraphics(),
+                                              const SizedBox(height: 5),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 28),
+                                                child: Text(
+                                                  "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                                  textAlign: TextAlign.center,
+                                                  style: AppStyles
+                                                      .homeCenterTextStyle,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  maxLines: 2,
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-
                               // Search bar with independent sliding animation
                               FadeTransition(
                                 opacity: groupBFadeAnimation,
@@ -422,9 +456,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   position: groupBSlideAnimation,
                                   child: Padding(
                                     padding: EdgeInsets.only(
-                                      // Make top padding responsive
-                                      top: lerpDouble(22.0,
-                                          screenSize.height * 0.01, animValue)!,
+                                      top: lerpDouble(kIsWeb ? 35.0 : 30.0, 4.0,
+                                          animValue)!,
                                     ),
                                     child: Column(
                                       children: [
@@ -440,14 +473,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                 TextInputAction.done,
                                             onSubmitted: (_) {
                                               FocusScope.of(context).unfocus();
-
-                                              // If text is empty, ensure we're showing top charts
                                               if (tfController.text.isEmpty) {
                                                 setState(() {
                                                   isShowingSearchResults =
                                                       false;
                                                 });
-
                                                 if (searchResults == null) {
                                                   _loadTopCharts();
                                                 }
@@ -455,7 +485,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                             },
                                             onPaste: (value) {
                                               _autoConvertTimer?.cancel();
-
                                               final linkLower =
                                                   value.toLowerCase();
                                               final isSupported = linkLower
@@ -467,7 +496,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                       'music.apple.com') ||
                                                   linkLower
                                                       .contains('deezer.com');
-
                                               if (isSupported &&
                                                   !isLoading &&
                                                   mounted) {
@@ -477,7 +505,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                       .reverse();
                                                   _logoFadeController.reverse();
                                                 });
-
                                                 _autoConvertTimer = Timer(
                                                     const Duration(
                                                         milliseconds: 300), () {
@@ -498,7 +525,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ),
-
                               // Search results with improved fade in
                               if (shouldShowResults)
                                 AnimatedBuilder(
@@ -513,29 +539,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   child: Container(
                                     constraints: BoxConstraints(
                                       minHeight: 100,
-                                      // Make maxHeight calculation more responsive and web compatible
-                                      maxHeight: kIsWeb
-                                          ? screenSize.height *
-                                              0.5 // Slightly smaller on web
-                                          : screenSize.height *
-                                              0.6, // Maintain mobile size
+                                      maxHeight: screenSize.height -
+                                          (topPadding +
+                                              76 +
+                                              0 +
+                                              58 +
+                                              16 +
+                                              bottomPadding),
                                     ),
                                     margin: EdgeInsets.symmetric(
-                                        horizontal: kIsWeb
-                                            ? 24
-                                            : 16, // Wider margins on web
-                                        vertical: screenSize.height * 0.01),
+                                        horizontal: kIsWeb ? 24 : 16,
+                                        vertical: 8),
                                     child: GestureDetector(
-                                      // Prevent taps in this area from dismissing the search
                                       onTap: () {},
-                                      // Prevent scroll gestures from being interpreted as taps
                                       behavior: HitTestBehavior.opaque,
                                       child: Stack(
                                         children: [
-                                          // Bottom "shadow" container
                                           Container(
-                                            margin: const EdgeInsets.only(
-                                                top: 4), // Offset for 3D effect
+                                            margin:
+                                                const EdgeInsets.only(top: 4),
                                             decoration: BoxDecoration(
                                               color: AppColors
                                                   .animatedBtnColorConvertBottom,
@@ -552,7 +574,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               height: double.infinity,
                                             ),
                                           ),
-                                          // Top content container
                                           Container(
                                             decoration: BoxDecoration(
                                               color: Colors.white,
@@ -569,7 +590,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               child: Column(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  // Add a header row with title and close button
                                                   Container(
                                                     padding:
                                                         const EdgeInsets.only(
@@ -583,7 +603,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                               .spaceBetween,
                                                       children: [
                                                         Text(
-                                                          // Show different text based on whether this is search or charts
                                                           isShowingSearchResults
                                                               ? "Search Results"
                                                               : "Top Charts",
@@ -616,7 +635,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                       ],
                                                     ),
                                                   ),
-                                                  // Add a divider
                                                   Padding(
                                                     padding: const EdgeInsets
                                                         .symmetric(
@@ -628,7 +646,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                       height: 1,
                                                     ),
                                                   ),
-                                                  // Remove the previous standalone close button since we've integrated it into the header
                                                   Expanded(
                                                     child:
                                                         _buildSearchResults(),
@@ -1160,45 +1177,51 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // Handle animation status changes
   void _handleSearchAnimationStatus(AnimationStatus status) {
-    // When the search animation completes (search bar fully visible)
-    if (status == AnimationStatus.completed) {
-      // Add a small delay to ensure the animation has fully rendered
-      // before updating the UI state - helps on slower devices
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (!mounted) return;
+    if (!mounted) return;
 
-        // If search field is empty, show top charts
-        if (tfController.text.isEmpty && !isLoading) {
-          setState(() {
-            isShowingSearchResults = false;
-            isSearchActive = true; // Keep search active
-            print(
-                '[_handleSearchAnimationStatus] Animation completed: Setting search active, no results');
-          });
-
-          // Only load if we don't already have them
-          if (searchResults == null || isLoadingCharts) {
-            print(
-                '[_handleSearchAnimationStatus] Loading top charts after animation');
-            _loadTopCharts();
-          }
-        } else if (tfController.text.isNotEmpty) {
-          // Ensure search results are visible when there's text
-          setState(() {
-            isShowingSearchResults = true;
-            isSearchActive = true;
-          });
-        }
-      });
-    } else if (status == AnimationStatus.dismissed) {
-      // Animation has fully reversed
-      // If text is empty and not loading, reset search UI state
-      if (tfController.text.isEmpty && !isLoading) {
+    switch (status) {
+      case AnimationStatus.completed:
+        // Animation finished - search bar is now at the top position
         setState(() {
-          isSearchActive = false;
-          isShowingSearchResults = false;
+          // Always keep search active when the animation completes
+          isSearchActive = true;
+
+          // Determine what to show based on text content
+          if (tfController.text.isEmpty && !isLoading) {
+            // Empty search field - show charts
+            isShowingSearchResults = false;
+
+            // Load charts if they aren't already loaded
+            if (searchResults == null || isLoadingCharts) {
+              _loadTopCharts();
+            }
+          } else if (tfController.text.isNotEmpty) {
+            // Non-empty search field - show search results
+            isShowingSearchResults = true;
+          }
         });
-      }
+        break;
+
+      case AnimationStatus.dismissed:
+        // Animation fully reversed - search bar back to original position
+        if (tfController.text.isEmpty &&
+            !isLoading &&
+            !_searchFocusNode.hasFocus) {
+          // Only reset UI when text is empty, we're not loading, and search isn't focused
+          setState(() {
+            isSearchActive = false;
+            isShowingSearchResults = false;
+          });
+        } else if (_searchFocusNode.hasFocus) {
+          // If search is focused when animation reverse completes,
+          // ensure we go right back to expanded state
+          Future.microtask(() => _searchAnimController.forward());
+        }
+        break;
+
+      default:
+        // No action needed for other animation states
+        break;
     }
   }
 
