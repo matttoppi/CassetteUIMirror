@@ -22,19 +22,38 @@ class ApiService {
     return apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
   }
 
-  // Test function to verify API connection using root endpoint
-  Future<bool> testConnection() async {
+  // Warm up Lambda functions
+  Future<Map<String, bool>> warmupLambdas() async {
+    print('🔥 Starting Lambda warmup');
     try {
-      // Test with root endpoint GET request
-      final response = await http.get(
-        Uri.parse(baseDomain), // Root URL without /api/v1
+      final response = await http
+          .get(
+        Uri.parse('$baseUrl/warmup'),
+        headers: getDefaultHeaders(),
+      )
+          .timeout(
+        const Duration(seconds: 10), // 10 second timeout
+        onTimeout: () {
+          throw Exception('Warmup request timed out');
+        },
       );
-      print('API test connection status: ${response.statusCode}');
-      print('API info: ${response.body}');
-      return response.statusCode == 200;
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('✅ Lambda warmup completed: ${response.body}');
+        return Map<String, bool>.from(data);
+      } else {
+        print('❌ Lambda warmup failed: ${response.statusCode}');
+        throw Exception('Failed to warm up Lambdas: ${response.statusCode}');
+      }
     } catch (e) {
-      print('API test connection error: $e');
-      return false;
+      print('❌ Lambda warmup error: $e');
+      // Return a map indicating failure for all platforms
+      return {
+        'spotify': false,
+        'applemusic': false,
+        'deezer': false,
+      };
     }
   }
 

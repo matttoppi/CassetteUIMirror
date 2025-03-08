@@ -100,12 +100,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Load top charts when app starts - but don't show the search UI yet
     _loadTopCharts();
 
-    // Test API connection
-    _apiService.testConnection().then((isConnected) {
-      if (!isConnected && mounted) {
+    // Warm up Lambda functions instead of testing connection
+    _apiService.warmupLambdas().then((results) {
+      if (!results.values.every((success) => success) && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Warning: Cannot connect to API server'),
+            content: Text(
+                'Warning: Some services may be temporarily slower or unavailable'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -412,8 +413,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           offset: Offset(0, verticalOffset),
                           child: Column(
                             children: [
-                              // Show text logo only if search is not active
-                              if (!isSearchActive)
+                              // Show text logo if search is not active OR during loading
+                              if (!isSearchActive || isLoading)
                                 FadeTransition(
                                   opacity: groupAFadeAnimation,
                                   child: Column(
@@ -423,9 +424,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         child: AnimatedBuilder(
                                           animation: _logoFadeController,
                                           builder: (context, child) {
+                                            // Show logo during loading
+                                            final opacity = isLoading
+                                                ? 1.0
+                                                : 1 - _logoFadeController.value;
                                             return Opacity(
-                                              opacity:
-                                                  1 - _logoFadeController.value,
+                                              opacity: opacity,
                                               child: child,
                                             );
                                           },
@@ -802,9 +806,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     setState(() {
       isLoading = true;
-      // Hide results but keep search interface visible in center position
+      // Reverse animations to show logo during loading
+      _searchAnimController.reverse();
+      _logoFadeController.reverse();
       isShowingSearchResults = false;
-      isSearchActive = true; // Keep search UI visible
+      isSearchActive = true;
     });
 
     try {
@@ -827,9 +833,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (mounted) {
         setState(() {
           isLoading = false;
-          // Close search interface on error
-          isSearchActive = false;
-          isShowingSearchResults = false;
+          // Restore search UI state on error
+          _searchAnimController.forward();
+          _logoFadeController.forward();
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -862,6 +868,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     setState(() {
       isSearching = true;
+      isLoading = true;
+      // Reverse animations to show logo during loading
+      _searchAnimController.reverse();
+      _logoFadeController.reverse();
     });
 
     try {
@@ -871,7 +881,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(() {
           searchResults = results;
           isSearching = false;
+          isLoading = false;
           isShowingSearchResults = true;
+          // Restore search UI state
+          _searchAnimController.forward();
+          _logoFadeController.forward();
         });
         print('✅ Search completed successfully');
       }
@@ -881,6 +895,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(() {
           searchResults = null;
           isSearching = false;
+          isLoading = false;
+          // Keep search UI state on error
+          _searchAnimController.forward();
+          _logoFadeController.forward();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

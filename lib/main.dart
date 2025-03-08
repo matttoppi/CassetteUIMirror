@@ -10,6 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/services/router.dart';
 import 'core/services/spotify_service.dart';
+import 'core/services/api_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 bool isAuthenticated = false;
@@ -26,8 +27,16 @@ void main() async {
       debug: true,
     );
     print('Supabase initialized successfully');
+
+    // Initialize API service and warm up Lambdas
+    final apiService = ApiService();
+    apiService.warmupLambdas().then((results) {
+      print('Lambda warmup results: $results');
+    }).catchError((error) {
+      print('Lambda warmup error: $error');
+    });
   } catch (e) {
-    print('Supabase initialization error: $e');
+    print('Initialization error: $e');
   }
 
   PreferenceHelper.load().then((value) {
