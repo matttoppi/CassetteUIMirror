@@ -54,6 +54,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final AnimationController _logoFadeController;
   bool isLoadingCharts = true;
   bool _isChartLoadRequested = false;
+  bool _disableAutoFocus =
+      false; // Flag to disable auto focus after conversion failure
 
   @override
   void initState() {
@@ -203,7 +205,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Log state change for debugging
     print('[Focus] Changed from $wasFocused to $isSearchFocused');
 
-    // Never update UI during active search operations
+    // Don't alter animation state during active search operations
     if (isSearching || isLoading) {
       // If we're in active search but losing focus, restore focus
       if (!isSearchFocused && (isSearching || isLoading)) {
@@ -221,6 +223,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // Ensure search UI is properly shown
         if (_searchAnimController.value < 1.0) {
           _searchAnimController.forward();
+
+          // Re-request focus after animation starts to ensure keyboard appears
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted && !_searchFocusNode.hasFocus) {
+              _searchFocusNode.requestFocus();
+            }
+          });
         }
         if (_logoFadeController.value < 1.0) {
           _logoFadeController.forward();
@@ -357,22 +366,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     // Ensure search bar is at top position during search operations
-    if (isSearching || isLoading) {
+    // But don't force it during link conversion
+    if ((isSearching || isLoading) && !isLinkConversion) {
       _ensureSearchBarAtTopPosition();
     }
 
     // Ensure isSearchViewActive is false during loading (to hide results)
     // but keep search bar visible by keeping isSearchActive true
-    final bool isSearchViewActive = isSearchActive ||
-        isSearchFocused ||
-        isSearching ||
-        (searchResults != null &&
-            _searchAnimController.value >
-                0) || // Only consider searchResults when search animation is active
-        (tfController.text.isNotEmpty && !isLoading);
+    final bool isSearchViewActive = (isSearchActive ||
+            isSearchFocused ||
+            isSearching ||
+            (searchResults != null &&
+                _searchAnimController.value >
+                    0) || // Only consider searchResults when search animation is active
+            (tfController.text.isNotEmpty && !isLoading)) &&
+        !isLinkConversion; // Hide results when doing link conversion
 
     // When loading, we should show loading results, not hide the entire results area
-    final bool shouldShowResults = isSearchViewActive;
+    // During link conversion, we should hide results and show the home screen
+    final bool shouldShowResults = isSearchViewActive && !isLinkConversion;
 
     // Get screen size for responsive calculations
     final screenSize = MediaQuery.of(context).size;
@@ -528,11 +540,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               horizontal: 16),
                                           child: GestureDetector(
                                             onTap: () {
+                                              // Reset auto focus disable flag on manual tap
+                                              setState(() {
+                                                _disableAutoFocus = false;
+                                              });
+
                                               // STATE 1: Initial click - animate up, load charts, focus
                                               if (!isSearchActive) {
                                                 setState(() {
                                                   isSearchActive = true;
-
                                                   // Load top charts if needed
                                                   if (searchResults == null &&
                                                       !isLoadingCharts &&
@@ -541,12 +557,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   }
                                                 });
 
-                                                // Ensure animations run
+                                                // Start animations
                                                 _searchAnimController.forward();
                                                 _logoFadeController.forward();
 
-                                                // Ensure focus is set
-                                                _searchFocusNode.requestFocus();
+                                                // Request focus after a short delay to ensure animations have started
+                                                Future.delayed(
+                                                    const Duration(
+                                                        milliseconds: 150), () {
+                                                  if (mounted &&
+                                                      !_searchFocusNode
+                                                          .hasFocus) {
+                                                    _searchFocusNode
+                                                        .requestFocus();
+                                                  }
+                                                });
                                               } else {
                                                 // When already active, just ensure focus
                                                 _searchFocusNode.requestFocus();
@@ -558,13 +583,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               controller: tfController,
                                               focusNode: _searchFocusNode,
                                               textInputAction:
-                                                  TextInputAction.done,
+                                                  TextInputAction.search,
                                               onSubmitted: (_) {
                                                 // When user hits enter/done, perform search if there's text
                                                 if (tfController
                                                     .text.isNotEmpty) {
                                                   _handleSearch(
                                                       tfController.text);
+                                                  // Don't unfocus - we want to keep focus for subsequent edits
+                                                } else {
+                                                  // If empty search, allow unfocus
+                                                  _searchFocusNode.unfocus();
+                                                  _closeSearch();
                                                 }
                                               },
                                               onPaste: (value) {
@@ -601,6 +631,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                     isLinkConversion = true;
                                                     isShowingSearchResults =
                                                         false;
+                                                    _disableAutoFocus = true;
 
                                                     // Unfocus and animate down
                                                     _searchFocusNode.unfocus();
@@ -670,7 +701,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 ),
                               ),
                               // Search results with improved fade in
-                              if (shouldShowResults)
+                              if (shouldShowResults && !isLinkConversion)
                                 AnimatedBuilder(
                                   animation: _searchAnimController,
                                   builder: (context, child) {
@@ -818,10 +849,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       AnimatedBuilder(
                         animation: _searchAnimController,
                         builder: (context, child) {
+                          // Make sure graphics are visible during link conversion
+                          final opacity = isLinkConversion
+                              ? 1.0
+                              : 1 - _searchAnimController.value;
+
                           return Opacity(
-                            opacity: 1 - _searchAnimController.value,
+                            opacity: opacity,
                             child: Visibility(
-                              visible: !shouldShowResults,
+                              visible: !shouldShowResults || isLinkConversion,
                               child: child!,
                             ),
                           );
@@ -1085,13 +1121,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       isLoading = true;
       isLinkConversion = true;
       isShowingSearchResults = false;
-      isSearchActive = true;
+      isSearchActive =
+          false; // Change to false to fully restore home screen look
+      _disableAutoFocus = true; // Disable auto focus during conversion
 
-      // Unfocus and animate back to center position
+      // Unfocus and animate down
       _searchFocusNode.unfocus();
-      _searchAnimController.reverse();
-      _logoFadeController.reverse();
     });
+
+    // Ensure animations complete fully
+    _searchAnimController.reverse();
+    _logoFadeController.reverse();
 
     try {
       print('📡 Making conversion request...');
@@ -1104,6 +1144,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         isLinkConversion = false;
         isSearchActive = false;
         isShowingSearchResults = false;
+        _disableAutoFocus =
+            false; // Re-enable auto focus for future interactions
       });
 
       print('✅ Conversion successful');
@@ -1116,11 +1158,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         isLoading = false;
         isLinkConversion = false;
         isSearchActive = true;
-        // Keep UI in consistent state
-        _searchAnimController.forward(); // Move back to top position
+        isShowingSearchResults = false; // Ensure results stay hidden on error
+        _searchAnimController.forward();
         _logoFadeController.forward();
-        // Re-focus search bar
-        _searchFocusNode.requestFocus();
+        // Keep _disableAutoFocus true so that the search bar does not auto focus automatically
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1455,21 +1496,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     switch (status) {
       case AnimationStatus.completed:
-        // When animation completes (search bar at top), ensure focus is maintained
+        // When animation completes (search bar at top), mark search as active
         setState(() {
           isSearchActive = true;
         });
-
-        // Ensure focus is maintained during search
-        if (isSearching && !_searchFocusNode.hasFocus) {
-          _searchFocusNode.requestFocus();
-        }
+        // Use a longer delay on desktop/web to allow the cursor to render properly
+        final delayMilliseconds =
+            (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) ? 150 : 50;
+        Future.delayed(Duration(milliseconds: delayMilliseconds), () {
+          // Only request focus if auto focus is not disabled and not in link conversion mode
+          if (!_disableAutoFocus &&
+              !isLinkConversion &&
+              !_searchFocusNode.hasFocus) {
+            _searchFocusNode.requestFocus(); // Request focus on the search bar
+          }
+        });
         break;
 
       case AnimationStatus.dismissed:
         // When animation is dismissed (search bar back to original position)
         // Never allow dismissal during active search or loading
-        if (isSearching || isLoading) {
+        if (isSearching || (isLoading && !isLinkConversion)) {
           // Force search bar back to top position
           _searchAnimController.forward();
           return;
@@ -1539,6 +1586,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // Add a safety method to force search bar to top position
   void _ensureSearchBarAtTopPosition() {
+    // Don't force top position during link conversion
+    if (isLinkConversion) return;
+
     if (isSearching || isLoading || tfController.text.isNotEmpty) {
       if (_searchAnimController.value < 1.0 &&
           !_searchAnimController.isAnimating) {

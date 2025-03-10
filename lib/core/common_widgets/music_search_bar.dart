@@ -122,12 +122,14 @@ class _MusicSearchBarState extends State<MusicSearchBar> {
                         focusNode: widget.focusNode,
                         textInputAction: widget.textInputAction,
                         onSubmitted: (value) {
-                          // Ensure keyboard is dismissed and prevent auto-focus
-                          FocusScope.of(context).unfocus();
+                          // Only unfocus if there's an onSubmitted handler
                           if (widget.onSubmitted != null) {
+                            // Let the parent decide whether to unfocus
                             widget.onSubmitted!(value);
                           }
                         },
+                        // Ensure keyboard shows on mobile devices
+                        keyboardType: TextInputType.text,
                         decoration: InputDecoration(
                           hintText: widget.hint,
                           hintStyle: AppStyles.textFieldHintTextStyle,
@@ -138,7 +140,7 @@ class _MusicSearchBarState extends State<MusicSearchBar> {
                           color: AppColors.textPrimary,
                         ),
                         enableInteractiveSelection: true,
-                        mouseCursor: MaterialStateMouseCursor.textable,
+                        mouseCursor: WidgetStateMouseCursor.textable,
                         contextMenuBuilder: (context, editableTextState) {
                           if (SystemContextMenu.isSupported(context)) {
                             return SystemContextMenu.editableText(
