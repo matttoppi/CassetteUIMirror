@@ -12,6 +12,7 @@ import 'package:palette_generator/palette_generator.dart';
 import 'package:cassettefrontend/core/services/track_service.dart';
 import 'package:cassettefrontend/core/services/report_service.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/rendering.dart';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -192,35 +193,42 @@ class _EntityPageState extends State<EntityPage> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-        body: SingleChildScrollView(
-      child: Container(
+      body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              dominateColor.withOpacity(0.8),
+              dominateColor,
+              dominateColor.withOpacity(0.85),
               dominateColor.withOpacity(0.6),
+              dominateColor.withOpacity(0.4),
+              dominateColor.withOpacity(0.25),
+              dominateColor.withOpacity(0.15),
+              AppColors.appBg.withOpacity(0.3),
               AppColors.appBg,
             ],
-            stops: const [0, 0.13, 0.3],
+            // Extend gradient much further down the page
+            stops: const [0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.0],
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TrackToolbar(isLoggedIn: isLoggedIn),
-            ),
-            const SizedBox(height: 18),
-            body(),
-            const SizedBox(height: 18),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TrackToolbar(isLoggedIn: isLoggedIn),
+              ),
+              const SizedBox(height: 24),
+              body(),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
-    ));
+    );
   }
 
   // Show report problem dialog with radio buttons for issue selection
@@ -383,7 +391,7 @@ class _EntityPageState extends State<EntityPage> {
                                     content:
                                         Text('Error submitting report: $e'),
                                     duration: const Duration(seconds: 3),
-                                    backgroundColor: Colors.red,
+                                    backgroundColor: AppColors.primary,
                                   ),
                                 );
                               }
@@ -402,20 +410,22 @@ class _EntityPageState extends State<EntityPage> {
   // Report problem button widget
   Widget _reportProblemButton() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: TextButton.icon(
         onPressed: _showReportDialog,
-        icon: const Icon(Icons.report_problem_outlined, color: Colors.red),
+        icon:
+            const Icon(Icons.report_problem_outlined, color: AppColors.primary),
         label: const Text(
           'Report a Problem',
-          style: TextStyle(color: Colors.red),
+          style:
+              TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
         ),
         style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          backgroundColor: Colors.red.withOpacity(0.1),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          backgroundColor: AppColors.primary.withOpacity(0.08),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: Colors.red, width: 1),
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -424,27 +434,38 @@ class _EntityPageState extends State<EntityPage> {
 
   body() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
           Text(widget.type == "artist" ? "Artist" : "Track",
               style: AppStyles.trackTrackTitleTs),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           Stack(
+            clipBehavior: Clip.none,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+              Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(imageUrl,
-                      width: MediaQuery.of(context).size.width / 2.5,
-                      height: MediaQuery.of(context).size.width / 2.5,
-                      fit: BoxFit.cover),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    imageUrl,
+                    width: MediaQuery.of(context).size.width / 2.3,
+                    height: MediaQuery.of(context).size.width / 2.3,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               Positioned(
-                bottom: 0,
-                right: 0,
+                bottom: -10,
+                right: -10,
                 child: Image.asset(
                   icPlay,
                   height: 56,
@@ -452,34 +473,74 @@ class _EntityPageState extends State<EntityPage> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
           Text(
             name,
-            style: AppStyles.trackNameTs,
+            style: AppStyles.trackNameTs.copyWith(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
           widget.type == "artist"
               ? _buildArtistDetails()
-              : Text(
-                  artistName,
-                  style: AppStyles.trackArtistNameTs,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+              : Column(
+                  children: [
+                    const SizedBox(height: 6),
+                    Text(
+                      artistName,
+                      style: AppStyles.trackArtistNameTs.copyWith(
+                        fontSize: 18,
+                      ),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ],
                 ),
           if (des != null) desWidget(),
-          const Divider(
-              height: 2,
-              thickness: 2,
-              color: AppColors.textPrimary,
-              endIndent: 10,
-              indent: 10),
-          const SizedBox(height: 18),
-          widget.postData != null
-              ? AppUtils.trackSocialLinksWidget(
-                  platforms: widget.postData!['platforms'])
-              : AppUtils.trackSocialLinksWidget(),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Divider(
+                height: 2,
+                thickness: 1,
+                color: AppColors.textPrimary,
+                endIndent: 0,
+                indent: 0),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.textPrimary.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.textPrimary.withOpacity(0.1),
+                width: 1,
+              ),
+              // Add glass effect
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.textPrimary.withOpacity(0.05),
+                  blurRadius: 10,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Transform.scale(
+              scale: 1.15,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: widget.postData != null
+                    ? AppUtils.trackSocialLinksWidget(
+                        platforms: widget.postData!['platforms'])
+                    : AppUtils.trackSocialLinksWidget(),
+              ),
+            ),
+          ),
           if (!isLoggedIn) createAccWidget(),
           _reportProblemButton(),
         ],
@@ -496,16 +557,30 @@ class _EntityPageState extends State<EntityPage> {
     return Column(
       children: [
         if (genres.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 8,
             runSpacing: 8,
             children: genres
                 .map((genre) => Chip(
-                      label: Text(genre),
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      labelStyle: TextStyle(color: AppColors.primary),
+                      label: Text(
+                        genre,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      backgroundColor: AppColors.primary.withOpacity(0.15),
+                      side: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ))
                 .toList(),
           ),
@@ -518,43 +593,93 @@ class _EntityPageState extends State<EntityPage> {
     return Column(
       children: [
         const SizedBox(height: 36),
-        AppUtils.cmDesBox(userName: desUsername, des: des),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.appBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.textPrimary.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: AppUtils.cmDesBox(userName: desUsername, des: des),
+        ),
         const SizedBox(height: 36),
       ],
     );
   }
 
   createAccWidget() {
-    return Column(
-      children: [
-        const SizedBox(height: 36),
-        AnimatedPrimaryButton(
-          text: "Create Your Free Account!",
-          onTap: () {
-            Future.delayed(
-              const Duration(milliseconds: 180),
-              () => context.go('/signup'),
-            );
-          },
-          height: 40,
-          width: MediaQuery.of(context).size.width - 46,
-          radius: 10,
-          initialPos: 6,
-          topBorderWidth: 3,
-          bottomBorderWidth: 3,
-          colorTop: AppColors.animatedBtnColorConvertTop,
-          textStyle: AppStyles.animatedBtnFreeAccTextStyle,
-          borderColorTop: AppColors.animatedBtnColorConvertTop,
-          colorBottom: AppColors.animatedBtnColorConvertBottom,
-          borderColorBottom: AppColors.animatedBtnColorConvertBottomBorder,
+    return Container(
+      margin:
+          EdgeInsets.symmetric(vertical: des == null ? 12 : 24, horizontal: 16),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.textPrimary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.3),
+          width: 1,
         ),
-        const SizedBox(height: 12),
-        Text(
-          "Save this page to share again? Showcase your\nfavorite tunes with your Cassette Profile!",
-          style: AppStyles.trackBelowBtnStringTs,
-          textAlign: TextAlign.center,
-        ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate button width based on container constraints
+          // Account for the animation offset (initialPos = 6) on both sides
+          final buttonWidth =
+              constraints.maxWidth - 12; // Subtract 2 * initialPos
+          return Column(
+            mainAxisSize: MainAxisSize.min, // Ensure column takes minimum space
+            children: [
+              // Center the button to ensure it's not clipped on either side
+              Center(
+                child: AnimatedPrimaryButton(
+                  text: "Create Your Free Account!",
+                  onTap: () {
+                    Future.delayed(
+                      const Duration(milliseconds: 180),
+                      () => context.go('/signup'),
+                    );
+                  },
+                  height: 46,
+                  width: buttonWidth,
+                  radius: 10,
+                  initialPos: 6,
+                  topBorderWidth: 3,
+                  bottomBorderWidth: 3,
+                  colorTop: AppColors.animatedBtnColorConvertTop,
+                  textStyle: AppStyles.animatedBtnFreeAccTextStyle.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  borderColorTop: AppColors.animatedBtnColorConvertTop,
+                  colorBottom: AppColors.animatedBtnColorConvertBottom,
+                  borderColorBottom:
+                      AppColors.animatedBtnColorConvertBottomBorder,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Save this page to share again? Showcase your\nfavorite tunes with your Cassette Profile!",
+                style: AppStyles.trackBelowBtnStringTs.copyWith(
+                  fontSize: 15,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

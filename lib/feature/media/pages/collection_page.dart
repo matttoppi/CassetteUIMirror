@@ -201,49 +201,54 @@ class _CollectionPageState extends State<CollectionPage> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-        body: SingleChildScrollView(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              dominateColor.withOpacity(1),
-              dominateColor.withOpacity(0.4),
-              AppColors.appBg,
+      body: SingleChildScrollView(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                dominateColor,
+                dominateColor.withOpacity(0.7),
+                dominateColor.withOpacity(0.4),
+                AppColors.appBg.withOpacity(0.6),
+                AppColors.appBg,
+              ],
+              // Extend gradient further down the page
+              stops: const [0.0, 0.1, 0.25, 0.5, 0.7],
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TrackToolbar(isLoggedIn: isLoggedIn),
+              ),
+              const SizedBox(height: 24),
+              body(),
+              const SizedBox(height: 24),
+              listingView(),
+              Visibility(
+                  visible: !isLoggedIn && des != null,
+                  child: createAccWidget()),
+              const SizedBox(height: 24),
             ],
-            stops: const [0, 0.11, 0.3],
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TrackToolbar(isLoggedIn: isLoggedIn),
-            ),
-            const SizedBox(height: 18),
-            body(),
-            const SizedBox(height: 18),
-            listingView(),
-            Visibility(
-                visible: !isLoggedIn && des != null, child: createAccWidget()),
-            const SizedBox(height: 18),
-          ],
-        ),
       ),
-    ));
+    );
   }
 
   body() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
           Text(widget.type == "album" ? "Album" : "Playlist",
               style: AppStyles.trackTrackTitleTs),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -254,21 +259,31 @@ class _CollectionPageState extends State<CollectionPage> {
                     height: 38,
                   )),
               Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Padding(
-                    padding:
-                        const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 16,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(coverArtUrl,
-                          width: MediaQuery.of(context).size.width / 2.5,
-                          height: MediaQuery.of(context).size.width / 2.5,
-                          fit: BoxFit.cover),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        coverArtUrl,
+                        width: MediaQuery.of(context).size.width / 2.3,
+                        height: MediaQuery.of(context).size.width / 2.3,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                   Positioned(
-                    bottom: 0,
-                    right: 0,
+                    bottom: -10,
+                    right: -10,
                     child: Image.asset(
                       icPlay,
                       height: 56,
@@ -284,16 +299,23 @@ class _CollectionPageState extends State<CollectionPage> {
                   )),
             ],
           ),
+          const SizedBox(height: 16),
           Text(
             name,
-            style: AppStyles.trackNameTs,
+            style: AppStyles.trackNameTs.copyWith(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
+          const SizedBox(height: 6),
           Text(
             artistName,
-            style: AppStyles.trackArtistNameTs,
+            style: AppStyles.trackArtistNameTs.copyWith(
+              fontSize: 18,
+            ),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
@@ -301,7 +323,7 @@ class _CollectionPageState extends State<CollectionPage> {
           if (widget.type == 'album' &&
               (releaseDate != null || trackCount != null))
             Padding(
-              padding: const EdgeInsets.only(top: 8.0),
+              padding: const EdgeInsets.only(top: 12.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -334,19 +356,46 @@ class _CollectionPageState extends State<CollectionPage> {
               ),
             ),
           des == null ? createAccWidget() : desWidget(),
-          SizedBox(height: des == null ? 125 : 0),
-          const Divider(
-              height: 2,
-              thickness: 2,
-              color: AppColors.textPrimary,
-              endIndent: 10,
-              indent: 10),
-          const SizedBox(height: 18),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Divider(
+                height: 2,
+                thickness: 1,
+                color: AppColors.textPrimary,
+                endIndent: 0,
+                indent: 0),
+          ),
+          const SizedBox(height: 24),
           // Pass platforms data to social links widget
-          widget.postData != null
-              ? AppUtils.trackSocialLinksWidget(
-                  platforms: widget.postData!['platforms'])
-              : AppUtils.trackSocialLinksWidget(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.textPrimary.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.textPrimary.withOpacity(0.1),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.textPrimary.withOpacity(0.05),
+                  blurRadius: 10,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Transform.scale(
+              scale: 1.15,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: widget.postData != null
+                    ? AppUtils.trackSocialLinksWidget(
+                        platforms: widget.postData!['platforms'])
+                    : AppUtils.trackSocialLinksWidget(),
+              ),
+            ),
+          ),
           // Add report problem button
           _reportProblemButton(),
         ],
@@ -358,173 +407,285 @@ class _CollectionPageState extends State<CollectionPage> {
     return Column(
       children: [
         const SizedBox(height: 36),
-        AppUtils.cmDesBox(userName: desUsername, des: des),
-        const SizedBox(height: 18),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.textPrimary.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.textPrimary.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: AppUtils.cmDesBox(userName: desUsername, des: des),
+        ),
+        const SizedBox(height: 24),
       ],
     );
   }
 
   Widget listingView() {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: trackList.length,
-      separatorBuilder: (context, index) => const Divider(
-        height: 1,
-        thickness: 0.5,
-        indent: 70,
-        endIndent: 16,
-        color: AppColors.textPrimary,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        // Remove glass effect, use solid color for retro look
+        color: AppColors.appBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.textPrimary.withOpacity(0.2),
+          width: 1,
+        ),
       ),
-      itemBuilder: (context, index) {
-        final track = trackList[index];
-        final hasPreview =
-            track.previewUrl != null && track.previewUrl!.isNotEmpty;
-        final isPlaying = _playingIndex == index;
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: trackList.length,
+        separatorBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.only(left: 70, right: 16),
+          child: Divider(
+            height: 1,
+            thickness: 0.5,
+            color: AppColors.textPrimary.withOpacity(0.3),
+          ),
+        ),
+        itemBuilder: (context, index) {
+          final track = trackList[index];
+          final hasPreview =
+              track.previewUrl != null && track.previewUrl!.isNotEmpty;
+          final isPlaying = _playingIndex == index;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: ListTile(
-            dense: false,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-            title: Text(
-              track.title,
-              style: AppStyles.trackNameTs.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 4.0),
-              child: Text(
-                track.artist,
-                style: AppStyles.trackArtistNameTs.copyWith(
-                  fontSize: 14,
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: ListTile(
+              dense: false,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+              title: Text(
+                track.title,
+                style: AppStyles.trackNameTs.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isPlaying ? AppColors.primary : null,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-            ),
-            leading: SizedBox(
-              width: 50,
-              child: widget.type == 'album' && track.trackNumber != null
-                  ? Container(
-                      width: 40,
-                      height: 40,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: hasPreview
-                            ? AppColors.primary.withOpacity(0.15)
-                            : AppColors.textPrimary.withOpacity(0.1),
-                      ),
-                      child: Text(
-                        track.trackNumber.toString(),
-                        style: AppStyles.trackTrackTitleTs.copyWith(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: hasPreview
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
-                        ),
-                      ),
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(8.0),
-                      child: Image.network(
-                        track.coverArtUrl,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  track.artist,
+                  style: AppStyles.trackArtistNameTs.copyWith(
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              leading: SizedBox(
+                width: 50,
+                child: widget.type == 'album' && track.trackNumber != null
+                    ? Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
                             width: 40,
                             height: 40,
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              // Using neutral colors instead of red/primary
                               color: AppColors.textPrimary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(
+                                color: AppColors.textPrimary.withOpacity(0.2),
+                                width: 1,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.music_note,
-                              color: AppColors.textPrimary.withOpacity(0.5),
+                            child: Text(
+                              track.trackNumber.toString(),
+                              style: AppStyles.trackTrackTitleTs.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                          );
-                        },
+                          ),
+                          // Overlay play button for tracks with previews
+                          if (hasPreview)
+                            Positioned.fill(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: () => _handlePreviewPlayback(
+                                      index, track.previewUrl!),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isPlaying
+                                          ? AppColors.blackColor
+                                              .withOpacity(0.5)
+                                          : Colors.transparent,
+                                    ),
+                                    child: isPlaying
+                                        ? const Icon(
+                                            Icons.pause,
+                                            size: 20,
+                                            color: AppColors.colorWhite,
+                                          )
+                                        : const Opacity(
+                                            opacity: 0.0,
+                                            child: Icon(
+                                              Icons.play_arrow,
+                                              size: 20,
+                                              color: AppColors.colorWhite,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.network(
+                          track.coverArtUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.textPrimary.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: AppColors.textPrimary.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.music_note,
+                                color: AppColors.textPrimary.withOpacity(0.7),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-            ),
-            trailing: Container(
-              width: 80,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (track.duration != null)
-                    Text(
-                      track.duration!,
-                      style: AppStyles.trackArtistNameTs.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  if (hasPreview)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: Icon(
-                        isPlaying
-                            ? Icons.pause_circle_filled
-                            : Icons.play_circle_filled,
-                        size: 24,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                ],
               ),
+              trailing: SizedBox(
+                width: 80,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (track.duration != null)
+                      Text(
+                        track.duration!,
+                        style: AppStyles.trackArtistNameTs.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    // Move play button to track number, so removing it from here
+                    if (hasPreview && widget.type != 'album')
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: IconButton(
+                          icon: Icon(
+                            isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_filled,
+                            size: 28,
+                            color: AppColors.textPrimary,
+                          ),
+                          onPressed: () =>
+                              _handlePreviewPlayback(index, track.previewUrl!),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              onTap: () {
+                if (hasPreview) {
+                  _handlePreviewPlayback(index, track.previewUrl!);
+                }
+              },
             ),
-            onTap: () {
-              if (hasPreview) {
-                _handlePreviewPlayback(index, track.previewUrl!);
-              }
-            },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   createAccWidget() {
-    return Column(
-      children: [
-        const SizedBox(height: 18),
-        AnimatedPrimaryButton(
-          text: "Create Your Free Account!",
-          onTap: () {
-            Future.delayed(
-              Duration(milliseconds: 180),
-              () => context.go('/signup'),
-            );
-          },
-          height: 40,
-          width: MediaQuery.of(context).size.width - 46,
-          radius: 10,
-          initialPos: 6,
-          topBorderWidth: 3,
-          bottomBorderWidth: 3,
-          colorTop: AppColors.animatedBtnColorConvertTop,
-          textStyle: AppStyles.animatedBtnFreeAccTextStyle,
-          borderColorTop: AppColors.animatedBtnColorConvertTop,
-          colorBottom: AppColors.animatedBtnColorConvertBottom,
-          borderColorBottom: AppColors.animatedBtnColorConvertBottomBorder,
+    return Container(
+      margin:
+          EdgeInsets.symmetric(vertical: des == null ? 12 : 24, horizontal: 16),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.textPrimary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.3),
+          width: 1,
         ),
-        const SizedBox(height: 12),
-        Text(
-          "Save this page to share again? Showcase your\nfavorite tunes with your Cassette Profile!",
-          style: AppStyles.trackBelowBtnStringTs,
-          textAlign: TextAlign.center,
-        ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final buttonWidth = constraints.maxWidth - 12;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: AnimatedPrimaryButton(
+                  text: "Create Your Free Account!",
+                  onTap: () {
+                    Future.delayed(
+                      const Duration(milliseconds: 180),
+                      () => context.go('/signup'),
+                    );
+                  },
+                  height: 46,
+                  width: buttonWidth,
+                  radius: 10,
+                  initialPos: 6,
+                  topBorderWidth: 3,
+                  bottomBorderWidth: 3,
+                  colorTop: AppColors.animatedBtnColorConvertTop,
+                  textStyle: AppStyles.animatedBtnFreeAccTextStyle.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  borderColorTop: AppColors.animatedBtnColorConvertTop,
+                  colorBottom: AppColors.animatedBtnColorConvertBottom,
+                  borderColorBottom:
+                      AppColors.animatedBtnColorConvertBottomBorder,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Save this page to share again? Showcase your\nfavorite tunes with your Cassette Profile!",
+                style: AppStyles.trackBelowBtnStringTs.copyWith(
+                  fontSize: 15,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -688,7 +849,7 @@ class _CollectionPageState extends State<CollectionPage> {
                                     content:
                                         Text('Error submitting report: $e'),
                                     duration: const Duration(seconds: 3),
-                                    backgroundColor: Colors.red,
+                                    backgroundColor: AppColors.primary,
                                   ),
                                 );
                               }
@@ -707,20 +868,22 @@ class _CollectionPageState extends State<CollectionPage> {
   // Report problem button widget
   Widget _reportProblemButton() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: TextButton.icon(
         onPressed: _showReportDialog,
-        icon: const Icon(Icons.report_problem_outlined, color: Colors.red),
+        icon:
+            const Icon(Icons.report_problem_outlined, color: AppColors.primary),
         label: const Text(
           'Report a Problem',
-          style: TextStyle(color: Colors.red),
+          style:
+              TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
         ),
         style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          backgroundColor: Colors.red.withOpacity(0.1),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          backgroundColor: AppColors.primary.withOpacity(0.08),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: Colors.red, width: 1),
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -769,7 +932,7 @@ class _CollectionPageState extends State<CollectionPage> {
           SnackBar(
             content: Text('Failed to play preview: ${e.toString()}'),
             duration: const Duration(seconds: 2),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.primary,
           ),
         );
       }
