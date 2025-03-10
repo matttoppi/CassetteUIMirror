@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' show min;
 import '../env.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'dart:async'; // Add for cancellation support
 
 class MusicSearchService {
   String? _spotifyAccessToken;
@@ -14,6 +15,12 @@ class MusicSearchService {
   Map<String, dynamic>? _cachedChartsData;
   DateTime? _chartsLastFetched;
   static const Duration _chartsCacheDuration = Duration(minutes: 30);
+
+  // Track ongoing requests to allow cancellation
+  Map<String, bool> _activeRequests = {};
+
+  // Add request timeout duration
+  static const Duration requestTimeout = Duration(seconds: 15);
 
   // Add helper function for string similarity
   double _calculateSimilarity(String str1, String str2) {
@@ -104,13 +111,20 @@ class MusicSearchService {
 
   // Get Spotify access token using Client Credentials flow
   Future<String> _getSpotifyAccessToken() async {
+    // Use cached token if valid
     if (_spotifyAccessToken != null && _tokenExpiryTime != null) {
-      if (_tokenExpiryTime!.isAfter(DateTime.now())) {
+      // Add buffer time to prevent token expiration during requests (5 minutes)
+      if (_tokenExpiryTime!
+          .isAfter(DateTime.now().add(const Duration(minutes: 5)))) {
         return _spotifyAccessToken!;
       }
     }
 
     try {
+      final requestId =
+          'spotify_token_${DateTime.now().millisecondsSinceEpoch}';
+      _activeRequests[requestId] = true;
+
       final credentials = base64Encode(
         utf8.encode('${Env.spotifyClientId}:${Env.spotifyClientSecret}'),
       );
@@ -124,28 +138,43 @@ class MusicSearchService {
         body: {
           'grant_type': 'client_credentials',
         },
-      );
+      ).timeout(requestTimeout);
+
+      // Check if this request is still relevant
+      if (!_activeRequests.containsKey(requestId) ||
+          _activeRequests[requestId] == false) {
+        print('⚠️ [Spotify] Token request was cancelled or superseded');
+        throw Exception('Request cancelled');
+      }
+      _activeRequests.remove(requestId);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         _spotifyAccessToken = data['access_token'];
-        _tokenExpiryTime = DateTime.now().add(const Duration(minutes: 50));
+        // Use actual expiry time from response with small safety buffer
+        final expiresIn = data['expires_in'] as int? ?? 3600;
+        _tokenExpiryTime =
+            DateTime.now().add(Duration(seconds: expiresIn - 60));
         return _spotifyAccessToken!;
       } else {
-        throw Exception('Failed to get Spotify access token');
+        print(
+            '❌ [Spotify] Token error: ${response.statusCode}, ${response.body}');
+        throw Exception(
+            'Failed to get Spotify access token: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ [Spotify] Authentication error');
+      print('❌ [Spotify] Authentication error: $e');
       rethrow;
     }
   }
 
   // Generate Apple Music developer token
   Future<String> _getAppleMusicToken() async {
+    // Use cached token if valid with buffer time (1 day)
     if (_appleMusicToken != null && _appleMusicTokenExpiryTime != null) {
       final now = DateTime.now();
       if (_appleMusicTokenExpiryTime!
-          .isAfter(now.add(const Duration(hours: 24)))) {
+          .isAfter(now.add(const Duration(days: 1)))) {
         return _appleMusicToken!;
       }
     }
@@ -208,12 +237,32 @@ class MusicSearchService {
     }
   }
 
+  // Cancel any active search requests
+  void cancelActiveRequests() {
+    for (var key in _activeRequests.keys) {
+      _activeRequests[key] = false;
+    }
+    print('⚠️ Cancelled all active music service requests');
+  }
+
   // Search using Apple Music API
   Future<Map<String, dynamic>> _searchAppleMusic(String query) async {
+    final String requestId =
+        'apple_search_${DateTime.now().millisecondsSinceEpoch}';
+    _activeRequests[requestId] = true;
+
     print('🎵 [Apple Music] Searching for: "$query"');
 
     try {
       final token = await _getAppleMusicToken();
+
+      // Check if this request is still relevant
+      if (!_activeRequests.containsKey(requestId) ||
+          _activeRequests[requestId] == false) {
+        print('⚠️ [Apple Music] Search was cancelled');
+        throw Exception('Request cancelled');
+      }
+
       final url = Uri.parse(
         'https://api.music.apple.com/v1/catalog/us/search',
       ).replace(
@@ -230,7 +279,15 @@ class MusicSearchService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(requestTimeout);
+
+      // Check again if this request is still relevant
+      if (!_activeRequests.containsKey(requestId) ||
+          _activeRequests[requestId] == false) {
+        print('⚠️ [Apple Music] Search was cancelled after API call');
+        throw Exception('Request cancelled');
+      }
+      _activeRequests.remove(requestId);
 
       if (response.statusCode != 200) {
         print('❌ [Apple Music] Search failed: ${response.statusCode}');
@@ -362,22 +419,45 @@ class MusicSearchService {
       });
 
       print('✅ [Apple Music] Search completed successfully');
-      return {'success': true, 'results': results, 'source': 'apple_music'};
-    } catch (e, stackTrace) {
-      print('❌ [Apple Music] Search error: $e');
-      if (e.toString().contains('token')) {
-        print('Token-related error, stack trace: $stackTrace');
+      final processedResults = {
+        'success': true,
+        'results': results,
+        'source': 'apple_music'
+      };
+      return processedResults;
+    } catch (e) {
+      // Clean up request tracking
+      _activeRequests.remove(requestId);
+
+      // Handle timeout separately for better error messages
+      if (e is TimeoutException) {
+        print('⏱️ [Apple Music] Search timed out');
+        throw Exception('Apple Music search timed out. Please try again.');
       }
+
+      print('❌ [Apple Music] Search error: $e');
       throw Exception('Failed to search Apple Music: $e');
     }
   }
 
   // Search Spotify API
   Future<Map<String, dynamic>> _searchSpotify(String query) async {
+    final String requestId =
+        'spotify_search_${DateTime.now().millisecondsSinceEpoch}';
+    _activeRequests[requestId] = true;
+
     print('🎵 [Spotify] Searching for: "$query"');
 
     try {
       final token = await _getSpotifyAccessToken();
+
+      // Check if this request is still relevant
+      if (!_activeRequests.containsKey(requestId) ||
+          _activeRequests[requestId] == false) {
+        print('⚠️ [Spotify] Search was cancelled');
+        throw Exception('Request cancelled');
+      }
+
       final url = Uri.parse('https://api.spotify.com/v1/search').replace(
         queryParameters: {
           'q': query,
@@ -392,7 +472,15 @@ class MusicSearchService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(requestTimeout);
+
+      // Check again if this request is still relevant
+      if (!_activeRequests.containsKey(requestId) ||
+          _activeRequests[requestId] == false) {
+        print('⚠️ [Spotify] Search was cancelled after API call');
+        throw Exception('Request cancelled');
+      }
+      _activeRequests.remove(requestId);
 
       if (response.statusCode != 200) {
         print('❌ [Spotify] Search failed: ${response.statusCode}');
@@ -484,11 +572,17 @@ class MusicSearchService {
 
       print('✅ [Spotify] Search completed successfully');
       return {'success': true, 'results': results, 'source': 'spotify'};
-    } catch (e, stackTrace) {
-      print('❌ [Spotify] Search error: $e');
-      if (e.toString().contains('token')) {
-        print('Token-related error, stack trace: $stackTrace');
+    } catch (e) {
+      // Clean up request tracking
+      _activeRequests.remove(requestId);
+
+      // Handle timeout separately
+      if (e is TimeoutException) {
+        print('⏱️ [Spotify] Search timed out');
+        throw Exception('Spotify search timed out. Please try again.');
       }
+
+      print('❌ [Spotify] Search error: $e');
       throw Exception('Failed to search Spotify: $e');
     }
   }
@@ -497,10 +591,19 @@ class MusicSearchService {
   Future<Map<String, dynamic>> searchMusic(String query) async {
     print('🔍 Starting music search for: "$query"');
 
+    // Cancel any previous searches
+    cancelActiveRequests();
+
     try {
       return await _searchAppleMusic(query);
     } catch (e) {
       print('⚠️ Apple Music search failed, trying Spotify');
+
+      // Only try Spotify if the error wasn't a cancellation
+      if (e.toString().contains('cancelled')) {
+        rethrow; // Propagate cancellation
+      }
+
       try {
         return await _searchSpotify(query);
       } catch (e) {
@@ -525,8 +628,19 @@ class MusicSearchService {
       }
     }
 
+    final String requestId = 'charts_${DateTime.now().millisecondsSinceEpoch}';
+    _activeRequests[requestId] = true;
+
     try {
       final token = await _getAppleMusicToken();
+
+      // Check if this request is still relevant
+      if (!_activeRequests.containsKey(requestId) ||
+          _activeRequests[requestId] == false) {
+        print('⚠️ [Charts] Request was cancelled');
+        throw Exception('Request cancelled');
+      }
+
       final url = Uri.parse(
         'https://api.music.apple.com/v1/catalog/us/charts',
       ).replace(
@@ -544,7 +658,15 @@ class MusicSearchService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(requestTimeout);
+
+      // Check if request is still active
+      if (!_activeRequests.containsKey(requestId) ||
+          _activeRequests[requestId] == false) {
+        print('⚠️ [Charts] Request was cancelled after API call');
+        throw Exception('Request cancelled');
+      }
+      _activeRequests.remove(requestId);
 
       if (response.statusCode != 200) {
         print('❌ [Charts] Failed to fetch: ${response.statusCode}');
@@ -594,11 +716,24 @@ class MusicSearchService {
       print('✅ [Charts] Data cached successfully');
 
       return transformedData;
-    } catch (e, stackTrace) {
-      print('❌ [Charts] Error: $e');
-      if (e.toString().contains('token')) {
-        print('Token-related error, stack trace: $stackTrace');
+    } catch (e) {
+      // Clean up request tracking
+      _activeRequests.remove(requestId);
+
+      // Handle timeout
+      if (e is TimeoutException) {
+        print('⏱️ [Charts] Request timed out');
+
+        // Return cached data on timeout if available
+        if (_cachedChartsData != null) {
+          print('📦 [Charts] Timeout occurred, using cached data');
+          return _cachedChartsData!;
+        }
+
+        throw Exception('Charts request timed out. Please try again.');
       }
+
+      print('❌ [Charts] Error: $e');
 
       // If we have cached data and encounter an error, return the cached data
       if (_cachedChartsData != null) {

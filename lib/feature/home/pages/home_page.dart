@@ -40,6 +40,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final ScrollController scrollController = ScrollController();
   final TextEditingController tfController = TextEditingController();
   bool isLoading = false;
+  bool isLinkConversion = false;
   Timer? _autoConvertTimer;
   Map<String, dynamic>? searchResults;
   bool isSearching = false;
@@ -52,10 +53,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final FocusNode _searchFocusNode = FocusNode();
   late final AnimationController _logoFadeController;
   bool isLoadingCharts = true;
+  bool _isChartLoadRequested = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Create animation controllers first
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 6000),
@@ -67,13 +71,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       value: 0.0,
     );
 
-    _searchAnimController.addStatusListener(_handleSearchAnimationStatus);
-
     _logoFadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
 
+    // Setup animations
     _searchBarSlideAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -90,19 +93,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       curve: Curves.easeOutCubic,
     ));
 
+    // Add animation listeners first
+    _searchAnimController.addStatusListener(_handleSearchAnimationStatus);
+
+    // Then add focus listener
     _searchFocusNode.addListener(_handleSearchFocus);
+
+    // Finally add text change listener
     tfController.addListener(_handleTextChange);
 
-    // Ensure these states are initialized to false
+    // Initialize state variables
     isSearchActive = false;
     isShowingSearchResults = false;
+    isLinkConversion = false;
+    _isChartLoadRequested = false;
+    isLoadingCharts = true;
 
-    // Load top charts when app starts - but don't show the search UI yet
-    _loadTopCharts();
+    // Start loading top charts after UI is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadTopCharts();
+      }
+    });
 
-    // Warm up Lambda functions instead of testing connection
+    // Warm up Lambda functions
     _apiService.warmupLambdas().then((results) {
-      if (!results.values.every((success) => success) && mounted) {
+      if (!mounted) return;
+
+      if (!results.values.every((success) => success)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -113,8 +131,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     });
 
+    // Setup remaining animations (sequence animations etc.)
     groupAFadeAnimation = TweenSequence<double>([
-      // Fade in from 0.0 to 1.0 during the first 23.3% of the timeline (35% of original 4000ms)
+      // Fade in from 0.0 to 1.0 during the first 23.3% of the timeline
       TweenSequenceItem(
         tween: Tween<double>(begin: 0.0, end: 1.0)
             .chain(CurveTween(curve: Curves.easeOutCubic)),
@@ -169,105 +188,116 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         curve: const Interval(0.367, 0.55, curve: Curves.easeOutCubic),
       ),
     );
+    // Start the entry animation after a short delay
     Future.delayed(const Duration(milliseconds: 400), () {
-      _fadeController.forward();
+      if (mounted) {
+        _fadeController.forward();
+      }
     });
-
-    // Register _handleTextChange to listen for changes in the text field
-    tfController.addListener(_handleTextChange);
   }
 
   void _handleSearchFocus() {
-    setState(() {
-      isSearchFocused = _searchFocusNode.hasFocus;
+    final wasFocused = isSearchFocused;
+    isSearchFocused = _searchFocusNode.hasFocus;
 
+    // Log state change for debugging
+    print('[Focus] Changed from $wasFocused to $isSearchFocused');
+
+    // Never update UI during active search operations
+    if (isSearching || isLoading) {
+      // If we're in active search but losing focus, restore focus
+      if (!isSearchFocused && (isSearching || isLoading)) {
+        // Schedule focus restoration after current frame
+        Future.microtask(() => _searchFocusNode.requestFocus());
+      }
+      return;
+    }
+
+    setState(() {
       if (isSearchFocused) {
-        // Always show search UI when focused
+        // STATE 1: Initial focus - animate up and show top charts
         isSearchActive = true;
 
-        // Animate search bar to position directly below toolbar
+        // Ensure search UI is properly shown
         if (_searchAnimController.value < 1.0) {
-          _searchAnimController.forward().then((_) {
-            // Re-request focus after animation completes
-            if (mounted && isSearchFocused) {
-              _searchFocusNode.requestFocus();
-            }
-          });
+          _searchAnimController.forward();
         }
-
-        // Fade out the logo
         if (_logoFadeController.value < 1.0) {
           _logoFadeController.forward();
         }
 
         // Show appropriate content based on text
         if (tfController.text.isEmpty) {
-          // With empty text, show top charts
           isShowingSearchResults = false;
 
-          // Load charts if needed
-          if (searchResults == null || isLoadingCharts) {
+          // Load charts if needed - prevent duplicate loads
+          if ((searchResults == null || isLoadingCharts) &&
+              !_isChartLoadRequested) {
             _loadTopCharts();
           }
         } else {
-          // With text, show search results
           isShowingSearchResults = true;
         }
       } else {
-        // When losing focus, behavior depends on text and results
-        if (tfController.text.isEmpty) {
-          if (searchResults != null && _searchAnimController.value > 0.5) {
-            // Keep the charts visible if we've expanded the search
-            isSearchActive = true;
-            isShowingSearchResults = false;
-          } else {
-            // No text, no results or not expanded, reset UI
+        // Only change UI when not in the middle of a search or loading operation
+        if (!isSearching && !isLoading) {
+          // When text is empty and not in active search, return to normal state
+          if (tfController.text.isEmpty) {
             isSearchActive = false;
             isShowingSearchResults = false;
             _searchAnimController.reverse();
             _logoFadeController.reverse();
+          } else if (searchResults != null) {
+            // Keep search results visible when there's text and results
+            isSearchActive = true;
+            isShowingSearchResults = true;
           }
-        } else if (searchResults != null) {
-          // Keep search results visible when there's text and results
-          isSearchActive = true;
-          isShowingSearchResults = true;
-        } else {
-          // No results but has text, maintain the search UI
-          isSearchActive = true;
-          isShowingSearchResults = false;
         }
       }
     });
   }
 
   void _handleTextChange() {
-    // Log current text and state
-    print('[_handleTextChange] Current text: "${tfController.text}"');
+    final currentText = tfController.text;
 
-    if (tfController.text.isNotEmpty) {
+    print(
+        '[_handleTextChange] Text: "$currentText", isLoading: $isLoading, isSearching: $isSearching');
+
+    // Never change animation state during active search operations
+    if (isSearching || isLoading) {
+      // Force search UI to stay at top position during active operations
+      if (_searchAnimController.value < 1.0) {
+        _searchAnimController.forward();
+      }
+      if (_logoFadeController.value < 1.0) {
+        _logoFadeController.forward();
+      }
+      return;
+    }
+
+    if (currentText.isNotEmpty) {
+      // STATE 2: Text entry - keep at top, maintain focus
       setState(() {
-        searchResults = null; // Clear previous search results
-        isSearching = false;
+        // Only clear previous results if not currently loading
+        if (!isLoading && !isSearching) {
+          searchResults = null;
+        }
         isShowingSearchResults = true;
-        isSearchActive = true; // Keep search view active
+        isSearchActive = true;
       });
 
-      // Ensure animations are playing
-      if (!_searchAnimController.isAnimating &&
-          _searchAnimController.value < 1.0) {
-        _logoFadeController.duration = const Duration(milliseconds: 250);
+      // Ensure animations are in correct state
+      if (_searchAnimController.value < 1.0) {
         _searchAnimController.forward();
+      }
+      if (_logoFadeController.value < 1.0) {
         _logoFadeController.forward();
       }
     } else {
-      // Log that text is empty
-      print(
-          '[_handleTextChange] Text is empty. Reloading top charts if needed.');
-
-      // When text is empty, maintain the search container and show charts
+      // Text empty - maintain search container and show charts
       setState(() {
         isShowingSearchResults = false;
-        isSearchActive = true; // Keep the search container visible
+        isSearchActive = true; // Keep search container visible
 
         // Only clear searchResults if they're not top charts
         if (searchResults != null &&
@@ -276,47 +306,61 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       });
 
-      // Reload the top charts only if not already loaded
-      if (searchResults == null || isLoadingCharts) {
-        print('[_handleTextChange] Calling _loadTopCharts');
+      // Reload top charts if needed
+      if (searchResults == null && !isLoadingCharts && !_isChartLoadRequested) {
         _loadTopCharts();
-      } else {
-        print('[_handleTextChange] Top charts already loaded.');
       }
+    }
+
+    // Always ensure focus is maintained during typing
+    if (!_searchFocusNode.hasFocus) {
+      _searchFocusNode.requestFocus();
     }
   }
 
   void _closeSearch() {
-    // First unfocus the search field to dismiss keyboard
-    _searchFocusNode.unfocus();
+    // Don't unfocus during search operations
+    if (!isSearching) {
+      _searchFocusNode.unfocus();
+    }
 
-    // Clear any ongoing search
     _autoConvertTimer?.cancel();
 
+    // Don't change UI during loading or search
+    if (isLoading || isSearching) return;
+
     setState(() {
-      // Reset all search-related state variables
       isSearchActive = false;
-      searchResults = null;
-      isSearching = false;
       isShowingSearchResults = false;
 
-      // If there's text in the search field, clear it
       if (tfController.text.isNotEmpty) {
         tfController.clear();
       }
-    });
 
-    // Execute animations in sequence for smooth transition
-    _searchAnimController.reverse().then((_) {
-      // Only after search animation is complete, restore the logo
-      if (!_searchFocusNode.hasFocus) {
-        _logoFadeController.reverse();
+      if (searchResults != null && searchResults!['source'] != 'apple_music') {
+        searchResults = null;
       }
     });
+
+    // Animate back to normal position
+    if (!_searchAnimController.isDismissed) {
+      _searchAnimController.reverse().then((_) {
+        if (!_searchFocusNode.hasFocus && mounted) {
+          _logoFadeController.reverse();
+        }
+      });
+    } else {
+      _logoFadeController.reverse();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Ensure search bar is at top position during search operations
+    if (isSearching || isLoading) {
+      _ensureSearchBarAtTopPosition();
+    }
+
     // Ensure isSearchViewActive is false during loading (to hide results)
     // but keep search bar visible by keeping isSearchActive true
     final bool isSearchViewActive = isSearchActive ||
@@ -327,8 +371,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 0) || // Only consider searchResults when search animation is active
         (tfController.text.isNotEmpty && !isLoading);
 
-    // When loading, we don't show search results, but we do show the search bar
-    final bool shouldShowResults = isSearchViewActive && !isLoading;
+    // When loading, we should show loading results, not hide the entire results area
+    final bool shouldShowResults = isSearchViewActive;
 
     // Get screen size for responsive calculations
     final screenSize = MediaQuery.of(context).size;
@@ -413,8 +457,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           offset: Offset(0, verticalOffset),
                           child: Column(
                             children: [
-                              // Show text logo if search is not active OR during loading
-                              if (!isSearchActive || isLoading)
+                              // Only show text logo if appropriate based on our states
+                              if ((!isSearchActive ||
+                                      (isLoading && isLinkConversion)) &&
+                                  !isSearching)
                                 FadeTransition(
                                   opacity: groupAFadeAnimation,
                                   child: Column(
@@ -424,10 +470,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         child: AnimatedBuilder(
                                           animation: _logoFadeController,
                                           builder: (context, child) {
-                                            // Show logo during loading
-                                            final opacity = isLoading
+                                            // Only show logo when NOT searching or when explicitly doing link conversion
+                                            final bool shouldShowLogo =
+                                                (!isSearchActive ||
+                                                        (isLoading &&
+                                                            isLinkConversion)) &&
+                                                    !isSearching;
+
+                                            final opacity = shouldShowLogo
                                                 ? 1.0
                                                 : 1 - _logoFadeController.value;
+
                                             return Opacity(
                                               opacity: opacity,
                                               child: child,
@@ -473,60 +526,142 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         Padding(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 16),
-                                          child: MusicSearchBar(
-                                            hint:
-                                                "Search or paste your music link here...",
-                                            controller: tfController,
-                                            focusNode: _searchFocusNode,
-                                            textInputAction:
-                                                TextInputAction.done,
-                                            onSubmitted: (_) {
-                                              FocusScope.of(context).unfocus();
-                                              if (tfController.text.isEmpty) {
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              // STATE 1: Initial click - animate up, load charts, focus
+                                              if (!isSearchActive) {
                                                 setState(() {
-                                                  isShowingSearchResults =
-                                                      false;
+                                                  isSearchActive = true;
+
+                                                  // Load top charts if needed
+                                                  if (searchResults == null &&
+                                                      !isLoadingCharts &&
+                                                      !_isChartLoadRequested) {
+                                                    _loadTopCharts();
+                                                  }
                                                 });
-                                                if (searchResults == null) {
-                                                  _loadTopCharts();
+
+                                                // Ensure animations run
+                                                _searchAnimController.forward();
+                                                _logoFadeController.forward();
+
+                                                // Ensure focus is set
+                                                _searchFocusNode.requestFocus();
+                                              } else {
+                                                // When already active, just ensure focus
+                                                _searchFocusNode.requestFocus();
+                                              }
+                                            },
+                                            child: MusicSearchBar(
+                                              hint:
+                                                  "Search or paste your music link here...",
+                                              controller: tfController,
+                                              focusNode: _searchFocusNode,
+                                              textInputAction:
+                                                  TextInputAction.done,
+                                              onSubmitted: (_) {
+                                                // When user hits enter/done, perform search if there's text
+                                                if (tfController
+                                                    .text.isNotEmpty) {
+                                                  _handleSearch(
+                                                      tfController.text);
                                                 }
-                                              }
-                                            },
-                                            onPaste: (value) {
-                                              _autoConvertTimer?.cancel();
-                                              final linkLower =
-                                                  value.toLowerCase();
-                                              final isSupported = linkLower
-                                                      .contains(
-                                                          'spotify.com') ||
-                                                  linkLower.contains(
-                                                      'apple.com/music') ||
-                                                  linkLower.contains(
-                                                      'music.apple.com') ||
-                                                  linkLower
-                                                      .contains('deezer.com');
-                                              if (isSupported &&
-                                                  !isLoading &&
-                                                  mounted) {
-                                                setState(() {
-                                                  searchResults = null;
-                                                  _searchAnimController
-                                                      .reverse();
-                                                  _logoFadeController.reverse();
-                                                });
-                                                _autoConvertTimer = Timer(
-                                                    const Duration(
-                                                        milliseconds: 300), () {
-                                                  _handleLinkConversion(value);
-                                                });
-                                              }
-                                            },
-                                            onSearch: (query) {
-                                              if (!isLoading) {
-                                                _handleSearch(query);
-                                              }
-                                            },
-                                            isLoading: isLoading,
+                                              },
+                                              onPaste: (value) {
+                                                // First, cancel any existing timers
+                                                _autoConvertTimer?.cancel();
+
+                                                // Check if this is a music link
+                                                final linkLower =
+                                                    value.toLowerCase();
+                                                final isSupported = linkLower
+                                                        .contains(
+                                                            'spotify.com') ||
+                                                    linkLower.contains(
+                                                        'apple.com/music') ||
+                                                    linkLower.contains(
+                                                        'music.apple.com') ||
+                                                    linkLower
+                                                        .contains('deezer.com');
+
+                                                // If we're already in a search, ignore paste events
+                                                if (isSearching || isLoading) {
+                                                  print(
+                                                      '🚫 Ignoring paste during active operation');
+                                                  return;
+                                                }
+
+                                                if (isSupported &&
+                                                    !isLoading &&
+                                                    mounted) {
+                                                  // STATE 3: Link conversion - animate down to original position
+                                                  setState(() {
+                                                    searchResults = null;
+                                                    isLoading = true;
+                                                    isLinkConversion = true;
+                                                    isShowingSearchResults =
+                                                        false;
+
+                                                    // Unfocus and animate down
+                                                    _searchFocusNode.unfocus();
+                                                    _searchAnimController
+                                                        .reverse();
+                                                    _logoFadeController
+                                                        .reverse();
+                                                  });
+
+                                                  // Process the link with slight delay for UI feedback
+                                                  _autoConvertTimer = Timer(
+                                                      const Duration(
+                                                          milliseconds: 300),
+                                                      () {
+                                                    if (mounted) {
+                                                      _handleLinkConversion(
+                                                          value);
+                                                    }
+                                                  });
+                                                } else {
+                                                  // STATE 2: Regular text - keep at top with focus
+                                                  // Force search bar to stay at top
+                                                  if (_searchAnimController
+                                                          .value <
+                                                      1.0) {
+                                                    _searchAnimController
+                                                        .forward();
+                                                  }
+                                                  if (_logoFadeController
+                                                          .value <
+                                                      1.0) {
+                                                    _logoFadeController
+                                                        .forward();
+                                                  }
+
+                                                  setState(() {
+                                                    isSearchActive = true;
+                                                    isShowingSearchResults =
+                                                        true;
+                                                  });
+
+                                                  // Ensure focus is maintained
+                                                  if (!_searchFocusNode
+                                                      .hasFocus) {
+                                                    _searchFocusNode
+                                                        .requestFocus();
+                                                  }
+                                                }
+                                              },
+                                              onSearch: (query) {
+                                                // Never initiate a new search if one is already in progress
+                                                if (!isLoading &&
+                                                    !isSearching) {
+                                                  _handleSearch(query);
+                                                } else {
+                                                  print(
+                                                      '🚫 Search already in progress, ignoring new search request');
+                                                }
+                                              },
+                                              isLoading: isLoading,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -799,114 +934,209 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _handleLinkConversion(String link) async {
+  @override
+  void dispose() {
+    // Cancel any in-progress operations first
+    _autoConvertTimer?.cancel();
+    _musicSearchService.cancelActiveRequests();
+
+    // Remove listeners in reverse order of addition
+    tfController.removeListener(_handleTextChange);
+    _searchFocusNode.removeListener(_handleSearchFocus);
+    _searchAnimController.removeStatusListener(_handleSearchAnimationStatus);
+
+    // Dispose controllers
+    _fadeController.dispose();
+    _searchAnimController.dispose();
+    _logoFadeController.dispose();
+    _searchFocusNode.dispose();
+
+    // Dispose other resources
+    scrollController.dispose();
+
+    super.dispose();
+  }
+
+  // Cancel previous operations when starting a new one
+  void _cancelPreviousOperations() {
+    _autoConvertTimer?.cancel();
+    _musicSearchService.cancelActiveRequests();
+  }
+
+  Future<void> _handleSearch(String query) async {
+    _autoConvertTimer?.cancel();
+
+    if (query.isEmpty) {
+      setState(() {
+        if (!isLoadingCharts) {
+          searchResults = null;
+        }
+        isSearching = false;
+        isShowingSearchResults = false;
+      });
+
+      if (searchResults == null && !isLoadingCharts && !_isChartLoadRequested) {
+        _loadTopCharts();
+      }
+      return;
+    }
+
+    if (isSearching) {
+      print('🚫 Search already in progress, ignoring duplicate request');
+      return;
+    }
+
+    // Remember focus state
+    final wasFocused = _searchFocusNode.hasFocus;
+
+    setState(() {
+      isSearching = true;
+      isLoading = true;
+      isLinkConversion = false;
+
+      // STATE 2: Search - keep at top position with focus
+      isSearchActive = true;
+      isShowingSearchResults = true;
+    });
+
+    // Force animations to proper state
+    if (_searchAnimController.value < 1.0) {
+      _searchAnimController.forward();
+    }
+    if (_logoFadeController.value < 1.0) {
+      _logoFadeController.forward();
+    }
+
+    try {
+      print('🔍 Starting search for: "$query"');
+      final results = await _musicSearchService.searchMusic(query);
+
+      if (!mounted) return;
+
+      if (query != tfController.text) {
+        print('⚠️ Search results no longer relevant - query changed');
+        setState(() {
+          isSearching = false;
+          isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        searchResults = results;
+        isSearching = false;
+        isLoading = false;
+        isShowingSearchResults = true;
+      });
+
+      // Restore focus after search completes
+      if (wasFocused && !_searchFocusNode.hasFocus) {
+        _searchFocusNode.requestFocus();
+      }
+
+      print('✅ Search completed successfully');
+    } catch (e) {
+      print('❌ Search error: $e');
+      if (!mounted) return;
+
+      if (query != tfController.text) {
+        setState(() {
+          isSearching = false;
+          isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        isSearching = false;
+        isLoading = false;
+      });
+
+      // Restore focus after error
+      if (wasFocused && !_searchFocusNode.hasFocus) {
+        _searchFocusNode.requestFocus();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error searching: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () => _handleSearch(query),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _handleLinkConversion(String link) async {
     if (link.isEmpty) return;
+
+    // Cancel any previous operations
+    _cancelPreviousOperations();
 
     print('🔄 Starting music conversion');
 
+    // STATE 3: Link conversion - animate down to original position
     setState(() {
       isLoading = true;
-      // Reverse animations to show logo during loading
-      _searchAnimController.reverse();
-      _logoFadeController.reverse();
+      isLinkConversion = true;
       isShowingSearchResults = false;
       isSearchActive = true;
+
+      // Unfocus and animate back to center position
+      _searchFocusNode.unfocus();
+      _searchAnimController.reverse();
+      _logoFadeController.reverse();
     });
 
     try {
       print('📡 Making conversion request...');
       final response = await _apiService.convertMusicLink(link);
 
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          // Close search interface after successful conversion
-          isSearchActive = false;
-          isShowingSearchResults = false;
-        });
+      if (!mounted) return;
 
-        print('✅ Conversion successful');
-        context.go('/post', extra: response);
-      }
-    } catch (e) {
-      print('❌ Conversion failed');
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          // Restore search UI state on error
-          _searchAnimController.forward();
-          _logoFadeController.forward();
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error converting link: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleSearch(String query) async {
-    if (query.isEmpty) {
       setState(() {
-        searchResults = null;
-        isSearching = false;
+        isLoading = false;
+        isLinkConversion = false;
+        isSearchActive = false;
         isShowingSearchResults = false;
       });
-      return;
-    }
 
-    setState(() {
-      isSearching = true;
-      isLoading = true;
-      // Reverse animations to show logo during loading
-      _searchAnimController.reverse();
-      _logoFadeController.reverse();
-    });
-
-    try {
-      print('🔍 Starting search for: "$query"');
-      final results = await _musicSearchService.searchMusic(query);
-      if (mounted) {
-        setState(() {
-          searchResults = results;
-          isSearching = false;
-          isLoading = false;
-          isShowingSearchResults = true;
-          // Restore search UI state
-          _searchAnimController.forward();
-          _logoFadeController.forward();
-        });
-        print('✅ Search completed successfully');
-      }
+      print('✅ Conversion successful');
+      context.go('/post', extra: response);
     } catch (e) {
-      print('❌ Search error: $e');
-      if (mounted) {
-        setState(() {
-          searchResults = null;
-          isSearching = false;
-          isLoading = false;
-          // Keep search UI state on error
-          _searchAnimController.forward();
-          _logoFadeController.forward();
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error searching: ${e.toString()}'),
-            backgroundColor: Colors.red,
+      print('❌ Conversion failed: $e');
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        isLinkConversion = false;
+        isSearchActive = true;
+        // Keep UI in consistent state
+        _searchAnimController.forward(); // Move back to top position
+        _logoFadeController.forward();
+        // Re-focus search bar
+        _searchFocusNode.requestFocus();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error converting link: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () {
+              _handleLinkConversion(link);
+            },
           ),
-        );
-      }
+        ),
+      );
     }
   }
 
@@ -917,13 +1147,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // Show loading indicator while loading charts or searching
     if (isLoadingCharts || isSearching) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(
-              AppColors.animatedBtnColorConvertTop,
-            ),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.animatedBtnColorConvertTop,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isLoadingCharts
+                    ? 'Loading top charts...'
+                    : isSearching
+                        ? 'Searching...'
+                        : 'Loading...',
+                style: AppStyles.itemDesTs.copyWith(
+                  fontSize: 16,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -1202,95 +1449,103 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // Handle animation status changes
+  // Handle animation status changes - improved to prevent animation issues during search
   void _handleSearchAnimationStatus(AnimationStatus status) {
     if (!mounted) return;
 
     switch (status) {
       case AnimationStatus.completed:
-        // Animation finished - search bar is now at the top position
+        // When animation completes (search bar at top), ensure focus is maintained
         setState(() {
-          // Always keep search active when the animation completes
           isSearchActive = true;
-
-          // Determine what to show based on text content
-          if (tfController.text.isEmpty && !isLoading) {
-            // Empty search field - show charts
-            isShowingSearchResults = false;
-
-            // Load charts if they aren't already loaded
-            if (searchResults == null || isLoadingCharts) {
-              _loadTopCharts();
-            }
-          } else if (tfController.text.isNotEmpty) {
-            // Non-empty search field - show search results
-            isShowingSearchResults = true;
-          }
         });
+
+        // Ensure focus is maintained during search
+        if (isSearching && !_searchFocusNode.hasFocus) {
+          _searchFocusNode.requestFocus();
+        }
         break;
 
       case AnimationStatus.dismissed:
-        // Animation fully reversed - search bar back to original position
-        if (tfController.text.isEmpty &&
-            !isLoading &&
-            !_searchFocusNode.hasFocus) {
-          // Only reset UI when text is empty, we're not loading, and search isn't focused
+        // When animation is dismissed (search bar back to original position)
+        // Never allow dismissal during active search or loading
+        if (isSearching || isLoading) {
+          // Force search bar back to top position
+          _searchAnimController.forward();
+          return;
+        }
+
+        // Only reset UI if not in active operations
+        if (!isLoading && !isSearching && tfController.text.isEmpty) {
           setState(() {
             isSearchActive = false;
             isShowingSearchResults = false;
           });
-        } else if (_searchFocusNode.hasFocus) {
-          // If search is focused when animation reverse completes,
-          // ensure we go right back to expanded state
-          Future.microtask(() => _searchAnimController.forward());
         }
         break;
 
       default:
-        // No action needed for other animation states
         break;
     }
   }
 
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _searchAnimController.removeStatusListener(_handleSearchAnimationStatus);
-    _searchAnimController.dispose();
-    _logoFadeController.dispose();
-    _searchFocusNode.dispose();
-    tfController.removeListener(_handleTextChange);
-    _autoConvertTimer?.cancel();
-    super.dispose();
-  }
-
   Future<void> _loadTopCharts() async {
+    // Set flag to prevent duplicate loading
+    _isChartLoadRequested = true;
+
     try {
       setState(() => isLoadingCharts = true);
       final results = await _musicSearchService.fetchTop50USAPlaylist();
+
+      // If component is unmounted, abort
+      if (!mounted) return;
+
       // Only update top charts if the search text is still empty
       if (tfController.text.isNotEmpty) {
         // User started typing, so ignore these results
+        setState(() {
+          isLoadingCharts = false;
+          _isChartLoadRequested = false;
+        });
         return;
       }
-      if (mounted) {
-        setState(() {
-          searchResults = results;
-          isLoadingCharts = false;
-          isShowingSearchResults = false;
 
-          // Only activate search UI if user has interacted with search
-          // Check if this is not the initial load (search animations have been triggered)
-          isSearchActive = isSearchFocused || _searchAnimController.value > 0;
-        });
-      }
+      setState(() {
+        searchResults = results;
+        isLoadingCharts = false;
+        _isChartLoadRequested = false;
+        isShowingSearchResults = false;
+
+        // Only activate search UI if user has interacted with search
+        isSearchActive = isSearchFocused || _searchAnimController.value > 0;
+      });
     } catch (e) {
       print('Error loading top charts: $e');
       if (mounted) {
-        setState(() => isLoadingCharts = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading charts: $e')),
-        );
+        setState(() {
+          isLoadingCharts = false;
+          _isChartLoadRequested = false;
+        });
+
+        // Only show error if search is still relevant
+        if (tfController.text.isEmpty && isSearchActive) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error loading charts: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  // Add a safety method to force search bar to top position
+  void _ensureSearchBarAtTopPosition() {
+    if (isSearching || isLoading || tfController.text.isNotEmpty) {
+      if (_searchAnimController.value < 1.0 &&
+          !_searchAnimController.isAnimating) {
+        _searchAnimController.forward();
+      }
+      if (_logoFadeController.value < 1.0 && !_logoFadeController.isAnimating) {
+        _logoFadeController.forward();
       }
     }
   }
