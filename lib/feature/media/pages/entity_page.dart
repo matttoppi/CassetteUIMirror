@@ -11,8 +11,11 @@ import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:cassettefrontend/core/services/track_service.dart';
 import 'package:cassettefrontend/core/services/report_service.dart';
+import 'package:cassettefrontend/core/services/audio_service.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/rendering.dart';
+import 'dart:async';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -37,6 +40,7 @@ class EntityPage extends StatefulWidget {
 class _EntityPageState extends State<EntityPage> {
   final TrackService _trackService = TrackService();
   final ReportService _reportService = ReportService();
+  final AudioService _audioService = AudioService();
   String name = '';
   String artistName = '';
   String? des;
@@ -48,10 +52,18 @@ class _EntityPageState extends State<EntityPage> {
   String? _selectedIssue;
   // Text controller for "Other" option
   final TextEditingController _otherIssueController = TextEditingController();
+  // Audio preview state
+  bool isPlaying = false;
+  String? previewUrl;
+  bool hasPreview = false;
+  bool isLoadingAudio = false;
+  StreamSubscription<PlayerState>? _playerStateSubscription;
 
   @override
   void dispose() {
     _otherIssueController.dispose();
+    _playerStateSubscription?.cancel();
+    _audioService.stop();
     super.dispose();
   }
 
@@ -112,15 +124,45 @@ class _EntityPageState extends State<EntityPage> {
               artistName = details['artist']?.toString() ?? 'Unknown Artist';
               imageUrl = details['coverArtUrl']?.toString() ?? '';
 
-              if (imageUrl.isEmpty) {
-                final platforms =
-                    widget.postData!['platforms'] as Map<String, dynamic>?;
-                if (platforms != null) {
-                  final deezer = platforms['deezer'] as Map<String, dynamic>?;
-                  final spotify = platforms['spotify'] as Map<String, dynamic>?;
-                  final appleMusic =
-                      platforms['applemusic'] as Map<String, dynamic>?;
+              // Check for preview URL in platforms data
+              final platforms =
+                  widget.postData!['platforms'] as Map<String, dynamic>?;
+              if (platforms != null) {
+                final deezer = platforms['deezer'] as Map<String, dynamic>?;
+                final spotify = platforms['spotify'] as Map<String, dynamic>?;
+                final appleMusic =
+                    platforms['applemusic'] as Map<String, dynamic>?;
 
+                // Try to get preview URL from Spotify first (most common)
+                previewUrl = spotify?['previewUrl']?.toString();
+
+                // If no preview URL in Spotify, try Deezer's preview URL
+                // Note: Deezer sometimes stores preview URL in artworkUrl field
+                if (previewUrl == null || previewUrl!.isEmpty) {
+                  // Check if Deezer has a previewUrl field
+                  previewUrl = deezer?['previewUrl']?.toString();
+
+                  // If not, check if Deezer's artworkUrl contains a preview URL
+                  // (Deezer sometimes puts the preview URL in artworkUrl if it contains 'preview')
+                  if ((previewUrl == null || previewUrl!.isEmpty) &&
+                      deezer?['artworkUrl'] != null &&
+                      deezer!['artworkUrl'].toString().contains('preview')) {
+                    previewUrl = deezer['artworkUrl'].toString();
+                  }
+                }
+
+                // Try Apple Music as last resort
+                if (previewUrl == null || previewUrl!.isEmpty) {
+                  previewUrl = appleMusic?['previewUrl']?.toString();
+                }
+
+                // Set hasPreview flag if we have a valid preview URL
+                hasPreview = previewUrl != null && previewUrl!.isNotEmpty;
+
+                print('Preview URL: $previewUrl');
+                print('Has preview: $hasPreview');
+
+                if (imageUrl.isEmpty) {
                   imageUrl = deezer?['artworkUrl']?.toString() ??
                       spotify?['artworkUrl']?.toString() ??
                       appleMusic?['artworkUrl']?.toString() ??
@@ -186,6 +228,97 @@ class _EntityPageState extends State<EntityPage> {
         setState(() {
           dominateColor = Colors.blue.shade500;
         });
+      }
+    }
+  }
+
+  // Toggle audio preview playback
+  Future<void> _togglePlayback() async {
+    if (!hasPreview || previewUrl == null || previewUrl!.isEmpty) {
+      // Show a message if no preview is available
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No audio preview available for this track'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    try {
+      if (isPlaying) {
+        // Stop playback
+        setState(() {
+          isPlaying = false;
+        });
+        await _audioService.stop();
+        _playerStateSubscription?.cancel();
+      } else {
+        // Start loading
+        setState(() {
+          isLoadingAudio = true;
+        });
+
+        // Cancel any existing subscription
+        _playerStateSubscription?.cancel();
+
+        // Set up new listener for player state changes
+        _playerStateSubscription =
+            _audioService.player.playerStateStream.listen((state) {
+          if (!mounted) return;
+
+          // Handle loading state
+          if (state.processingState == ProcessingState.loading ||
+              state.processingState == ProcessingState.buffering) {
+            if (mounted && !isLoadingAudio) {
+              setState(() {
+                isLoadingAudio = true;
+              });
+            }
+          } else {
+            // Clear loading state when not loading
+            if (mounted && isLoadingAudio) {
+              setState(() {
+                isLoadingAudio = false;
+              });
+            }
+          }
+
+          // Handle playback completion
+          if (state.processingState == ProcessingState.completed) {
+            if (mounted && isPlaying) {
+              setState(() {
+                isPlaying = false;
+              });
+            }
+          }
+        });
+
+        // Start playback
+        await _audioService.playPreview(previewUrl!);
+
+        // Update state
+        if (mounted) {
+          setState(() {
+            isPlaying = true;
+            isLoadingAudio = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error toggling playback: $e');
+      if (mounted) {
+        setState(() {
+          isPlaying = false;
+          isLoadingAudio = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error playing preview: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -463,14 +596,42 @@ class _EntityPageState extends State<EntityPage> {
                   ),
                 ),
               ),
-              Positioned(
-                bottom: -10,
-                right: -10,
-                child: Image.asset(
-                  icPlay,
-                  height: 56,
+              // Only show play button for tracks, not artists
+              if (widget.type == "track")
+                Positioned(
+                  bottom: -10,
+                  right: -10,
+                  child: GestureDetector(
+                    onTap: _togglePlayback,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Background circle
+                        Image.asset(
+                          icPlay,
+                          height: 56,
+                        ),
+                        // Play/pause icon overlay or loading indicator
+                        if (hasPreview)
+                          isLoadingAudio
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                              : Icon(
+                                  isPlaying ? Icons.pause : Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
