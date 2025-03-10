@@ -192,22 +192,20 @@ class _EntityPageState extends State<EntityPage> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-        body: Container(
-      height: double.infinity,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            dominateColor.withOpacity(0.8), // Add opacity for smoother gradient
-            AppColors.colorWhite,
-            AppColors.appBg,
-          ],
-          stops: const [0, 0.75, 1],
+        body: SingleChildScrollView(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              dominateColor.withOpacity(0.8),
+              dominateColor.withOpacity(0.6),
+              AppColors.appBg,
+            ],
+            stops: const [0, 0.13, 0.3],
+          ),
         ),
-      ),
-      child: SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -436,10 +434,13 @@ class _EntityPageState extends State<EntityPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
-                child: Image.network(imageUrl,
-                    width: MediaQuery.of(context).size.width / 2.5,
-                    height: MediaQuery.of(context).size.width / 2.5,
-                    fit: BoxFit.cover),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(imageUrl,
+                      width: MediaQuery.of(context).size.width / 2.5,
+                      height: MediaQuery.of(context).size.width / 2.5,
+                      fit: BoxFit.cover),
+                ),
               ),
               Positioned(
                 bottom: 0,

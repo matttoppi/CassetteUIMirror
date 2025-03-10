@@ -12,6 +12,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:cassettefrontend/core/services/report_service.dart';
+import 'package:cassettefrontend/core/services/audio_service.dart';
+import 'package:just_audio/just_audio.dart' show ProcessingState;
+import 'package:intl/intl.dart';
+import 'package:cassettefrontend/core/services/track_service.dart';
 
 /// Handles display of track collections (playlists and albums)
 /// Both types share similar UI as they are collections of tracks
@@ -35,6 +39,7 @@ class CollectionPage extends StatefulWidget {
 
 class _CollectionPageState extends State<CollectionPage> {
   final ReportService _reportService = ReportService();
+  final AudioService _audioService = AudioService();
   String name = '';
   String artistName = '';
   String? des;
@@ -43,13 +48,18 @@ class _CollectionPageState extends State<CollectionPage> {
   bool isLoggedIn = false;
   String coverArtUrl = '';
   List<CollectionItem> trackList = [];
+  // Album-specific fields
+  String? releaseDate;
+  int? trackCount;
   // Selected issue for reporting
   String? _selectedIssue;
   // Text controller for "Other" option
   final TextEditingController _otherIssueController = TextEditingController();
+  int? _playingIndex;
 
   @override
   void dispose() {
+    _audioService.dispose();
     _otherIssueController.dispose();
     super.dispose();
   }
@@ -89,6 +99,12 @@ class _CollectionPageState extends State<CollectionPage> {
         des = widget.postData!['caption'] as String?;
         desUsername = widget.postData!['username'] as String?;
 
+        // Parse album-specific details
+        if (widget.type == 'album') {
+          releaseDate = details['releaseDate'] as String?;
+          trackCount = details['trackCount'] as int?;
+        }
+
         print('Set name: $name');
         print('Set artistName: $artistName');
         print('Set coverArtUrl: $coverArtUrl');
@@ -99,9 +115,22 @@ class _CollectionPageState extends State<CollectionPage> {
           print('Tracks data available: ${tracks?.length ?? 0} tracks found');
           if (tracks != null) {
             try {
-              trackList = tracks
-                  .map((track) => CollectionItem.fromJson(track))
-                  .toList();
+              trackList = tracks.map((track) {
+                // Handle both simple and detailed track formats
+                if (track is Map<String, dynamic>) {
+                  return CollectionItem(
+                    title: track['title'] as String? ?? 'Unknown Title',
+                    artist: track['artists']?.first as String? ??
+                        track['artist'] as String? ??
+                        'Unknown Artist',
+                    coverArtUrl: track['coverArtUrl'] as String? ?? '',
+                    duration: track['duration'] as String?,
+                    trackNumber: track['trackNumber'] as int?,
+                    previewUrl: track['previewUrl'] as String?,
+                  );
+                }
+                return CollectionItem.fromJson(track);
+              }).toList();
               print('Successfully parsed ${trackList.length} tracks');
             } catch (e) {
               print('ERROR parsing tracks: $e');
@@ -151,14 +180,22 @@ class _CollectionPageState extends State<CollectionPage> {
   }
 
   Future<void> _generatePalette(String imageUrl) async {
-    final PaletteGenerator paletteGenerator =
-        await PaletteGenerator.fromImageProvider(
-      NetworkImage(imageUrl),
-      maximumColorCount: 5,
-    );
-    setState(() {
-      dominateColor = paletteGenerator.colors.first;
-    });
+    try {
+      final TrackService trackService = TrackService();
+      Color color = await trackService.getDominantColor(imageUrl);
+      if (mounted) {
+        setState(() {
+          dominateColor = color;
+        });
+      }
+    } catch (e) {
+      print('Error generating palette: $e');
+      if (mounted) {
+        setState(() {
+          dominateColor = Colors.blue.shade500;
+        });
+      }
+    }
   }
 
   @override
@@ -171,27 +208,17 @@ class _CollectionPageState extends State<CollectionPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              dominateColor,
-              AppColors.colorWhite,
+              dominateColor.withOpacity(1),
+              dominateColor.withOpacity(0.4),
               AppColors.appBg,
             ],
-            stops: const [0, 0.35, 1],
+            stops: const [0, 0.11, 0.3],
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             const SizedBox(height: 18),
-            if (widget.postId != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Post ID: ${widget.postId}',
-                  style: AppStyles.trackTrackTitleTs,
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: TrackToolbar(isLoggedIn: isLoggedIn),
@@ -231,10 +258,13 @@ class _CollectionPageState extends State<CollectionPage> {
                   Padding(
                     padding:
                         const EdgeInsets.only(bottom: 20, left: 20, right: 20),
-                    child: Image.network(coverArtUrl,
-                        width: MediaQuery.of(context).size.width / 2.5,
-                        height: MediaQuery.of(context).size.width / 2.5,
-                        fit: BoxFit.cover),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(coverArtUrl,
+                          width: MediaQuery.of(context).size.width / 2.5,
+                          height: MediaQuery.of(context).size.width / 2.5,
+                          fit: BoxFit.cover),
+                    ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -268,6 +298,41 @@ class _CollectionPageState extends State<CollectionPage> {
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
+          if (widget.type == 'album' &&
+              (releaseDate != null || trackCount != null))
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (releaseDate != null)
+                    Text(
+                      DateFormat('MMMM d, y')
+                          .format(DateTime.parse(releaseDate!)),
+                      style: AppStyles.trackArtistNameTs.copyWith(
+                        fontSize: 14,
+                        color: AppColors.textPrimary.withOpacity(0.7),
+                      ),
+                    ),
+                  if (releaseDate != null && trackCount != null)
+                    Text(
+                      ' • ',
+                      style: AppStyles.trackArtistNameTs.copyWith(
+                        fontSize: 14,
+                        color: AppColors.textPrimary.withOpacity(0.7),
+                      ),
+                    ),
+                  if (trackCount != null)
+                    Text(
+                      '$trackCount tracks',
+                      style: AppStyles.trackArtistNameTs.copyWith(
+                        fontSize: 14,
+                        color: AppColors.textPrimary.withOpacity(0.7),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           des == null ? createAccWidget() : desWidget(),
           SizedBox(height: des == null ? 125 : 0),
           const Divider(
@@ -300,19 +365,130 @@ class _CollectionPageState extends State<CollectionPage> {
   }
 
   Widget listingView() {
-    return ListView.builder(
+    return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: trackList.length,
+      separatorBuilder: (context, index) => const Divider(
+        height: 1,
+        thickness: 0.5,
+        indent: 70,
+        endIndent: 16,
+        color: AppColors.textPrimary,
+      ),
       itemBuilder: (context, index) {
         final track = trackList[index];
-        return ListTile(
-          title: Text(track.title, style: AppStyles.trackTrackTitleTs),
-          subtitle: Text(track.artist, style: AppStyles.trackArtistNameTs),
-          leading: Image.network(track.coverArtUrl, width: 50, height: 50),
-          onTap: () {
-            // Handle track selection
-          },
+        final hasPreview =
+            track.previewUrl != null && track.previewUrl!.isNotEmpty;
+        final isPlaying = _playingIndex == index;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: ListTile(
+            dense: false,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+            title: Text(
+              track.title,
+              style: AppStyles.trackNameTs.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                track.artist,
+                style: AppStyles.trackArtistNameTs.copyWith(
+                  fontSize: 14,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            leading: SizedBox(
+              width: 50,
+              child: widget.type == 'album' && track.trackNumber != null
+                  ? Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: hasPreview
+                            ? AppColors.primary.withOpacity(0.15)
+                            : AppColors.textPrimary.withOpacity(0.1),
+                      ),
+                      child: Text(
+                        track.trackNumber.toString(),
+                        style: AppStyles.trackTrackTitleTs.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: hasPreview
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: Image.network(
+                        track.coverArtUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.textPrimary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: Icon(
+                              Icons.music_note,
+                              color: AppColors.textPrimary.withOpacity(0.5),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+            trailing: Container(
+              width: 80,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (track.duration != null)
+                    Text(
+                      track.duration!,
+                      style: AppStyles.trackArtistNameTs.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  if (hasPreview)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Icon(
+                        isPlaying
+                            ? Icons.pause_circle_filled
+                            : Icons.play_circle_filled,
+                        size: 24,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            onTap: () {
+              if (hasPreview) {
+                _handlePreviewPlayback(index, track.previewUrl!);
+              }
+            },
+          ),
         );
       },
     );
@@ -549,5 +725,54 @@ class _CollectionPageState extends State<CollectionPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _handlePreviewPlayback(int index, String previewUrl) async {
+    try {
+      print('Attempting to play preview: $previewUrl');
+
+      if (_playingIndex == index) {
+        // Stop if the same track is playing
+        print('Stopping current track');
+        await _audioService.stop();
+        setState(() => _playingIndex = null);
+      } else {
+        // Play the new track
+        print('Playing new track at index $index');
+        setState(() => _playingIndex = index);
+
+        // Make sure URL is valid
+        if (!previewUrl.startsWith('http')) {
+          print('Invalid URL format: $previewUrl');
+          throw Exception('Invalid preview URL format');
+        }
+
+        await _audioService.playPreview(previewUrl);
+        print('Preview playback started successfully');
+
+        // Reset state when playback completes
+        _audioService.player.playerStateStream.listen((state) {
+          print('Player state changed: ${state.processingState}');
+          if (state.processingState == ProcessingState.completed) {
+            if (mounted) {
+              print('Playback completed, resetting state');
+              setState(() => _playingIndex = null);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error playing preview: $e');
+      if (mounted) {
+        setState(() => _playingIndex = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to play preview: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
