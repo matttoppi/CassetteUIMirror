@@ -1117,9 +1117,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         : screenWidth * 0.9;
 
     // Calculate appropriate cache height based on device pixel ratio
-    // For high-density displays (like mobile), use a higher resolution
-    // Base height of 150 for standard displays, scaled up for high-density displays
-    final int cacheHeight = (250 * devicePixelRatio).round();
+    // Higher value for high-density displays to ensure crisp rendering
+    final int cacheHeight = (300 * devicePixelRatio).round();
 
     // Use RepaintBoundary for the logo which doesn't change often
     return RepaintBoundary(
@@ -1131,8 +1130,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             maxWidth: maxWidth,
           ),
           child: Image.asset(
-            // Use high-res logo for high-density displays
-            devicePixelRatio > 2.0 ? appLogoTextHiRes : appLogoText,
+            // Always use the full-sized app_logo_text.png
+            appLogoText,
             fit: BoxFit.contain,
             // Use device pixel ratio to determine appropriate cache size
             cacheHeight: cacheHeight,
@@ -1828,17 +1827,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // Add this method to preload images
   void _precacheAssets() {
-    // Get device pixel ratio to determine which images to preload
+    // Get device pixel ratio to determine appropriate cache size
     final devicePixelRatio =
         MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
 
-    // For high-density displays (mobile), preload high-res logo
-    if (devicePixelRatio > 2.0) {
-      precacheImage(const AssetImage(appLogoTextHiRes), context);
-    } else {
-      // For standard displays, preload regular logo
-      precacheImage(const AssetImage(appLogoText), context);
-    }
+    // Always use the full-sized app_logo_text.png
+    precacheImage(const AssetImage(appLogoText), context);
 
     // Always preload these common assets
     precacheImage(const AssetImage(appLogo), context);
