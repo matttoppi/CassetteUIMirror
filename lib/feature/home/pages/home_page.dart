@@ -408,11 +408,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               controller: scrollController,
               physics: shouldShowResults
                   ? const NeverScrollableScrollPhysics()
-                  : kIsWeb
-                      ? const ClampingScrollPhysics() // Default for web
-                      : Platform.isIOS
-                          ? const BouncingScrollPhysics() // iOS native bounce effect
-                          : const ClampingScrollPhysics(), // Android behavior
+                  : const AlwaysScrollableScrollPhysics(), // Always allow scrolling when showing the home graphic
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   minHeight: MediaQuery.of(context).size.height,
@@ -866,34 +862,52 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           opacity: groupCFadeAnimation,
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment
+                                .stretch, // Ensure children stretch full width
                             children: [
                               // Use responsive height for image with web adjustments
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxHeight: kIsWeb
-                                      ? screenSize.height *
-                                          0.4 // Smaller on web
-                                      : screenSize.height *
-                                          0.5, // Keep mobile size
-                                ),
-                                child: Image.asset(
-                                  homeGraphics,
-                                  fit: BoxFit.contain,
-                                  width: double.infinity,
-                                ),
-                              ),
-                              SizedBox(
-                                  height: kIsWeb
-                                      ? screenSize.height *
-                                          0.04 // More space on web
-                                      : screenSize.height * 0.03),
                               Padding(
                                 padding: EdgeInsets.only(
-                                  bottom: kIsWeb
-                                      ? 48 +
+                                  top: screenSize.width < 600
+                                      ? 120.0 // Increased space on small screens
+                                      : 150.0, // Increased space on larger screens
+                                ),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  // Restore full height without reducing it
+                                  height: screenSize.width < 600
+                                      ? screenSize.height *
+                                          0.7 // Small screens: 70% of height
+                                      : screenSize.width < 1200
+                                          ? screenSize.height *
+                                              0.75 // Medium screens: 75% of height
+                                          : screenSize.height *
+                                              0.8, // Large screens: 80% of height
+                                  child: Image.asset(
+                                    homeGraphics,
+                                    width: screenSize.width *
+                                        0.99, // 99% of screen width
+                                    fit: BoxFit
+                                        .contain, // Always maintain aspect ratio to prevent cropping
+                                  ),
+                                ),
+                              ),
+                              // Increase space below the image
+                              SizedBox(
+                                  height: screenSize.width < 600
+                                      ? screenSize.height *
+                                          0.08 // More space on small screens
+                                      : screenSize.height *
+                                          0.1), // More space on larger screens
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: screenSize.width < 600
+                                      ? 60 +
                                           bottomPadding *
-                                              0.5 // More padding on web
-                                      : 36 + bottomPadding * 0.5,
+                                              0.5 // More padding on small screens
+                                      : 48 +
+                                          bottomPadding *
+                                              0.5, // Padding on larger screens
                                 ),
                                 child: AnimatedPrimaryButton(
                                   text: "Create Your Free Account!",
@@ -903,16 +917,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       () => context.go('/signup'),
                                     );
                                   },
-                                  height:
-                                      kIsWeb ? 48 : 40, // Taller button on web
-                                  // Make width responsive with web adjustments
-                                  width: kIsWeb
-                                      ? (screenSize.width > 800
-                                          ? 500
-                                          : screenSize.width *
-                                              0.7) // Constrained on web
+                                  height: screenSize.width < 600
+                                      ? 48
+                                      : 40, // Taller button on small screens
+                                  // Make width responsive with screen size
+                                  width: screenSize.width < 600
+                                      ? screenSize.width * 0.85
                                       : screenSize.width *
-                                          0.85, // Original mobile width
+                                          0.7, // Constrained on larger screens
                                   radius: 10,
                                   initialPos: 6,
                                   topBorderWidth: 3,

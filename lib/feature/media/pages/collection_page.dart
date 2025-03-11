@@ -16,6 +16,7 @@ import 'package:cassettefrontend/core/services/audio_service.dart';
 import 'package:just_audio/just_audio.dart' show ProcessingState;
 import 'package:intl/intl.dart';
 import 'package:cassettefrontend/core/services/track_service.dart';
+import 'dart:math' show max;
 
 /// Handles display of track collections (playlists and albums)
 /// Both types share similar UI as they are collections of tracks
@@ -200,6 +201,9 @@ class _CollectionPageState extends State<CollectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if we're on a desktop-sized screen (width > 900px)
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+
     return AppScaffold(
       body: SingleChildScrollView(
         child: Container(
@@ -227,17 +231,444 @@ class _CollectionPageState extends State<CollectionPage> {
                 child: TrackToolbar(isLoggedIn: isLoggedIn),
               ),
               const SizedBox(height: 24),
-              body(),
-              const SizedBox(height: 24),
-              listingView(),
-              Visibility(
-                  visible: !isLoggedIn && des != null,
-                  child: createAccWidget()),
+              // Use different layout based on screen size
+              if (isDesktop) _buildDesktopLayout() else _buildMobileLayout(),
               const SizedBox(height: 24),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // Mobile layout with stacked content
+  Widget _buildMobileLayout() {
+    return Column(
+      children: [
+        body(),
+        const SizedBox(height: 24),
+        listingView(),
+        if (!isLoggedIn && des != null) createAccWidget(),
+      ],
+    );
+  }
+
+  // Desktop layout with side-by-side content
+  Widget _buildDesktopLayout() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left side - Cover art and basic info (fixed position)
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(widget.type == "album" ? "Album" : "Playlist",
+                    style: AppStyles.trackTrackTitleTs),
+                const SizedBox(height: 24),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 16,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          coverArtUrl,
+                          // Fixed size for desktop
+                          width: 300,
+                          height: 300,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -10,
+                      right: -10,
+                      child: Image.asset(
+                        icPlay,
+                        height: 56,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  name,
+                  style: AppStyles.trackNameTs.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  artistName,
+                  style: AppStyles.trackArtistNameTs.copyWith(
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                if (widget.type == 'album' &&
+                    (releaseDate != null || trackCount != null))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (releaseDate != null)
+                          Text(
+                            DateFormat('MMMM d, y')
+                                .format(DateTime.parse(releaseDate!)),
+                            style: AppStyles.trackArtistNameTs.copyWith(
+                              fontSize: 14,
+                              color: AppColors.textPrimary.withOpacity(0.7),
+                            ),
+                          ),
+                        if (releaseDate != null && trackCount != null)
+                          Text(
+                            ' • ',
+                            style: AppStyles.trackArtistNameTs.copyWith(
+                              fontSize: 14,
+                              color: AppColors.textPrimary.withOpacity(0.7),
+                            ),
+                          ),
+                        if (trackCount != null)
+                          Text(
+                            '$trackCount tracks',
+                            style: AppStyles.trackArtistNameTs.copyWith(
+                              fontSize: 14,
+                              color: AppColors.textPrimary.withOpacity(0.7),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                // Social links container
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.textPrimary.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.textPrimary.withOpacity(0.1),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.textPrimary.withOpacity(0.05),
+                        blurRadius: 10,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Transform.scale(
+                    scale: 1.15,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: widget.postData != null
+                          ? AppUtils.trackSocialLinksWidget(
+                              platforms: widget.postData!['platforms'])
+                          : AppUtils.trackSocialLinksWidget(),
+                    ),
+                  ),
+                ),
+                // Report problem button
+                _reportProblemButton(),
+                if (!isLoggedIn && des == null) createAccWidget(),
+              ],
+            ),
+          ),
+          // Right side - Description and track listing (scrollable)
+          Expanded(
+            flex: 5,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Calculate the height of the container based on viewport height
+                final viewportHeight = MediaQuery.of(context).size.height;
+                // Use 80% of viewport height or a minimum of 600px
+                final containerHeight = max(viewportHeight * 0.8, 600.0);
+
+                return SizedBox(
+                  height: containerHeight,
+                  child: ShaderMask(
+                    // Apply a shader mask for the fade effect
+                    shaderCallback: (Rect rect) {
+                      return LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white,
+                          Colors.white,
+                          Colors.white,
+                          Colors.white.withOpacity(0.0)
+                        ],
+                        // The stops define where the gradient transitions happen
+                        // The last 10% of the height will fade out
+                        stops: const [0.0, 0.85, 0.9, 1.0],
+                      ).createShader(rect);
+                    },
+                    blendMode: BlendMode.dstIn,
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        // Add extra padding at the bottom to ensure content doesn't get cut off by the fade
+                        padding: const EdgeInsets.only(
+                            left: 40.0, top: 60.0, bottom: 100.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (des != null)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 24),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 16),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.textPrimary.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color:
+                                        AppColors.textPrimary.withOpacity(0.1),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: AppUtils.cmDesBox(
+                                    userName: desUsername, des: des),
+                              ),
+                            // Desktop track listing
+                            _buildDesktopTrackListing(),
+                            if (!isLoggedIn && des != null)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                    top: 24.0, bottom: 40.0),
+                                child: createAccWidget(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Desktop track listing widget
+  Widget _buildDesktopTrackListing() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.appBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.textPrimary.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: trackList.length,
+        separatorBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.only(left: 70, right: 16),
+          child: Divider(
+            height: 1,
+            thickness: 0.5,
+            color: AppColors.textPrimary.withOpacity(0.3),
+          ),
+        ),
+        itemBuilder: (context, index) {
+          final track = trackList[index];
+          final hasPreview =
+              track.previewUrl != null && track.previewUrl!.isNotEmpty;
+          final isPlaying = _playingIndex == index;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: ListTile(
+              dense: false,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+              title: Text(
+                track.title,
+                style: AppStyles.trackNameTs.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isPlaying ? AppColors.primary : null,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  track.artist,
+                  style: AppStyles.trackArtistNameTs.copyWith(
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              leading: SizedBox(
+                width: 50,
+                child: widget.type == 'album' && track.trackNumber != null
+                    ? _buildTrackNumberWithPlayButton(
+                        track, index, isPlaying, hasPreview)
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.network(
+                          track.coverArtUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.textPrimary.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(
+                                  color: AppColors.textPrimary.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.music_note,
+                                color: AppColors.textPrimary.withOpacity(0.7),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+              trailing: SizedBox(
+                width: 80,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (track.duration != null)
+                      Text(
+                        track.duration!,
+                        style: AppStyles.trackArtistNameTs.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    if (hasPreview && widget.type != 'album')
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: IconButton(
+                          icon: Icon(
+                            isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_filled,
+                            size: 28,
+                            color: AppColors.textPrimary,
+                          ),
+                          onPressed: () =>
+                              _handlePreviewPlayback(index, track.previewUrl!),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              onTap: () {
+                if (hasPreview) {
+                  _handlePreviewPlayback(index, track.previewUrl!);
+                }
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Helper method to build track number with play button
+  Widget _buildTrackNumberWithPlayButton(
+      CollectionItem track, int index, bool isPlaying, bool hasPreview) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.textPrimary.withOpacity(0.1),
+            border: Border.all(
+              color: AppColors.textPrimary.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            track.trackNumber.toString(),
+            style: AppStyles.trackTrackTitleTs.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        if (hasPreview)
+          Positioned.fill(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _handlePreviewPlayback(index, track.previewUrl!),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isPlaying
+                        ? AppColors.blackColor.withOpacity(0.5)
+                        : Colors.transparent,
+                  ),
+                  child: isPlaying
+                      ? const Icon(
+                          Icons.pause,
+                          size: 20,
+                          color: AppColors.colorWhite,
+                        )
+                      : const Opacity(
+                          opacity: 0.0,
+                          child: Icon(
+                            Icons.play_arrow,
+                            size: 20,
+                            color: AppColors.colorWhite,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

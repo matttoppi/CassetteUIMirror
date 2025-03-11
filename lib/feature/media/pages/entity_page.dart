@@ -16,6 +16,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:async';
+import 'dart:math' show max;
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -325,6 +326,9 @@ class _EntityPageState extends State<EntityPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if we're on a desktop-sized screen (width > 900px)
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+
     return AppScaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -355,7 +359,8 @@ class _EntityPageState extends State<EntityPage> {
                 child: TrackToolbar(isLoggedIn: isLoggedIn),
               ),
               const SizedBox(height: 24),
-              body(),
+              // Use different layout based on screen size
+              if (isDesktop) desktopBody() else body(),
               const SizedBox(height: 24),
             ],
           ),
@@ -364,203 +369,229 @@ class _EntityPageState extends State<EntityPage> {
     );
   }
 
-  // Show report problem dialog with radio buttons for issue selection
-  void _showReportDialog() {
-    // Reset the text controller when opening the dialog
-    _otherIssueController.clear();
-    bool isSubmitting = false;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Report a Problem'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Please select the issue you\'re experiencing:'),
-                  const SizedBox(height: 16),
-                  RadioListTile<String>(
-                    title: const Text('Conversion Links'),
-                    value: 'Conversion Links',
-                    groupValue: _selectedIssue,
-                    onChanged: isSubmitting
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _selectedIssue = value;
-                            });
-                          },
-                  ),
-                  RadioListTile<String>(
-                    title: const Text('Cover Art'),
-                    value: 'Cover Art',
-                    groupValue: _selectedIssue,
-                    onChanged: isSubmitting
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _selectedIssue = value;
-                            });
-                          },
-                  ),
-                  RadioListTile<String>(
-                    title: const Text('Music Element Title or Artist'),
-                    value: 'Music Element Title or Artist',
-                    groupValue: _selectedIssue,
-                    onChanged: isSubmitting
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _selectedIssue = value;
-                            });
-                          },
-                  ),
-                  RadioListTile<String>(
-                    title: const Text('Other'),
-                    value: 'Other',
-                    groupValue: _selectedIssue,
-                    onChanged: isSubmitting
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _selectedIssue = value;
-                            });
-                          },
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: _selectedIssue == 'Other' ? 80 : 0,
-                    curve: Curves.easeInOut,
-                    child: AnimatedOpacity(
-                      opacity: _selectedIssue == 'Other' ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: TextField(
-                          controller: _otherIssueController,
-                          decoration: const InputDecoration(
-                            hintText: 'Please describe the issue...',
-                            border: OutlineInputBorder(),
+  // Desktop layout with side-by-side content
+  Widget desktopBody() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left side - Cover art and basic info (fixed position)
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(widget.type == "artist" ? "Artist" : "Track",
+                    style: AppStyles.trackTrackTitleTs),
+                const SizedBox(height: 24),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 16,
+                            offset: const Offset(0, 10),
                           ),
-                          maxLines: 2,
-                          enabled: _selectedIssue == 'Other' && !isSubmitting,
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          imageUrl,
+                          // Fixed size for desktop
+                          width: 300,
+                          height: 300,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    // Only show play button for tracks, not artists
+                    if (widget.type == "track")
+                      Positioned(
+                        bottom: -10,
+                        right: -10,
+                        child: GestureDetector(
+                          onTap: _togglePlayback,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Background circle
+                              Image.asset(
+                                icPlay,
+                                height: 56,
+                              ),
+                              // Play/pause icon overlay or loading indicator
+                              if (hasPreview)
+                                isLoadingAudio
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                        ),
+                                      )
+                                    : Icon(
+                                        isPlaying
+                                            ? Icons.pause
+                                            : Icons.play_arrow,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  name,
+                  style: AppStyles.trackNameTs.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                widget.type == "artist"
+                    ? _buildArtistDetails()
+                    : Column(
+                        children: [
+                          const SizedBox(height: 6),
+                          Text(
+                            artistName,
+                            style: AppStyles.trackArtistNameTs.copyWith(
+                              fontSize: 18,
+                            ),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+              ],
+            ),
+          ),
+          // Right side - Links, description, and buttons (scrollable)
+          Expanded(
+            flex: 5,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Calculate the height of the container based on viewport height
+                final viewportHeight = MediaQuery.of(context).size.height;
+                // Use 80% of viewport height or a minimum of 600px
+                final containerHeight = max(viewportHeight * 0.8, 600.0);
+
+                return SizedBox(
+                  height: containerHeight,
+                  child: ShaderMask(
+                    // Apply a shader mask for the fade effect
+                    shaderCallback: (Rect rect) {
+                      return LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white,
+                          Colors.white,
+                          Colors.white,
+                          Colors.white.withOpacity(0.0)
+                        ],
+                        // The stops define where the gradient transitions happen
+                        // The last 10% of the height will fade out
+                        stops: const [0.0, 0.85, 0.9, 1.0],
+                      ).createShader(rect);
+                    },
+                    blendMode: BlendMode.dstIn,
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        // Add extra padding at the bottom to ensure content doesn't get cut off by the fade
+                        padding: const EdgeInsets.only(
+                            left: 40.0, top: 60.0, bottom: 100.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (des != null)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 36),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.appBg,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color:
+                                        AppColors.textPrimary.withOpacity(0.3),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: AppUtils.cmDesBox(
+                                    userName: desUsername, des: des),
+                              ),
+                            const Divider(
+                                height: 2,
+                                thickness: 1,
+                                color: AppColors.textPrimary,
+                                endIndent: 0,
+                                indent: 0),
+                            const SizedBox(height: 24),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: AppColors.textPrimary.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppColors.textPrimary.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                                // Add glass effect
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        AppColors.textPrimary.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    spreadRadius: 0,
+                                  ),
+                                ],
+                              ),
+                              child: Transform.scale(
+                                scale: 1.15,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: widget.postData != null
+                                      ? AppUtils.trackSocialLinksWidget(
+                                          platforms:
+                                              widget.postData!['platforms'])
+                                      : AppUtils.trackSocialLinksWidget(),
+                                ),
+                              ),
+                            ),
+                            if (!isLoggedIn)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 24.0),
+                                child: createAccWidget(),
+                              ),
+                            _reportProblemButton(),
+                            // Add extra padding at the bottom for better scrolling experience
+                            const SizedBox(height: 100),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () {
-                          Navigator.of(context).pop();
-                        },
-                  child: const Text('Cancel'),
-                ),
-                if (isSubmitting)
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
-                  )
-                else
-                  TextButton(
-                    onPressed: _selectedIssue == null
-                        ? null
-                        : () async {
-                            if (_selectedIssue == 'Other' &&
-                                _otherIssueController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please describe the issue'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                              return;
-                            }
-
-                            setState(() {
-                              isSubmitting = true;
-                            });
-
-                            try {
-                              await _reportService.submitReport(
-                                postId: widget.postId ?? '',
-                                issueType: _selectedIssue!,
-                                elementType: widget.type ?? 'track',
-                                elementId: widget.trackId ?? '',
-                                description: _selectedIssue == 'Other'
-                                    ? _otherIssueController.text
-                                    : null,
-                                apiResponse: widget.postData,
-                                originalLink:
-                                    widget.postData?['originalLink'] as String?,
-                              );
-
-                              if (mounted) {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Thank you for your report. We\'ll look into it.'),
-                                    duration: Duration(seconds: 3),
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              setState(() {
-                                isSubmitting = false;
-                              });
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content:
-                                        Text('Error submitting report: $e'),
-                                    duration: const Duration(seconds: 3),
-                                    backgroundColor: AppColors.primary,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                    child: const Text('Submit'),
-                  ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // Report problem button widget
-  Widget _reportProblemButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: TextButton.icon(
-        onPressed: _showReportDialog,
-        icon:
-            const Icon(Icons.report_problem_outlined, color: AppColors.primary),
-        label: const Text(
-          'Report a Problem',
-          style:
-              TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
-        ),
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          backgroundColor: AppColors.primary.withOpacity(0.08),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: AppColors.primary, width: 1.5),
+                );
+              },
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -840,6 +871,207 @@ class _EntityPageState extends State<EntityPage> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  // Show report problem dialog with radio buttons for issue selection
+  void _showReportDialog() {
+    // Reset the text controller when opening the dialog
+    _otherIssueController.clear();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Report a Problem'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Please select the issue you\'re experiencing:'),
+                  const SizedBox(height: 16),
+                  RadioListTile<String>(
+                    title: const Text('Conversion Links'),
+                    value: 'Conversion Links',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Cover Art'),
+                    value: 'Cover Art',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Music Element Title or Artist'),
+                    value: 'Music Element Title or Artist',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Other'),
+                    value: 'Other',
+                    groupValue: _selectedIssue,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedIssue = value;
+                            });
+                          },
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: _selectedIssue == 'Other' ? 80 : 0,
+                    curve: Curves.easeInOut,
+                    child: AnimatedOpacity(
+                      opacity: _selectedIssue == 'Other' ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: TextField(
+                          controller: _otherIssueController,
+                          decoration: const InputDecoration(
+                            hintText: 'Please describe the issue...',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          enabled: _selectedIssue == 'Other' && !isSubmitting,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                        },
+                  child: const Text('Cancel'),
+                ),
+                if (isSubmitting)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                else
+                  TextButton(
+                    onPressed: _selectedIssue == null
+                        ? null
+                        : () async {
+                            if (_selectedIssue == 'Other' &&
+                                _otherIssueController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please describe the issue'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+
+                            setState(() {
+                              isSubmitting = true;
+                            });
+
+                            try {
+                              await _reportService.submitReport(
+                                postId: widget.postId ?? '',
+                                issueType: _selectedIssue!,
+                                elementType: widget.type ?? 'track',
+                                elementId: widget.trackId ?? '',
+                                description: _selectedIssue == 'Other'
+                                    ? _otherIssueController.text
+                                    : null,
+                                apiResponse: widget.postData,
+                                originalLink:
+                                    widget.postData?['originalLink'] as String?,
+                              );
+
+                              if (mounted) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Thank you for your report. We\'ll look into it.'),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setState(() {
+                                isSubmitting = false;
+                              });
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text('Error submitting report: $e'),
+                                    duration: const Duration(seconds: 3),
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    child: const Text('Submit'),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Report problem button widget
+  Widget _reportProblemButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: TextButton.icon(
+        onPressed: _showReportDialog,
+        icon:
+            const Icon(Icons.report_problem_outlined, color: AppColors.primary),
+        label: const Text(
+          'Report a Problem',
+          style:
+              TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+        ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          backgroundColor: AppColors.primary.withOpacity(0.08),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: AppColors.primary, width: 1.5),
+          ),
+        ),
       ),
     );
   }
