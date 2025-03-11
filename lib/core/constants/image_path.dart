@@ -1,6 +1,7 @@
 const basePath = "lib/assets/images";
 const appLogo = '$basePath/app_logo.png';
 const appLogoText = '$basePath/app_logo_text.png';
+const appLogoTextHiRes = '$basePath/cassette_name_logo.png';
 const appLogoTextSmall = '$basePath/app_logo_text_small.png';
 const homeGraphics = '$basePath/home_graphics.png';
 const bgRedBlue = '$basePath/bg_red_blue.png';
@@ -15,7 +16,6 @@ const icPlay = '$basePath/ic_play.png';
 const icPrevious = '$basePath/ic_previous.png';
 const icNext = '$basePath/ic_next.png';
 // const appLogoSmall = '$basePath/app_logo_small.png';
-
 
 const baseAnimationImagesPath = 'lib/assets/images/animation_elements';
 const icArrowsLeft = '$baseAnimationImagesPath/arrows_left.png';

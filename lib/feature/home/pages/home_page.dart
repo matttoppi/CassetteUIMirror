@@ -129,17 +129,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Hold at 0 for first 5% of animation for initial delay
       TweenSequenceItem(
         tween: ConstantTween<double>(0.0),
-        weight: 10.0,
+        weight: 15.0,
       ),
       // Fade in logo over 25% of the timeline
       TweenSequenceItem(
         tween: Tween<double>(begin: 0.0, end: 1.0)
             .chain(CurveTween(curve: Curves.easeOutCubic)),
-        weight: 35.0,
+        weight: 45.0,
       ),
       // Hold logo at full opacity for the remaining 65% of animation
       TweenSequenceItem(
-        tween: ConstantTween<double>(1.0), 
+        tween: ConstantTween<double>(1.0),
         weight: 65.0,
       ),
     ]).animate(_fadeController);
@@ -497,6 +497,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                     animationDuration: Duration.zero,
                                     // Skip the delay since we're controlling appearance timing
                                     animationDelay: Duration.zero,
+                                    // Disable internal animations since we're handling them here
+                                    disableInternalAnimations: true,
                                   ),
                                 ),
                               ),
@@ -1102,6 +1104,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Get MediaQuery safely - if context doesn't have MediaQuery yet, use fallback values
     final mediaQuery = MediaQuery.maybeOf(context);
     final screenWidth = mediaQuery?.size.width ?? 375.0; // Fallback value
+    final devicePixelRatio =
+        mediaQuery?.devicePixelRatio ?? 1.0; // Get device pixel ratio
 
     // Use percentage-based padding for different screen sizes
     final horizontalPadding =
@@ -1111,6 +1115,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final maxWidth = kIsWeb
         ? (screenWidth > 800 ? 500.0 : screenWidth * 0.85)
         : screenWidth * 0.9;
+
+    // Calculate appropriate cache height based on device pixel ratio
+    // For high-density displays (like mobile), use a higher resolution
+    // Base height of 150 for standard displays, scaled up for high-density displays
+    final int cacheHeight = (250 * devicePixelRatio).round();
 
     // Use RepaintBoundary for the logo which doesn't change often
     return RepaintBoundary(
@@ -1122,10 +1131,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             maxWidth: maxWidth,
           ),
           child: Image.asset(
-            appLogoText,
+            // Use high-res logo for high-density displays
+            devicePixelRatio > 2.0 ? appLogoTextHiRes : appLogoText,
             fit: BoxFit.contain,
-            // Use a fixed cacheHeight rather than calculating from device pixel ratio
-            cacheHeight: 150,
+            // Use device pixel ratio to determine appropriate cache size
+            cacheHeight: cacheHeight,
           ),
         ),
       ),
@@ -1818,8 +1828,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // Add this method to preload images
   void _precacheAssets() {
-    // Precache key images to avoid jank - without device pixel ratio for now
-    precacheImage(const AssetImage(appLogoText), context);
+    // Get device pixel ratio to determine which images to preload
+    final devicePixelRatio =
+        MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
+
+    // For high-density displays (mobile), preload high-res logo
+    if (devicePixelRatio > 2.0) {
+      precacheImage(const AssetImage(appLogoTextHiRes), context);
+    } else {
+      // For standard displays, preload regular logo
+      precacheImage(const AssetImage(appLogoText), context);
+    }
+
+    // Always preload these common assets
     precacheImage(const AssetImage(appLogo), context);
     precacheImage(const AssetImage(homeGraphics), context);
   }
