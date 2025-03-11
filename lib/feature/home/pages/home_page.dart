@@ -72,19 +72,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Create animation controllers first
     _fadeController = AnimationController(
       vsync: this,
+      // Keep duration but coordinate simultaneous animations
       duration: const Duration(milliseconds: 6000),
     );
 
     _searchAnimController = AnimationController(
       vsync: this,
-      // Reduce animation duration for smoother performance
+      // Keep this animation speed for responsiveness
       duration: const Duration(milliseconds: 200),
       value: 0.0,
     );
 
     _logoFadeController = AnimationController(
       vsync: this,
-      // Reduce animation duration for smoother performance
       duration: const Duration(milliseconds: 300),
     );
 
@@ -121,14 +121,98 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _isChartLoadRequested = false;
     isLoadingCharts = true;
 
-    // Start loading top charts after UI is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _loadTopCharts();
-      }
-    });
+    // 1. Start preloading top charts right away before animations even start
+    _preloadTopCharts();
 
-    // Warm up Lambda functions
+    // 3. Setup remaining animations (sequence animations etc.)
+    groupAFadeAnimation = TweenSequence<double>([
+      // Hold at 0 for first 5% of animation for initial delay
+      TweenSequenceItem(
+        tween: ConstantTween<double>(0.0),
+        weight: 10.0,
+      ),
+      // Fade in logo over 25% of the timeline
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 35.0,
+      ),
+      // Hold logo at full opacity for the remaining 65% of animation
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.0), 
+        weight: 65.0,
+      ),
+    ]).animate(_fadeController);
+
+    // Coordinate slide animation with fade animation
+    _logoSlideAnimation = TweenSequence<Offset>([
+      // Start in initial position
+      TweenSequenceItem(
+        tween: ConstantTween<Offset>(const Offset(0, 0.9)),
+        weight: 5.0,
+      ),
+      // Hold position during initial fade-in
+      TweenSequenceItem(
+        tween: ConstantTween<Offset>(const Offset(0, 0.9)),
+        weight: 5.0,
+      ),
+      // Hold in center position for longer (same as the opacity hold)
+      TweenSequenceItem(
+        tween: ConstantTween<Offset>(const Offset(0, 0.9)),
+        weight: 40.0, // 40% of the timeline
+      ),
+      // Slide upward over 15% of the timeline
+      TweenSequenceItem(
+        tween: Tween<Offset>(begin: const Offset(0, 0.9), end: Offset.zero)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 20.0,
+      ),
+      // Hold at final position for the rest of the animation
+      TweenSequenceItem(
+        tween: ConstantTween<Offset>(Offset.zero),
+        weight: 20.0,
+      ),
+    ]).animate(_fadeController);
+
+    // Make search bar fade in as the logo starts moving up
+    groupBFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        // Start when logo begins moving up (at 70%) and finish at 85%
+        curve: const Interval(0.65, 0.80, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    // Bottom graphics appearance after both main elements
+    groupCFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        // Start after both logo and search bar are visible
+        curve: const Interval(0.75, 0.99, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    groupBSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        // Match timing with the logo slide animation
+        curve: const Interval(0.65, 0.80, curve: Curves.easeOutCubic),
+      ),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Move MediaQuery-dependent initialization here
+    // Precache images to avoid jank when they first appear
+    _precacheAssets();
+
+    // Move API warmup to didChangeDependencies since it might use BuildContext indirectly
     _apiService.warmupLambdas().then((results) {
       if (!mounted) return;
 
@@ -143,69 +227,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     });
 
-    // Setup remaining animations (sequence animations etc.)
-    groupAFadeAnimation = TweenSequence<double>([
-      // Fade in from 0.0 to 1.0 during the first 23.3% of the timeline
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeOutCubic)),
-        weight: 23.3,
-      ),
-      // Then maintain full opacity until the end
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.0),
-        weight: 76.7,
-      ),
-    ]).animate(_fadeController);
-    _logoSlideAnimation = TweenSequence<Offset>([
-      // Hold the logo at the lower offset for the first 23.3% of the timeline (35% of original 4000ms)
-      TweenSequenceItem(
-        tween: ConstantTween<Offset>(const Offset(0, 0.8)),
-        weight: 23.3,
-      ),
-      // Slide upward from offset (0, 0.8) to (0, 0.0) - over 26.7% (40% of original 4000ms)
-      TweenSequenceItem(
-        tween: Tween<Offset>(begin: const Offset(0, 0.8), end: Offset.zero)
-            .chain(CurveTween(curve: Curves.easeOutCubic)),
-        weight: 26.7,
-      ),
-      // Hold at final position for remaining time
-      TweenSequenceItem(
-        tween: ConstantTween<Offset>(Offset.zero),
-        weight: 50.0,
-      ),
-    ]).animate(_fadeController);
-    groupBFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        // Adjusted for 6000ms duration (0.55 to 0.825 of original 4000ms = 0.367 to 0.55 of 6000ms)
-        curve: const Interval(0.367, 0.55, curve: Curves.easeOutCubic),
-      ),
-    );
-    groupCFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        // Modified timing: Start earlier at 0.4 and end at 0.7
-        // This ensures the graphic fades in much earlier
-        curve: const Interval(0.4, 0.7, curve: Curves.easeOutCubic),
-      ),
-    );
-    groupBSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        // Adjusted for 6000ms duration (0.55 to 0.825 of original 4000ms = 0.367 to 0.55 of 6000ms)
-        curve: const Interval(0.367, 0.55, curve: Curves.easeOutCubic),
-      ),
-    );
-    // Start the entry animation after a short delay
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) {
-        _fadeController.forward();
-      }
-    });
+    // When dependencies are available, set the animation start
+    if (!_fadeController.isAnimating && _fadeController.isDismissed) {
+      // Start with a single frame delay to ensure everything is ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _fadeController.isDismissed) {
+          _fadeController.forward();
+        }
+      });
+    }
   }
 
   void _handleSearchFocus() {
@@ -397,10 +427,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // During link conversion, we should hide results and show the home screen
     final bool shouldShowResults = isSearchViewActive && !isLinkConversion;
 
-    // Get screen size for responsive calculations
-    final screenSize = MediaQuery.of(context).size;
-    final topPadding = MediaQuery.of(context).padding.top;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    // Get screen size safely for responsive calculations
+    final mediaQuery = MediaQuery.maybeOf(context);
+    final screenSize =
+        mediaQuery?.size ?? const Size(375, 667); // Fallback size
+    final topPadding = mediaQuery?.padding.top ?? 0.0; // Fallback
+    final bottomPadding = mediaQuery?.padding.bottom ?? 0.0; // Fallback
 
     return AppScaffold(
       showAnimatedBg: true,
@@ -422,16 +454,55 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   : const AlwaysScrollableScrollPhysics(), // Always allow scrolling when showing the home graphic
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height,
+                  // Use maybeOf instead of direct access
+                  minHeight: mediaQuery?.size.height ?? 600.0, // Fallback value
                 ),
                 child: Column(
                   children: [
-                    const SizedBox(height: 18),
-                    AuthToolbar(
-                      burgerMenuFnc: () {
-                        setState(() {
-                          isMenuVisible = !isMenuVisible;
-                        });
+                    // Replace direct use of SizedBox + AuthToolbar with a coordinated animated version
+                    // The staggered animation approach will make the toolbar appear at the right time
+                    AnimatedBuilder(
+                      animation: _fadeController,
+                      builder: (context, child) {
+                        // Calculate when toolbar should appear based on the main animation timeline
+                        // Start fading in early but more gradually
+                        final double toolbarOpacity =
+                            _fadeController.value < 0.03
+                                ? 0.0
+                                : _fadeController.value > 0.30
+                                    ? 1.0
+                                    : (_fadeController.value - 0.03) / 0.27;
+
+                        // Add a subtle slide down effect to the toolbar
+                        final double slideOffset = toolbarOpacity < 1.0
+                            ? -10.0 * (1.0 - toolbarOpacity)
+                            : 0.0;
+
+                        return Column(
+                          children: [
+                            const SizedBox(height: 18),
+                            // Wrap in RepaintBoundary to improve performance
+                            RepaintBoundary(
+                              child: Transform.translate(
+                                offset: Offset(0, slideOffset),
+                                child: Opacity(
+                                  opacity: toolbarOpacity,
+                                  child: AuthToolbar(
+                                    burgerMenuFnc: () {
+                                      setState(() {
+                                        isMenuVisible = !isMenuVisible;
+                                      });
+                                    },
+                                    // Use zero duration since we're controlling animation externally
+                                    animationDuration: Duration.zero,
+                                    // Skip the delay since we're controlling appearance timing
+                                    animationDelay: Duration.zero,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
                       },
                     ),
 
@@ -448,7 +519,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         const startOffset = 0.0;
 
                         // Calculate minimum padding (5% of screen height)
-                        final screenHeight = MediaQuery.of(context).size.height;
+                        final screenHeight =
+                            MediaQuery.maybeOf(context)?.size.height ?? 600.0;
                         final minPadding = screenHeight * 0.05;
 
                         // Calculate the end position - right below the toolbar
@@ -504,26 +576,53 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                                                 return Opacity(
                                                   opacity: opacity,
-                                                  child: child,
+                                                  child: RepaintBoundary(
+                                                      child: child),
                                                 );
                                               },
                                               child: Column(
                                                 children: [
                                                   textGraphics(),
                                                   const SizedBox(height: 5),
-                                                  Padding(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 28),
-                                                    child: Text(
-                                                      "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style:
-                                                          _homeCenterTextStyle,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      maxLines: 2,
+                                                  // Add a slight delay for the tagline text for a staggered effect
+                                                  AnimatedBuilder(
+                                                    animation: _fadeController,
+                                                    builder: (context, child) {
+                                                      // Make tagline fade in with the logo but stay visible
+                                                      final double
+                                                          taglineOpacity =
+                                                          _fadeController
+                                                                      .value <
+                                                                  0.10
+                                                              ? 0.0
+                                                              : _fadeController
+                                                                          .value <
+                                                                      0.30
+                                                                  ? (_fadeController
+                                                                              .value -
+                                                                          0.10) /
+                                                                      0.20
+                                                                  : 1.0;
+
+                                                      return Opacity(
+                                                        opacity: taglineOpacity,
+                                                        child: child,
+                                                      );
+                                                    },
+                                                    child: Padding(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 28),
+                                                      child: Text(
+                                                        "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style:
+                                                            _homeCenterTextStyle,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        maxLines: 2,
+                                                      ),
                                                     ),
                                                   ),
                                                 ],
@@ -1000,9 +1099,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget textGraphics() {
-    final screenWidth = MediaQuery.of(context).size.width;
+    // Get MediaQuery safely - if context doesn't have MediaQuery yet, use fallback values
+    final mediaQuery = MediaQuery.maybeOf(context);
+    final screenWidth = mediaQuery?.size.width ?? 375.0; // Fallback value
+
     // Use percentage-based padding for different screen sizes
-    // Use smaller padding on smaller screens, more on larger ones
     final horizontalPadding =
         screenWidth < 400 ? screenWidth * 0.04 : screenWidth * 0.05;
 
@@ -1023,6 +1124,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           child: Image.asset(
             appLogoText,
             fit: BoxFit.contain,
+            // Use a fixed cacheHeight rather than calculating from device pixel ratio
+            cacheHeight: 150,
           ),
         ),
       ),
@@ -1341,7 +1444,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         itemBuilder: (context, index) {
           final item = results[index];
           // Get screen dimensions for adaptive layout
-          final screenWidth = MediaQuery.of(context).size.width;
+          final screenWidth = MediaQuery.maybeOf(context)?.size.width ?? 375.0;
           // Calculate adaptive sizes based on screen width
           final bool isSmallScreen = screenWidth < 360;
           final double coverSize = isSmallScreen ? 40 : 50;
@@ -1677,5 +1780,47 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(updates);
       }
     });
+  }
+
+  // Preload top charts without affecting UI state yet
+  Future<void> _preloadTopCharts() async {
+    try {
+      // Start fetching without awaiting
+      final resultsFuture = _musicSearchService.fetchTop50USAPlaylist();
+
+      // If we get here at least we've started the request
+      _isChartLoadRequested = true;
+
+      // Now await the result
+      final results = await resultsFuture;
+
+      // If component is unmounted, abort
+      if (!mounted) return;
+
+      // Store results but don't update UI state yet
+      searchResults = results;
+      isLoadingCharts = false;
+
+      // If we're already in search mode, update the UI
+      if (isSearchActive && tfController.text.isEmpty) {
+        setState(() {
+          isShowingSearchResults = false;
+        });
+      }
+    } catch (e) {
+      // Silently handle error, we'll retry when needed
+      if (mounted) {
+        isLoadingCharts = false;
+        _isChartLoadRequested = false;
+      }
+    }
+  }
+
+  // Add this method to preload images
+  void _precacheAssets() {
+    // Precache key images to avoid jank - without device pixel ratio for now
+    precacheImage(const AssetImage(appLogoText), context);
+    precacheImage(const AssetImage(appLogo), context);
+    precacheImage(const AssetImage(homeGraphics), context);
   }
 }
