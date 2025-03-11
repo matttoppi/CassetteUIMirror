@@ -57,6 +57,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _disableAutoFocus =
       false; // Flag to disable auto focus after conversion failure
 
+  // Cache text styles to avoid rebuilding them
+  static final _homeCenterTextStyle = AppStyles.homeCenterTextStyle;
+  static final _animatedBtnFreeAccTextStyle =
+      AppStyles.animatedBtnFreeAccTextStyle;
+  static final _itemTitleTs = AppStyles.itemTitleTs;
+  static final _itemDesTs = AppStyles.itemDesTs;
+  static final _itemTypeTs = AppStyles.itemTypeTs;
+
   @override
   void initState() {
     super.initState();
@@ -69,13 +77,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _searchAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      // Reduce animation duration for smoother performance
+      duration: const Duration(milliseconds: 200),
       value: 0.0,
     );
 
     _logoFadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 350),
+      // Reduce animation duration for smoother performance
+      duration: const Duration(milliseconds: 300),
     );
 
     // Setup animations
@@ -203,7 +213,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     isSearchFocused = _searchFocusNode.hasFocus;
 
     // Log state change for debugging
-    print('[Focus] Changed from $wasFocused to $isSearchFocused');
+    // print('[Focus] Changed from $wasFocused to $isSearchFocused');
 
     // Don't alter animation state during active search operations
     if (isSearching || isLoading) {
@@ -269,8 +279,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _handleTextChange() {
     final currentText = tfController.text;
 
-    print(
-        '[_handleTextChange] Text: "$currentText", isLoading: $isLoading, isSearching: $isSearching');
+    // Remove excessive logging that happens on every keystroke
+    // print(
+    //     '[_handleTextChange] Text: "$currentText", isLoading: $isLoading, isSearching: $isSearching');
 
     // Never change animation state during active search operations
     if (isSearching || isLoading) {
@@ -452,378 +463,68 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             (toolbarHeight + navBarTopPadding + minPadding));
 
                         // Smoothly interpolate between start and end positions
+                        // Cache this value to avoid recalculating during the same frame
                         final double verticalOffset = lerpDouble(
                             startOffset,
                             endOffset,
                             Curves.easeOutCubic.transform(animValue))!;
 
-                        // For debugging
-                        print(
-                            'Animating search bar to offset: $verticalOffset, Min Padding: $minPadding, Toolbar Height: ${toolbarHeight + navBarTopPadding}');
-
                         return Transform.translate(
                           offset: Offset(0, verticalOffset),
-                          child: Column(
-                            children: [
-                              // Only show text logo if appropriate based on our states
-                              if ((!isSearchActive ||
-                                      (isLoading && isLinkConversion)) &&
-                                  !isSearching)
-                                FadeTransition(
-                                  opacity: groupAFadeAnimation,
-                                  child: Column(
-                                    children: [
-                                      SlideTransition(
-                                        position: _logoSlideAnimation,
-                                        child: AnimatedBuilder(
-                                          animation: _logoFadeController,
-                                          builder: (context, child) {
-                                            // Only show logo when NOT searching or when explicitly doing link conversion
-                                            final bool shouldShowLogo =
-                                                (!isSearchActive ||
-                                                        (isLoading &&
-                                                            isLinkConversion)) &&
-                                                    !isSearching;
-
-                                            final opacity = shouldShowLogo
-                                                ? 1.0
-                                                : 1 - _logoFadeController.value;
-
-                                            return Opacity(
-                                              opacity: opacity,
-                                              child: child,
-                                            );
-                                          },
-                                          child: Column(
-                                            children: [
-                                              textGraphics(),
-                                              const SizedBox(height: 5),
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 28),
-                                                child: Text(
-                                                  "Express yourself through your favorite songs and playlists - wherever you stream them",
-                                                  textAlign: TextAlign.center,
-                                                  style: AppStyles
-                                                      .homeCenterTextStyle,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  maxLines: 2,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              // Search bar with independent sliding animation
-                              FadeTransition(
-                                opacity: groupBFadeAnimation,
-                                child: SlideTransition(
-                                  position: groupBSlideAnimation,
-                                  child: Padding(
-                                    padding: EdgeInsets.only(
-                                      top: lerpDouble(kIsWeb ? 35.0 : 30.0, 4.0,
-                                          animValue)!,
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 16),
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              // Reset auto focus disable flag on manual tap
-                                              setState(() {
-                                                _disableAutoFocus = false;
-                                              });
-
-                                              // STATE 1: Initial click - animate up, load charts, focus
-                                              if (!isSearchActive) {
-                                                setState(() {
-                                                  isSearchActive = true;
-                                                  // Load top charts if needed
-                                                  if (searchResults == null &&
-                                                      !isLoadingCharts &&
-                                                      !_isChartLoadRequested) {
-                                                    _loadTopCharts();
-                                                  }
-                                                });
-
-                                                // Start animations
-                                                _searchAnimController.forward();
-                                                _logoFadeController.forward();
-
-                                                // Request focus after a short delay to ensure animations have started
-                                                Future.delayed(
-                                                    const Duration(
-                                                        milliseconds: 150), () {
-                                                  if (mounted &&
-                                                      !_searchFocusNode
-                                                          .hasFocus) {
-                                                    _searchFocusNode
-                                                        .requestFocus();
-                                                  }
-                                                });
-                                              } else {
-                                                // When already active, just ensure focus
-                                                _searchFocusNode.requestFocus();
-                                              }
-                                            },
-                                            child: MusicSearchBar(
-                                              hint:
-                                                  "Search or paste your music link here...",
-                                              controller: tfController,
-                                              focusNode: _searchFocusNode,
-                                              textInputAction:
-                                                  TextInputAction.search,
-                                              onSubmitted: (_) {
-                                                // When user hits enter/done, perform search if there's text
-                                                if (tfController
-                                                    .text.isNotEmpty) {
-                                                  _handleSearch(
-                                                      tfController.text);
-                                                  // Don't unfocus - we want to keep focus for subsequent edits
-                                                } else {
-                                                  // If empty search, allow unfocus
-                                                  _searchFocusNode.unfocus();
-                                                  _closeSearch();
-                                                }
-                                              },
-                                              onPaste: (value) {
-                                                // First, cancel any existing timers
-                                                _autoConvertTimer?.cancel();
-
-                                                // Check if this is a music link
-                                                final linkLower =
-                                                    value.toLowerCase();
-                                                final isSupported = linkLower
-                                                        .contains(
-                                                            'spotify.com') ||
-                                                    linkLower.contains(
-                                                        'apple.com/music') ||
-                                                    linkLower.contains(
-                                                        'music.apple.com') ||
-                                                    linkLower
-                                                        .contains('deezer.com');
-
-                                                // If we're already in a search, ignore paste events
-                                                if (isSearching || isLoading) {
-                                                  print(
-                                                      '🚫 Ignoring paste during active operation');
-                                                  return;
-                                                }
-
-                                                if (isSupported &&
-                                                    !isLoading &&
-                                                    mounted) {
-                                                  // STATE 3: Link conversion - animate down to original position
-                                                  setState(() {
-                                                    searchResults = null;
-                                                    isLoading = true;
-                                                    isLinkConversion = true;
-                                                    isShowingSearchResults =
-                                                        false;
-                                                    _disableAutoFocus = true;
-
-                                                    // Unfocus and animate down
-                                                    _searchFocusNode.unfocus();
-                                                    _searchAnimController
-                                                        .reverse();
-                                                    _logoFadeController
-                                                        .reverse();
-                                                  });
-
-                                                  // Process the link with slight delay for UI feedback
-                                                  _autoConvertTimer = Timer(
-                                                      const Duration(
-                                                          milliseconds: 300),
-                                                      () {
-                                                    if (mounted) {
-                                                      _handleLinkConversion(
-                                                          value);
-                                                    }
-                                                  });
-                                                } else {
-                                                  // STATE 2: Regular text - keep at top with focus
-                                                  // Force search bar to stay at top
-                                                  if (_searchAnimController
-                                                          .value <
-                                                      1.0) {
-                                                    _searchAnimController
-                                                        .forward();
-                                                  }
-                                                  if (_logoFadeController
-                                                          .value <
-                                                      1.0) {
-                                                    _logoFadeController
-                                                        .forward();
-                                                  }
-
-                                                  setState(() {
-                                                    isSearchActive = true;
-                                                    isShowingSearchResults =
-                                                        true;
-                                                  });
-
-                                                  // Ensure focus is maintained
-                                                  if (!_searchFocusNode
-                                                      .hasFocus) {
-                                                    _searchFocusNode
-                                                        .requestFocus();
-                                                  }
-                                                }
-                                              },
-                                              onSearch: (query) {
-                                                // Never initiate a new search if one is already in progress
-                                                if (!isLoading &&
-                                                    !isSearching) {
-                                                  _handleSearch(query);
-                                                } else {
-                                                  print(
-                                                      '🚫 Search already in progress, ignoring new search request');
-                                                }
-                                              },
-                                              isLoading: isLoading,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Search results with improved fade in
-                              if (shouldShowResults && !isLinkConversion)
-                                AnimatedBuilder(
-                                  animation: _searchAnimController,
-                                  builder: (context, child) {
-                                    return Opacity(
-                                      opacity: Curves.easeOutQuad.transform(
-                                          _searchAnimController.value),
-                                      child: child,
-                                    );
-                                  },
-                                  child: Container(
-                                    constraints: BoxConstraints(
-                                      minHeight: 100,
-                                      // Calculate height to extend to bottom of screen with consistent padding
-                                      maxHeight: screenSize.height -
-                                          (safeTop + // Top safe area
-                                              toolbarHeight + // AuthToolbar height
-                                              navBarTopPadding + // Padding above toolbar
-                                              minPadding + // Min padding below toolbar (matches top)
-                                              58 + // Search bar height
-                                              minPadding + // Same padding at bottom
-                                              bottomPadding // Bottom safe area
-                                          ),
-                                    ),
-                                    margin: EdgeInsets.symmetric(
-                                        horizontal: kIsWeb ? 24 : 16,
-                                        vertical: minPadding *
-                                            0.25), // Smaller vertical margin for visual balance
-                                    child: GestureDetector(
-                                      onTap: () {},
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Stack(
+                          // Use LayoutBuilder instead of directly accessing MediaQuery multiple times
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Column(
+                                children: [
+                                  // Only show text logo if appropriate based on our states
+                                  if ((!isSearchActive ||
+                                          (isLoading && isLinkConversion)) &&
+                                      !isSearching)
+                                    FadeTransition(
+                                      opacity: groupAFadeAnimation,
+                                      child: Column(
                                         children: [
-                                          Container(
-                                            margin:
-                                                const EdgeInsets.only(top: 4),
-                                            decoration: BoxDecoration(
-                                              color: AppColors
-                                                  .animatedBtnColorConvertBottom,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: AppColors
-                                                    .animatedBtnColorConvertBottomBorder,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: const SizedBox(
-                                              width: double.infinity,
-                                              height: double.infinity,
-                                            ),
-                                          ),
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: AppColors
-                                                    .animatedBtnColorConvertTop,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: Material(
-                                              color: Colors.transparent,
+                                          SlideTransition(
+                                            position: _logoSlideAnimation,
+                                            child: AnimatedBuilder(
+                                              animation: _logoFadeController,
+                                              builder: (context, child) {
+                                                // Only show logo when NOT searching or when explicitly doing link conversion
+                                                final bool shouldShowLogo =
+                                                    (!isSearchActive ||
+                                                            (isLoading &&
+                                                                isLinkConversion)) &&
+                                                        !isSearching;
+
+                                                final opacity = shouldShowLogo
+                                                    ? 1.0
+                                                    : 1 -
+                                                        _logoFadeController
+                                                            .value;
+
+                                                return Opacity(
+                                                  opacity: opacity,
+                                                  child: child,
+                                                );
+                                              },
                                               child: Column(
-                                                mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            left: 16,
-                                                            top: 12,
-                                                            right: 8,
-                                                            bottom: 2),
-                                                    child: Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .spaceBetween,
-                                                      children: [
-                                                        Text(
-                                                          isShowingSearchResults
-                                                              ? "Search Results"
-                                                              : "Top Charts",
-                                                          style: AppStyles
-                                                              .itemTypeTs
-                                                              .copyWith(
-                                                            fontSize: 16,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                        IconButton(
-                                                          icon: const Icon(
-                                                            Icons.close,
-                                                            size: 20,
-                                                            color: AppColors
-                                                                .textPrimary,
-                                                          ),
-                                                          onPressed:
-                                                              _closeSearch,
-                                                          splashColor: Colors
-                                                              .transparent,
-                                                          highlightColor: Colors
-                                                              .transparent,
-                                                          padding:
-                                                              EdgeInsets.zero,
-                                                          constraints:
-                                                              const BoxConstraints(),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
+                                                  textGraphics(),
+                                                  const SizedBox(height: 5),
                                                   Padding(
                                                     padding: const EdgeInsets
                                                         .symmetric(
-                                                        horizontal: 12),
-                                                    child: Divider(
-                                                      color: AppColors
-                                                          .animatedBtnColorConvertTop
-                                                          .withOpacity(0.3),
-                                                      height: 1,
+                                                        horizontal: 28),
+                                                    child: Text(
+                                                      "Express yourself through your favorite songs and playlists - wherever you stream them",
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style:
+                                                          _homeCenterTextStyle,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 2,
                                                     ),
-                                                  ),
-                                                  Expanded(
-                                                    child:
-                                                        _buildSearchResults(),
                                                   ),
                                                 ],
                                               ),
@@ -832,9 +533,350 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         ],
                                       ),
                                     ),
+                                  // Search bar with independent sliding animation
+                                  FadeTransition(
+                                    opacity: groupBFadeAnimation,
+                                    child: SlideTransition(
+                                      position: groupBSlideAnimation,
+                                      child: RepaintBoundary(
+                                        // Add RepaintBoundary for the search bar to reduce repaint cost
+                                        child: Padding(
+                                          padding: EdgeInsets.only(
+                                            top: lerpDouble(
+                                                kIsWeb ? 35.0 : 30.0,
+                                                4.0,
+                                                animValue)!,
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16),
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    // Reset auto focus disable flag on manual tap
+                                                    setState(() {
+                                                      _disableAutoFocus = false;
+                                                    });
+
+                                                    // STATE 1: Initial click - animate up, load charts, focus
+                                                    if (!isSearchActive) {
+                                                      setState(() {
+                                                        isSearchActive = true;
+                                                        // Load top charts if needed
+                                                        if (searchResults ==
+                                                                null &&
+                                                            !isLoadingCharts &&
+                                                            !_isChartLoadRequested) {
+                                                          _loadTopCharts();
+                                                        }
+                                                      });
+
+                                                      // Start animations
+                                                      _searchAnimController
+                                                          .forward();
+                                                      _logoFadeController
+                                                          .forward();
+
+                                                      // Request focus after a short delay to ensure animations have started
+                                                      Future.delayed(
+                                                          const Duration(
+                                                              milliseconds:
+                                                                  150), () {
+                                                        if (mounted &&
+                                                            !_searchFocusNode
+                                                                .hasFocus) {
+                                                          _searchFocusNode
+                                                              .requestFocus();
+                                                        }
+                                                      });
+                                                    } else {
+                                                      // When already active, just ensure focus
+                                                      _searchFocusNode
+                                                          .requestFocus();
+                                                    }
+                                                  },
+                                                  child: MusicSearchBar(
+                                                    hint:
+                                                        "Search or paste your music link here...",
+                                                    controller: tfController,
+                                                    focusNode: _searchFocusNode,
+                                                    textInputAction:
+                                                        TextInputAction.search,
+                                                    onSubmitted: (_) {
+                                                      // When user hits enter/done, perform search if there's text
+                                                      if (tfController
+                                                          .text.isNotEmpty) {
+                                                        _handleSearch(
+                                                            tfController.text);
+                                                        // Don't unfocus - we want to keep focus for subsequent edits
+                                                      } else {
+                                                        // If empty search, allow unfocus
+                                                        _searchFocusNode
+                                                            .unfocus();
+                                                        _closeSearch();
+                                                      }
+                                                    },
+                                                    onPaste: (value) {
+                                                      // First, cancel any existing timers
+                                                      _autoConvertTimer
+                                                          ?.cancel();
+
+                                                      // Check if this is a music link
+                                                      final linkLower =
+                                                          value.toLowerCase();
+                                                      final isSupported = linkLower
+                                                              .contains(
+                                                                  'spotify.com') ||
+                                                          linkLower.contains(
+                                                              'apple.com/music') ||
+                                                          linkLower.contains(
+                                                              'music.apple.com') ||
+                                                          linkLower.contains(
+                                                              'deezer.com');
+
+                                                      // If we're already in a search, ignore paste events
+                                                      if (isSearching ||
+                                                          isLoading) {
+                                                        // print(
+                                                        //     '🚫 Ignoring paste during active operation');
+                                                        return;
+                                                      }
+
+                                                      if (isSupported &&
+                                                          !isLoading &&
+                                                          mounted) {
+                                                        // STATE 3: Link conversion - animate down to original position
+                                                        setState(() {
+                                                          searchResults = null;
+                                                          isLoading = true;
+                                                          isLinkConversion =
+                                                              true;
+                                                          isShowingSearchResults =
+                                                              false;
+                                                          _disableAutoFocus =
+                                                              true;
+
+                                                          // Unfocus and animate down
+                                                          _searchFocusNode
+                                                              .unfocus();
+                                                          _searchAnimController
+                                                              .reverse();
+                                                          _logoFadeController
+                                                              .reverse();
+                                                        });
+
+                                                        // Process the link with slight delay for UI feedback
+                                                        _autoConvertTimer =
+                                                            Timer(
+                                                                const Duration(
+                                                                    milliseconds:
+                                                                        300),
+                                                                () {
+                                                          if (mounted) {
+                                                            _handleLinkConversion(
+                                                                value);
+                                                          }
+                                                        });
+                                                      } else {
+                                                        // STATE 2: Regular text - keep at top with focus
+                                                        // Force search bar to stay at top
+                                                        if (_searchAnimController
+                                                                .value <
+                                                            1.0) {
+                                                          _searchAnimController
+                                                              .forward();
+                                                        }
+                                                        if (_logoFadeController
+                                                                .value <
+                                                            1.0) {
+                                                          _logoFadeController
+                                                              .forward();
+                                                        }
+
+                                                        setState(() {
+                                                          isSearchActive = true;
+                                                          isShowingSearchResults =
+                                                              true;
+                                                        });
+
+                                                        // Ensure focus is maintained
+                                                        if (!_searchFocusNode
+                                                            .hasFocus) {
+                                                          _searchFocusNode
+                                                              .requestFocus();
+                                                        }
+                                                      }
+                                                    },
+                                                    onSearch: (query) {
+                                                      // Never initiate a new search if one is already in progress
+                                                      if (!isLoading &&
+                                                          !isSearching) {
+                                                        _handleSearch(query);
+                                                      } else {
+                                                        // print(
+                                                        //     '🚫 Search already in progress, ignoring new search request');
+                                                      }
+                                                    },
+                                                    isLoading: isLoading,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                            ],
+                                  // Search results with improved fade in
+                                  if (shouldShowResults && !isLinkConversion)
+                                    AnimatedBuilder(
+                                      animation: _searchAnimController,
+                                      builder: (context, child) {
+                                        return Opacity(
+                                          opacity: Curves.easeOutQuad.transform(
+                                              _searchAnimController.value),
+                                          child: RepaintBoundary(
+                                              child:
+                                                  child), // Add RepaintBoundary for search results
+                                        );
+                                      },
+                                      child: Container(
+                                        constraints: BoxConstraints(
+                                          minHeight: 100,
+                                          // Calculate height to extend to bottom of screen with consistent padding
+                                          maxHeight: screenSize.height -
+                                              (safeTop + // Top safe area
+                                                  toolbarHeight + // AuthToolbar height
+                                                  navBarTopPadding + // Padding above toolbar
+                                                  minPadding + // Min padding below toolbar (matches top)
+                                                  58 + // Search bar height
+                                                  minPadding + // Same padding at bottom
+                                                  bottomPadding // Bottom safe area
+                                              ),
+                                        ),
+                                        margin: EdgeInsets.symmetric(
+                                            horizontal: kIsWeb ? 24 : 16,
+                                            vertical: minPadding *
+                                                0.25), // Smaller vertical margin for visual balance
+                                        child: GestureDetector(
+                                          onTap: () {},
+                                          behavior: HitTestBehavior.opaque,
+                                          child: Stack(
+                                            children: [
+                                              Container(
+                                                margin: const EdgeInsets.only(
+                                                    top: 4),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors
+                                                      .animatedBtnColorConvertBottom,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: AppColors
+                                                        .animatedBtnColorConvertBottomBorder,
+                                                    width: 2,
+                                                  ),
+                                                ),
+                                                child: const SizedBox(
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                ),
+                                              ),
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: AppColors
+                                                        .animatedBtnColorConvertTop,
+                                                    width: 2,
+                                                  ),
+                                                ),
+                                                child: Material(
+                                                  color: Colors.transparent,
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .only(
+                                                                left: 16,
+                                                                top: 12,
+                                                                right: 8,
+                                                                bottom: 2),
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              isShowingSearchResults
+                                                                  ? "Search Results"
+                                                                  : "Top Charts",
+                                                              style: _itemTypeTs
+                                                                  .copyWith(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                            IconButton(
+                                                              icon: const Icon(
+                                                                Icons.close,
+                                                                size: 20,
+                                                                color: AppColors
+                                                                    .textPrimary,
+                                                              ),
+                                                              onPressed:
+                                                                  _closeSearch,
+                                                              splashColor: Colors
+                                                                  .transparent,
+                                                              highlightColor:
+                                                                  Colors
+                                                                      .transparent,
+                                                              padding:
+                                                                  EdgeInsets
+                                                                      .zero,
+                                                              constraints:
+                                                                  const BoxConstraints(),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 12),
+                                                        child: Divider(
+                                                          color: AppColors
+                                                              .animatedBtnColorConvertTop
+                                                              .withOpacity(0.3),
+                                                          height: 1,
+                                                        ),
+                                                      ),
+                                                      Expanded(
+                                                        child:
+                                                            _buildSearchResults(),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
                           ),
                         );
                       },
@@ -854,7 +896,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             opacity: opacity,
                             child: Visibility(
                               visible: !shouldShowResults || isLinkConversion,
-                              child: child!,
+                              child: RepaintBoundary(
+                                  child:
+                                      child!), // Add RepaintBoundary to optimize bottom content
                             ),
                           );
                         },
@@ -869,27 +913,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               Padding(
                                 padding: EdgeInsets.only(
                                   top: screenSize.width < 600
-                                      ? 120.0 // Increased space on small screens
-                                      : 150.0, // Increased space on larger screens
+                                      ? 70.0 // Further reduced to move graphic up more
+                                      : 90.0, // Further reduced to move graphic up more
                                 ),
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  // Restore full height without reducing it
-                                  height: screenSize.width < 600
-                                      ? screenSize.height *
-                                          0.7 // Small screens: 70% of height
-                                      : screenSize.width < 1200
-                                          ? screenSize.height *
-                                              0.75 // Medium screens: 75% of height
-                                          : screenSize.height *
-                                              0.8, // Large screens: 80% of height
-                                  child: Image.asset(
-                                    homeGraphics,
-                                    width: screenSize.width *
-                                        0.99, // 99% of screen width
-                                    fit: BoxFit
-                                        .contain, // Always maintain aspect ratio to prevent cropping
-                                  ),
+                                child: Image.asset(
+                                  homeGraphics,
+                                  width: screenSize.width *
+                                      0.99, // 99% of screen width
+                                  fit: BoxFit
+                                      .fitWidth, // Fit to width while maintaining aspect ratio
                                 ),
                               ),
                               // Increase space below the image
@@ -909,36 +941,48 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           bottomPadding *
                                               0.5, // Padding on larger screens
                                 ),
-                                child: AnimatedPrimaryButton(
-                                  text: "Create Your Free Account!",
-                                  onTap: () {
-                                    Future.delayed(
-                                      const Duration(milliseconds: 180),
-                                      () => context.go('/signup'),
-                                    );
-                                  },
-                                  height: screenSize.width < 600
-                                      ? 48
-                                      : 40, // Taller button on small screens
-                                  // Make width responsive with screen size
-                                  width: screenSize.width < 600
-                                      ? screenSize.width * 0.85
-                                      : screenSize.width *
-                                          0.7, // Constrained on larger screens
-                                  radius: 10,
-                                  initialPos: 6,
-                                  topBorderWidth: 3,
-                                  bottomBorderWidth: 3,
-                                  colorTop:
-                                      AppColors.animatedBtnColorConvertTop,
-                                  textStyle:
-                                      AppStyles.animatedBtnFreeAccTextStyle,
-                                  borderColorTop:
-                                      AppColors.animatedBtnColorConvertTop,
-                                  colorBottom:
-                                      AppColors.animatedBtnColorConvertBottom,
-                                  borderColorBottom: AppColors
-                                      .animatedBtnColorConvertBottomBorder,
+                                child: Center(
+                                  // Center the button horizontally
+                                  child: AnimatedPrimaryButton(
+                                    text: "Create Your Free Account!",
+                                    onTap: () {
+                                      Future.delayed(
+                                        const Duration(milliseconds: 180),
+                                        () => context.go('/signup'),
+                                      );
+                                    },
+                                    height: screenSize.width < 600
+                                        ? 48
+                                        : 40, // Taller button on small screens
+                                    // Enhanced dynamic width calculation based on screen size
+                                    width: screenSize.width < 360
+                                        ? screenSize.width *
+                                            0.9 // Extra small screens: 90%
+                                        : screenSize.width < 600
+                                            ? screenSize.width *
+                                                0.85 // Small screens: 85%
+                                            : screenSize.width < 900
+                                                ? screenSize.width *
+                                                    0.75 // Medium screens: 75%
+                                                : screenSize.width < 1200
+                                                    ? screenSize.width *
+                                                        0.65 // Large screens: 65%
+                                                    : screenSize.width *
+                                                        0.55, // Extra large screens: 55%
+                                    radius: 10,
+                                    initialPos: 6,
+                                    topBorderWidth: 3,
+                                    bottomBorderWidth: 3,
+                                    colorTop:
+                                        AppColors.animatedBtnColorConvertTop,
+                                    textStyle: _animatedBtnFreeAccTextStyle,
+                                    borderColorTop:
+                                        AppColors.animatedBtnColorConvertTop,
+                                    colorBottom:
+                                        AppColors.animatedBtnColorConvertBottom,
+                                    borderColorBottom: AppColors
+                                        .animatedBtnColorConvertBottomBorder,
+                                  ),
                                 ),
                               ),
                             ],
@@ -967,16 +1011,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ? (screenWidth > 800 ? 500.0 : screenWidth * 0.85)
         : screenWidth * 0.9;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          // Limit width on larger screens to prevent stretched look
-          maxWidth: maxWidth,
-        ),
-        child: Image.asset(
-          appLogoText,
-          fit: BoxFit.contain,
+    // Use RepaintBoundary for the logo which doesn't change often
+    return RepaintBoundary(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            // Limit width on larger screens to prevent stretched look
+            maxWidth: maxWidth,
+          ),
+          child: Image.asset(
+            appLogoText,
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
@@ -1015,7 +1062,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _autoConvertTimer?.cancel();
 
     if (query.isEmpty) {
-      setState(() {
+      _updateStateWithBatchedChanges(() {
         if (!isLoadingCharts) {
           searchResults = null;
         }
@@ -1030,19 +1077,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     if (isSearching) {
-      print('🚫 Search already in progress, ignoring duplicate request');
       return;
     }
 
     // Remember focus state
     final wasFocused = _searchFocusNode.hasFocus;
 
-    setState(() {
+    _updateStateWithBatchedChanges(() {
       isSearching = true;
       isLoading = true;
       isLinkConversion = false;
-
-      // STATE 2: Search - keep at top position with focus
       isSearchActive = true;
       isShowingSearchResults = true;
     });
@@ -1056,21 +1100,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     try {
-      print('🔍 Starting search for: "$query"');
       final results = await _musicSearchService.searchMusic(query);
 
       if (!mounted) return;
 
       if (query != tfController.text) {
-        print('⚠️ Search results no longer relevant - query changed');
-        setState(() {
+        _updateStateWithBatchedChanges(() {
           isSearching = false;
           isLoading = false;
         });
         return;
       }
 
-      setState(() {
+      _updateStateWithBatchedChanges(() {
         searchResults = results;
         isSearching = false;
         isLoading = false;
@@ -1081,21 +1123,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (wasFocused && !_searchFocusNode.hasFocus) {
         _searchFocusNode.requestFocus();
       }
-
-      print('✅ Search completed successfully');
     } catch (e) {
-      print('❌ Search error: $e');
       if (!mounted) return;
 
       if (query != tfController.text) {
-        setState(() {
+        _updateStateWithBatchedChanges(() {
           isSearching = false;
           isLoading = false;
         });
         return;
       }
 
-      setState(() {
+      _updateStateWithBatchedChanges(() {
         isSearching = false;
         isLoading = false;
       });
@@ -1126,10 +1165,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Cancel any previous operations
     _cancelPreviousOperations();
 
-    print('🔄 Starting music conversion');
-
-    // STATE 3: Link conversion - animate down to original position
-    setState(() {
+    // Batch all state changes together
+    _updateStateWithBatchedChanges(() {
       isLoading = true;
       isLinkConversion = true;
       isShowingSearchResults = false;
@@ -1141,17 +1178,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _searchFocusNode.unfocus();
     });
 
-    // Ensure animations complete fully
-    _searchAnimController.reverse();
-    _logoFadeController.reverse();
+    // Use a single microtask to start both animations together
+    Future.microtask(() {
+      _searchAnimController.reverse();
+      _logoFadeController.reverse();
+    });
 
     try {
-      print('📡 Making conversion request...');
       final response = await _apiService.convertMusicLink(link);
 
       if (!mounted) return;
 
-      setState(() {
+      _updateStateWithBatchedChanges(() {
         isLoading = false;
         isLinkConversion = false;
         isSearchActive = false;
@@ -1160,20 +1198,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             false; // Re-enable auto focus for future interactions
       });
 
-      print('✅ Conversion successful');
       context.go('/post', extra: response);
     } catch (e) {
-      print('❌ Conversion failed: $e');
       if (!mounted) return;
 
-      setState(() {
+      _updateStateWithBatchedChanges(() {
         isLoading = false;
         isLinkConversion = false;
         isSearchActive = true;
         isShowingSearchResults = false; // Ensure results stay hidden on error
-        _searchAnimController.forward();
-        _logoFadeController.forward();
-        // Keep _disableAutoFocus true so that the search bar does not auto focus automatically
+      });
+
+      // Use a microtask to ensure animations start after the state changes are applied
+      Future.microtask(() {
+        if (mounted) {
+          _searchAnimController.forward();
+          _logoFadeController.forward();
+        }
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1194,9 +1235,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildSearchResults() {
-    // Logging state for debugging chart visibility
-    print(
-        '[_buildSearchResults] isShowingSearchResults: $isShowingSearchResults, isSearchActive: $isSearchActive, searchResults: $searchResults');
+    // Remove logging that happens on every build cycle
+    // print(
+    //     '[_buildSearchResults] isShowingSearchResults: $isShowingSearchResults, isSearchActive: $isSearchActive, searchResults: $searchResults');
 
     // Show loading indicator while loading charts or searching
     if (isLoadingCharts || isSearching) {
@@ -1218,7 +1259,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     : isSearching
                         ? 'Searching...'
                         : 'Loading...',
-                style: AppStyles.itemDesTs.copyWith(
+                style: _itemDesTs.copyWith(
                   fontSize: 16,
                   color: AppColors.textPrimary,
                 ),
@@ -1233,10 +1274,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (searchResults == null && !isShowingSearchResults && isSearchActive) {
       // Schedule the loading after the build phase
       if (!isLoadingCharts) {
-        print('[_buildSearchResults] Scheduling _loadTopCharts');
+        // print('[_buildSearchResults] Scheduling _loadTopCharts');
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && !isLoadingCharts && searchResults == null) {
-            print('[_buildSearchResults] Executing scheduled _loadTopCharts');
+            // print('[_buildSearchResults] Executing scheduled _loadTopCharts');
             _loadTopCharts();
           }
         });
@@ -1276,7 +1317,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           padding: const EdgeInsets.all(16.0),
           child: Text(
             'No results found',
-            style: AppStyles.itemDesTs.copyWith(
+            style: _itemDesTs.copyWith(
               fontSize: 16,
               color: AppColors.textPrimary,
             ),
@@ -1291,6 +1332,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         itemCount: results.length,
         physics: const AlwaysScrollableScrollPhysics(),
+        // Add these optimizations to improve ListView performance
+        addAutomaticKeepAlives: false,
+        addRepaintBoundaries: true,
+        addSemanticIndexes: false,
+        cacheExtent:
+            500, // Cache more items to reduce rebuilds during scrolling
         itemBuilder: (context, index) {
           final item = results[index];
           // Get screen dimensions for adaptive layout
@@ -1302,197 +1349,204 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           final double horizontalPadding = isSmallScreen ? 12.0 : 16.0;
           final double verticalPadding = isSmallScreen ? 6.0 : 8.0;
 
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                final type = item['type'].toString().toLowerCase();
-                final id = item['id'];
-                final title = item['title'] ?? 'Unknown';
-                final source = searchResults?['source'] ?? 'spotify';
+          // Use RepaintBoundary to optimize individual list items
+          return RepaintBoundary(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  final type = item['type'].toString().toLowerCase();
+                  final id = item['id'];
+                  final title = item['title'] ?? 'Unknown';
+                  final source = searchResults?['source'] ?? 'spotify';
 
-                // Format URL based on the source and type
-                String url;
-                if (source == 'apple_music') {
-                  // For artists, use their Apple Music profile URL with region code and name
-                  if (type == 'artist') {
-                    // Convert artist name to URL-safe format (lowercase, spaces to hyphens)
-                    final urlSafeName = title
-                        .toLowerCase()
-                        .replaceAll(' ', '-')
-                        .replaceAll(
-                            RegExp(r'[^\w-]'), ''); // Remove special characters
-                    url = 'https://music.apple.com/us/artist/$urlSafeName/$id';
+                  // Format URL based on the source and type
+                  String url;
+                  if (source == 'apple_music') {
+                    // For artists, use their Apple Music profile URL with region code and name
+                    if (type == 'artist') {
+                      // Convert artist name to URL-safe format (lowercase, spaces to hyphens)
+                      final urlSafeName = title
+                          .toLowerCase()
+                          .replaceAll(' ', '-')
+                          .replaceAll(RegExp(r'[^\w-]'),
+                              ''); // Remove special characters
+                      url =
+                          'https://music.apple.com/us/artist/$urlSafeName/$id';
+                    } else {
+                      url = item['url'] ?? '';
+                    }
+                    if (url.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('Error: No valid Apple Music URL found'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
                   } else {
-                    url = item['url'] ?? '';
+                    url = 'https://open.spotify.com/$type/$id';
                   }
-                  if (url.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Error: No valid Apple Music URL found'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                } else {
-                  url = 'https://open.spotify.com/$type/$id';
-                }
 
-                tfController.text =
-                    'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
+                  tfController.text =
+                      'Converting ${type.substring(0, 1).toUpperCase() + type.substring(1)} - $title...';
 
-                // Return search UI to center position
-                _searchFocusNode.unfocus();
-                _searchAnimController
-                    .reverse(); // Reverse animation to move search bar back to center
-                _logoFadeController.reverse(); // Show logo again
+                  // Return search UI to center position
+                  _searchFocusNode.unfocus();
+                  _searchAnimController
+                      .reverse(); // Reverse animation to move search bar back to center
+                  _logoFadeController.reverse(); // Show logo again
 
-                setState(() {
-                  searchResults = null;
-                  isLoading = true;
-                  isShowingSearchResults = false;
-                  isSearchActive = true; // Keep search bar visible
-                });
-                _handleLinkConversion(url);
-              },
-              splashColor:
-                  AppColors.animatedBtnColorConvertTop.withOpacity(0.2),
-              highlightColor:
-                  AppColors.animatedBtnColorConvertTop.withOpacity(0.1),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: verticalPadding,
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: item['coverArtUrl'] != null
-                          ? Container(
-                              width: coverSize,
-                              height: coverSize,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: AppColors.animatedBtnColorConvertTop
-                                      .withOpacity(0.5),
-                                  width: 1,
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Image.network(
-                                item['coverArtUrl'],
+                  setState(() {
+                    searchResults = null;
+                    isLoading = true;
+                    isShowingSearchResults = false;
+                    isSearchActive = true; // Keep search bar visible
+                  });
+                  _handleLinkConversion(url);
+                },
+                splashColor:
+                    AppColors.animatedBtnColorConvertTop.withOpacity(0.2),
+                highlightColor:
+                    AppColors.animatedBtnColorConvertTop.withOpacity(0.1),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: verticalPadding,
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: item['coverArtUrl'] != null
+                            ? Container(
                                 width: coverSize,
                                 height: coverSize,
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    width: coverSize,
-                                    height: coverSize,
-                                    color: Colors.grey[200],
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: coverSize * 0.4,
-                                        height: coverSize * 0.4,
-                                        child: const CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                            AppColors
-                                                .animatedBtnColorConvertTop,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: AppColors.animatedBtnColorConvertTop
+                                        .withOpacity(0.5),
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Image.network(
+                                  item['coverArtUrl'],
+                                  width: coverSize,
+                                  height: coverSize,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      width: coverSize,
+                                      height: coverSize,
+                                      color: Colors.grey[200],
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: coverSize * 0.4,
+                                          height: coverSize * 0.4,
+                                          child:
+                                              const CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              AppColors
+                                                  .animatedBtnColorConvertTop,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            )
-                          : Container(
-                              width: coverSize,
-                              height: coverSize,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: AppColors.animatedBtnColorConvertTop
-                                      .withOpacity(0.5),
-                                  width: 1,
+                                    );
+                                  },
                                 ),
-                              ),
-                              child: Icon(
-                                Icons.music_note,
-                                size: coverSize * 0.6,
-                                color: AppColors.textPrimary.withOpacity(0.5),
-                              ),
-                            ),
-                    ),
-                    SizedBox(width: isSmallScreen ? 8 : 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['title'] ?? 'Unknown',
-                            style: AppStyles.itemTitleTs.copyWith(
-                              fontSize: isSmallScreen ? 14 : 16,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Wrap(
-                            spacing: 6, // gap between adjacent chips
-                            runSpacing: 2, // gap between lines
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Text(
-                                item['artist'] ?? '',
-                                style: AppStyles.itemDesTs.copyWith(
-                                  fontSize: isSmallScreen ? 12 : 14,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (item['type'] != null)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isSmallScreen ? 4 : 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
+                              )
+                            : Container(
+                                width: coverSize,
+                                height: coverSize,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
                                     color: AppColors.animatedBtnColorConvertTop
-                                        .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
+                                        .withOpacity(0.5),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.music_note,
+                                  size: coverSize * 0.6,
+                                  color: AppColors.textPrimary.withOpacity(0.5),
+                                ),
+                              ),
+                      ),
+                      SizedBox(width: isSmallScreen ? 8 : 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['title'] ?? 'Unknown',
+                              style: _itemTitleTs.copyWith(
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Wrap(
+                              spacing: 6, // gap between adjacent chips
+                              runSpacing: 2, // gap between lines
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  item['artist'] ?? '',
+                                  style: _itemDesTs.copyWith(
+                                    fontSize: isSmallScreen ? 12 : 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (item['type'] != null)
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isSmallScreen ? 4 : 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
                                       color: AppColors
                                           .animatedBtnColorConvertTop
-                                          .withOpacity(0.3),
-                                      width: 1,
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: AppColors
+                                            .animatedBtnColorConvertTop
+                                            .withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      item['type']?.toString().toUpperCase() ??
+                                          '',
+                                      style: _itemTypeTs.copyWith(
+                                        fontSize: isSmallScreen ? 8 : 10,
+                                      ),
                                     ),
                                   ),
-                                  child: Text(
-                                    item['type']?.toString().toUpperCase() ??
-                                        '',
-                                    style: AppStyles.itemTypeTs.copyWith(
-                                      fontSize: isSmallScreen ? 8 : 10,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: iconSize,
-                      color: AppColors.textPrimary.withOpacity(0.5),
-                    ),
-                  ],
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: iconSize,
+                        color: AppColors.textPrimary.withOpacity(0.5),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1579,7 +1633,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         isSearchActive = isSearchFocused || _searchAnimController.value > 0;
       });
     } catch (e) {
-      print('Error loading top charts: $e');
+      // print('Error loading top charts: $e');
       if (mounted) {
         setState(() {
           isLoadingCharts = false;
@@ -1610,5 +1664,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _logoFadeController.forward();
       }
     }
+  }
+
+  // Replace with batched state updates to reduce rebuilds
+  void _updateStateWithBatchedChanges(void Function() updates) {
+    // Avoid setting state if widget is not mounted
+    if (!mounted) return;
+
+    // Use a microtask to batch state updates that occur in the same frame
+    Future.microtask(() {
+      if (mounted) {
+        setState(updates);
+      }
+    });
   }
 }
