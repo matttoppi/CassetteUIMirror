@@ -478,10 +478,10 @@ class _ProfilePageState extends State<ProfilePage>
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.textPrimary.withOpacity(0.1),
+                              color: Colors.red.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                color: AppColors.textPrimary.withOpacity(0.3),
+                                color: Colors.red.withOpacity(0.3),
                                 width: 1,
                               ),
                             ),
@@ -491,13 +491,13 @@ class _ProfilePageState extends State<ProfilePage>
                                 Icon(
                                   _getTypeIcon(item.type ?? ''),
                                   size: 12,
-                                  color: AppColors.textPrimary,
+                                  color: Colors.red,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   (item.type ?? '').toUpperCase(),
                                   style: const TextStyle(
-                                    color: AppColors.textPrimary,
+                                    color: Colors.red,
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -505,25 +505,40 @@ class _ProfilePageState extends State<ProfilePage>
                               ],
                             ),
                           ),
-                          // Title
+                          // Title - slightly reduced size
                           Text(
                             item.title ?? '',
-                            style: AppStyles.itemTitleTs,
+                            style: AppStyles.itemTitleTs.copyWith(
+                              fontSize: 16, // Slightly smaller title
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          // Duration info based on type
+                          const SizedBox(height: 2), // Reduced spacing
+                          // Duration info based on type - with muted color
                           item.type == "Song"
                               ? Text(
                                   "${item.artist} | ${item.album} | ${item.duration}",
-                                  style: AppStyles.itemSongDurationTs,
+                                  style: AppStyles.itemSongDurationTs.copyWith(
+                                    color: AppColors.textPrimary
+                                        .withOpacity(0.6), // More muted color
+                                    fontSize: 12, // Slightly smaller text
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 )
                               : _buildRichText(
                                   "${item.songCount} songs | ${item.duration}",
-                                  style: AppStyles.itemRichTextTs,
-                                  style2: AppStyles.itemRichText2Ts,
+                                  style: AppStyles.itemRichTextTs.copyWith(
+                                    color: AppColors.textPrimary
+                                        .withOpacity(0.6), // More muted color
+                                    fontSize: 12, // Slightly smaller text
+                                  ),
+                                  style2: AppStyles.itemRichText2Ts.copyWith(
+                                    color: AppColors.textPrimary
+                                        .withOpacity(0.6), // More muted color
+                                    fontSize: 12, // Slightly smaller text
+                                  ),
                                 ),
                         ],
                       ),
@@ -553,20 +568,27 @@ class _ProfilePageState extends State<ProfilePage>
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Description
+                // Description - slightly smaller and more muted
                 Text(
                   item.description ?? '',
-                  style: AppStyles.itemDesTs,
+                  style: AppStyles.itemDesTs.copyWith(
+                    fontSize: 13, // Slightly smaller
+                    color: AppColors.textPrimary.withOpacity(0.7), // More muted
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
-                // Creator info
+                const SizedBox(height: 10), // Slightly reduced spacing
+                // Creator info - slightly smaller
                 _buildRichText(
                   "from: ${item.username}",
                   leadingText: "from: ",
-                  style: AppStyles.itemFromTs,
-                  style2: AppStyles.itemUsernameTs,
+                  style: AppStyles.itemFromTs.copyWith(
+                    fontSize: 12, // Slightly smaller
+                  ),
+                  style2: AppStyles.itemUsernameTs.copyWith(
+                    fontSize: 12, // Slightly smaller
+                  ),
                 ),
               ],
             ),
