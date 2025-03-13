@@ -11,6 +11,11 @@ import 'package:cassettefrontend/core/services/music_search_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math' show min;
+
+// Search state enum - moved outside the class
+enum SearchState { idle, searching, resultsVisible }
 
 class AddMusicPage extends StatefulWidget {
   const AddMusicPage({super.key});
@@ -20,44 +25,54 @@ class AddMusicPage extends StatefulWidget {
 }
 
 class _AddMusicPageState extends State<AddMusicPage> {
+  // UI state
   bool isMenuVisible = false;
+
+  // Search state - simplified
+  SearchState _searchState = SearchState.idle;
+  bool get isSearching => _searchState == SearchState.searching;
+  bool get isShowingResults => _searchState == SearchState.resultsVisible;
+
+  // Add setter for isShowingResults to fix linter errors
+  set isShowingResults(bool value) {
+    setState(() {
+      _searchState = value ? SearchState.resultsVisible : SearchState.idle;
+    });
+  }
+
+  // Loading state
   bool isLoading = false;
-  bool isSearching = false;
-  bool isShowingSearchResults = false;
-  bool isLoadingCharts = false;
-  bool _isChartLoadRequested = false;
-  bool _itemSelected = false; // New flag to indicate an item has been selected
-  String errorMessage = '';
+
+  // For backward compatibility with existing code
+  bool get isLoadingCharts => isLoading;
+  bool get isShowingSearchResults => isShowingResults;
+  set isShowingSearchResults(bool value) => isShowingResults = value;
+
+  // Data state
   Map<String, dynamic>? searchResults;
   Map<String, dynamic>? selectedItem;
   String? pastedLinkSource;
-  Timer? _searchDebounce;
+  String errorMessage = '';
+  bool _isChartLoadRequested = false;
+  bool _itemSelected = false;
 
-  // Initialize services
+  // Services and controllers
   final ApiService _apiService = ApiService();
   final MusicSearchService _musicSearchService = MusicSearchService();
   final FocusNode _searchFocusNode = FocusNode();
-
   TextEditingController linkCtr = TextEditingController();
   TextEditingController desCtr = TextEditingController();
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
 
-    // Add focus listener
-    _searchFocusNode.addListener(_handleSearchFocus);
+    // Add focus listener for search field
+    _searchFocusNode.addListener(_onSearchFocusChanged);
 
-    // Request focus after build is complete
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.requestFocus();
-
-      // Load top charts when page opens
-      _loadTopCharts();
-
-      // Ensure search UI is visible during loading
-      _ensureSearchUIVisibleDuringLoading();
-    });
+    // Add listener for text changes
+    linkCtr.addListener(_onSearchTextChanged);
   }
 
   @override
@@ -65,6 +80,10 @@ class _AddMusicPageState extends State<AddMusicPage> {
     // Cancel any active searches
     _musicSearchService.cancelActiveRequests();
     _searchDebounce?.cancel();
+
+    // Remove listeners
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
+    linkCtr.removeListener(_onSearchTextChanged);
 
     // Dispose controllers and focus nodes
     linkCtr.dispose();
@@ -75,84 +94,153 @@ class _AddMusicPageState extends State<AddMusicPage> {
   }
 
   // Handle search focus changes
-  void _handleSearchFocus() {
+  void _onSearchFocusChanged() {
     if (_searchFocusNode.hasFocus) {
-      // When search gets focus, show search results
-      setState(() {
-        isShowingSearchResults = true;
-      });
-
-      // Load top charts if not already loaded
-      if (searchResults == null && !isLoadingCharts) {
-        _loadTopCharts();
-      }
-    } else {
-      // Only hide results if user explicitly taps outside or presses back
-      // Don't hide when text is entered or during operations
-      if (linkCtr.text.isEmpty && !isLoading && !isSearching) {
-        setState(() {
-          isShowingSearchResults = false;
-        });
-      }
+      // When search gets focus, show search UI
+      _showSearchUI();
     }
+  }
+
+  // Handle search text changes
+  void _onSearchTextChanged() {
+    // Skip if we're not in search mode
+    if (_searchState == SearchState.idle) return;
+
+    final text = linkCtr.text;
+
+    // Check if it's a URL
+    final isUrl = _isValidMusicUrl(text);
+
+    if (isUrl) {
+      // Handle URL paste
+      _handleUrlPaste(text);
+    } else if (text.isNotEmpty) {
+      // Debounce search queries
+      _searchDebounce?.cancel();
+      _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+        _performSearch(text);
+      });
+    }
+  }
+
+  // Check if text is a valid music URL
+  bool _isValidMusicUrl(String text) {
+    final lowerText = text.toLowerCase();
+    return lowerText.contains('spotify.com') ||
+        lowerText.contains('apple.com/music') ||
+        lowerText.contains('music.apple.com') ||
+        lowerText.contains('deezer.com');
+  }
+
+  // Handle URL paste
+  void _handleUrlPaste(String url) {
+    debugPrint('Handling URL paste: $url');
+
+    // Determine the source
+    String source = 'unknown';
+    final lowerUrl = url.toLowerCase();
+
+    if (lowerUrl.contains('spotify.com')) {
+      source = 'Spotify';
+    } else if (lowerUrl.contains('apple.com/music') ||
+        lowerUrl.contains('music.apple.com')) {
+      source = 'Music';
+    } else if (lowerUrl.contains('deezer.com')) {
+      source = 'Deezer';
+    }
+
+    // Update state
+    setState(() {
+      pastedLinkSource = source;
+      selectedItem = null;
+      _searchState = SearchState.idle;
+      errorMessage = '';
+    });
   }
 
   // Load top charts
   Future<void> _loadTopCharts() async {
-    // Set flag to prevent duplicate loading
-    _isChartLoadRequested = true;
+    debugPrint('==================================================');
+    debugPrint('LOADING TOP CHARTS');
+    debugPrint('==================================================');
+
+    // Debug current state before loading
+    debugPrint('Current state before loading top charts:');
+    debugPrint('  isShowingSearchResults: $isShowingSearchResults');
+    debugPrint('  isSearching: $isSearching');
+    debugPrint('  isLoadingCharts: $isLoadingCharts');
+    debugPrint('  isLoading: $isLoading');
+
+    // Skip if already loading
+    if (isLoading) {
+      debugPrint('Already loading top charts, skipping this request');
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+    debugPrint('Set isLoading to true');
 
     try {
-      setState(() => isLoadingCharts = true);
-      // Ensure search UI is visible during loading
-      _ensureSearchUIVisibleDuringLoading();
-
+      debugPrint('Calling API to fetch top charts');
       final results = await _musicSearchService.fetchTop50USAPlaylist();
 
-      // If component is unmounted, abort
-      if (!mounted) return;
-
-      // Only update top charts if the search text is still empty
-      if (linkCtr.text.isNotEmpty) {
-        // User started typing, so ignore these results
-        setState(() {
-          isLoadingCharts = false;
-          _isChartLoadRequested = false;
-        });
+      // Safety check in case component unmounted
+      if (!mounted) {
+        debugPrint('Widget not mounted, ignoring top charts results');
         return;
       }
 
-      // Ensure each result has an id field for proper handling
-      if (results.containsKey('results') && results['results'] is List) {
-        final List<dynamic> items = results['results'];
-        for (int i = 0; i < items.length; i++) {
-          // If an item doesn't have an id, generate one
-          if (!items[i].containsKey('id') || items[i]['id'] == null) {
-            items[i]['id'] = 'chart_item_$i';
+      // Debug the structure of the results
+      debugPrint('Top charts loaded, analyzing results structure:');
+      debugPrint('Results type: ${results.runtimeType}');
+      if (results is Map<String, dynamic>) {
+        debugPrint('Results keys: ${results.keys.toList()}');
+
+        if (results.containsKey('results')) {
+          final resultsList = results['results'];
+          debugPrint('Results list type: ${resultsList.runtimeType}');
+          if (resultsList is List) {
+            debugPrint('Number of top chart items: ${resultsList.length}');
+            if (resultsList.isNotEmpty) {
+              debugPrint('First item type: ${resultsList.first.runtimeType}');
+              if (resultsList.first is Map<String, dynamic>) {
+                debugPrint(
+                    'First item keys: ${(resultsList.first as Map<String, dynamic>).keys.toList()}');
+              }
+            }
           }
         }
       }
 
+      debugPrint('Updating state with top charts results');
       setState(() {
         searchResults = results;
-        isLoadingCharts = false;
-        _isChartLoadRequested = false;
-        isShowingSearchResults = true;
+        isLoading = false;
       });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          isLoadingCharts = false;
-          _isChartLoadRequested = false;
-        });
+      debugPrint('Top charts API error: $e');
+      // Safety check in case component unmounted
+      if (!mounted) return;
 
-        // Only show error if search is still relevant
-        if (linkCtr.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error loading charts: $e')),
-          );
-        }
-      }
+      setState(() {
+        isLoading = false;
+      });
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading top charts: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: _loadTopCharts,
+          ),
+        ),
+      );
     }
   }
 
@@ -164,27 +252,38 @@ class _AddMusicPageState extends State<AddMusicPage> {
 
     if (linkToConvert.isEmpty) {
       setState(() {
-        errorMessage = 'Please enter a music link';
+        errorMessage = 'Please enter a music link or select a song';
       });
       return;
     }
 
     setState(() {
       isLoading = true;
-      // Only keep search overlay visible during loading if no item is selected
-      isShowingSearchResults = selectedItem == null;
       errorMessage = '';
+      // Hide search results while converting
+      _searchState = SearchState.idle;
     });
 
     try {
       // Call API to convert the link
       final response = await _apiService.convertMusicLink(linkToConvert);
 
+      // Safety check in case component unmounted
       if (!mounted) return;
 
-      // Add description to the response data if provided
+      // Add description and source item details to the response data if provided
       if (desCtr.text.isNotEmpty) {
         response['description'] = desCtr.text;
+      }
+
+      // Add selected item metadata if available
+      if (selectedItem != null) {
+        response['originalItemDetails'] = {
+          'title': selectedItem!['title'],
+          'artist': selectedItem!['artist'],
+          'type': selectedItem!['type'],
+          'coverArtUrl': selectedItem!['coverArtUrl'],
+        };
       }
 
       setState(() {
@@ -194,13 +293,12 @@ class _AddMusicPageState extends State<AddMusicPage> {
       // Navigate to post page with the converted data
       context.go('/post', extra: response);
     } catch (e) {
+      // Safety check in case component unmounted
       if (!mounted) return;
 
       setState(() {
         isLoading = false;
         errorMessage = 'Error converting link: ${e.toString()}';
-        // Only keep search overlay visible on error if no item is selected
-        isShowingSearchResults = selectedItem == null;
       });
 
       // Show error message
@@ -221,71 +319,107 @@ class _AddMusicPageState extends State<AddMusicPage> {
 
   // Handle music search
   Future<void> _handleSearch(String query) async {
+    debugPrint('==================================================');
+    debugPrint('HANDLING SEARCH: "$query"');
+    debugPrint('==================================================');
+
+    // Debug current state before search
+    debugPrint('Current state before search:');
+    debugPrint('  isShowingSearchResults: $isShowingSearchResults');
+    debugPrint('  isSearching: $isSearching');
+    debugPrint('  isLoadingCharts: $isLoadingCharts');
+    debugPrint('  isLoading: $isLoading');
+
     if (query.isEmpty) {
+      debugPrint('Empty query, not performing search');
       setState(() {
         searchResults = null;
-        isSearching = false;
-        // Don't hide search results when query is empty, just show top charts instead
+        _searchState = SearchState.idle;
+        // Show top charts when query is empty
         _loadTopCharts();
       });
       return;
     }
 
-    if (isSearching) return;
+    // Skip if already searching
+    if (isSearching) {
+      debugPrint('Already searching, skipping this search request');
+      return;
+    }
 
+    // Set loading state
     setState(() {
-      isSearching = true;
+      _searchState = SearchState.searching;
       isLoading = true;
-      isShowingSearchResults = true; // Ensure search overlay is visible
     });
-
-    // Ensure search UI is visible during loading
-    _ensureSearchUIVisibleDuringLoading();
+    debugPrint('Set isSearching and isLoading to true');
 
     try {
+      debugPrint('Calling API for search with query: "$query"');
       final results = await _musicSearchService.searchMusic(query);
 
-      if (!mounted) return;
+      // Safety check in case component unmounted
+      if (!mounted) {
+        debugPrint('Widget not mounted, ignoring search results');
+        return;
+      }
+
+      // Debug the structure of the results
+      debugPrint('Search completed, analyzing results structure:');
+      debugPrint('Results type: ${results.runtimeType}');
+      if (results is Map<String, dynamic>) {
+        debugPrint('Results keys: ${results.keys.toList()}');
+
+        if (results.containsKey('results')) {
+          final resultsList = results['results'];
+          debugPrint('Results list type: ${resultsList.runtimeType}');
+          if (resultsList is List) {
+            debugPrint('Number of results: ${resultsList.length}');
+            if (resultsList.isNotEmpty) {
+              debugPrint('First item type: ${resultsList.first.runtimeType}');
+              if (resultsList.first is Map<String, dynamic>) {
+                debugPrint(
+                    'First item keys: ${(resultsList.first as Map<String, dynamic>).keys.toList()}');
+              }
+            }
+          }
+        }
+      }
 
       // Check if the query is still the same
       if (query != linkCtr.text) {
+        debugPrint(
+            'Query changed during search, original: "$query", current: "${linkCtr.text}"');
         setState(() {
-          isSearching = false;
+          _searchState = SearchState.idle;
           isLoading = false;
-          // Keep search results visible even if query changed
-          isShowingSearchResults = true;
         });
         return;
       }
 
+      debugPrint('Updating state with search results');
       setState(() {
         searchResults = results;
-        isSearching = false;
+        _searchState = SearchState.resultsVisible;
         isLoading = false;
-        isShowingSearchResults =
-            true; // Keep search overlay visible after results arrive
       });
+
+      // Force a rebuild to ensure overlay content updates
+      if (mounted) {
+        debugPrint('Forcing rebuild to update overlay content');
+        setState(() {});
+      }
     } catch (e) {
+      debugPrint('Search API error: $e');
+      // Safety check in case component unmounted
       if (!mounted) return;
 
-      // Check if the query is still the same
-      if (query != linkCtr.text) {
-        setState(() {
-          isSearching = false;
-          isLoading = false;
-          // Keep search results visible even on error
-          isShowingSearchResults = true;
-        });
-        return;
-      }
-
       setState(() {
-        isSearching = false;
+        _searchState = SearchState.idle;
         isLoading = false;
-        isShowingSearchResults =
-            true; // Keep search overlay visible even on error
       });
 
+      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error searching: ${e.toString()}'),
@@ -301,108 +435,271 @@ class _AddMusicPageState extends State<AddMusicPage> {
     }
   }
 
-  void _showSearchUI() {
+  // Perform search with the given query
+  void _performSearch(String query) {
+    debugPrint('Performing search with query: $query');
+
+    if (query.isEmpty) {
+      setState(() {
+        _searchState = SearchState.idle;
+      });
+      return;
+    }
+
+    // Set searching state
     setState(() {
-      isShowingSearchResults = true;
+      _searchState = SearchState.searching;
+      isLoading = true;
     });
+
+    // Execute the search
+    _musicSearchService.searchMusic(query).then((results) {
+      if (!mounted) return;
+
+      // Update state with results
+      setState(() {
+        searchResults = results;
+        _searchState = SearchState.resultsVisible;
+        isLoading = false;
+      });
+    }).catchError((error) {
+      if (!mounted) return;
+
+      debugPrint('Search error: $error');
+      setState(() {
+        _searchState = SearchState.idle;
+        isLoading = false;
+        errorMessage = 'Error searching: $error';
+      });
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error searching: $error'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    });
+  }
+
+  void _showSearchUI() {
+    debugPrint('_showSearchUI called - explicitly showing search results');
+
+    // First, set the flag to show search results
+    setState(() {
+      _searchState = SearchState.resultsVisible;
+    });
+
+    // Request focus on the search field
     _searchFocusNode.requestFocus();
 
     // Always load top charts when showing search UI if no results are available
-    if (searchResults == null && !isLoadingCharts && !_isChartLoadRequested) {
+    if (searchResults == null && !isLoading && !_isChartLoadRequested) {
+      debugPrint('Loading top charts because no search results are available');
       _loadTopCharts();
+    }
+
+    // Force a rebuild to ensure the search UI is visible
+    if (mounted) {
+      Future.microtask(() {
+        if (mounted && _searchState != SearchState.resultsVisible) {
+          setState(() {
+            _searchState = SearchState.resultsVisible;
+          });
+        }
+      });
     }
   }
 
   // Helper method to show top charts on the main page
   void _showTopChartsOnMainPage() {
+    debugPrint('_showTopChartsOnMainPage called');
     // Only load if not already loading and no search text
-    if (!isLoadingCharts && !_isChartLoadRequested && linkCtr.text.isEmpty) {
+    if (!isLoading && !_isChartLoadRequested && linkCtr.text.isEmpty) {
       _loadTopCharts();
     }
   }
 
   // Helper method to ensure search UI is shown during loading
   void _ensureSearchUIVisibleDuringLoading() {
-    if (selectedItem == null && (isLoading || isSearching || isLoadingCharts)) {
+    if (selectedItem == null && (isLoading || isSearching)) {
+      debugPrint('Ensuring search UI is visible during loading');
       setState(() {
-        isShowingSearchResults = true;
+        _searchState = SearchState.resultsVisible;
+      });
+
+      // Force a rebuild after the current build cycle
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !isShowingSearchResults) {
+          setState(() {
+            _searchState = SearchState.resultsVisible;
+          });
+        }
       });
     }
   }
 
   // Unified handler for selecting an item from search results or top charts.
-  void _handleItemSelection(dynamic item, {bool fromTopCharts = false}) {
-    debugPrint("handleItemSelection invoked. fromTopCharts: $fromTopCharts");
-    debugPrint("Raw item details: ${item.toString()}");
+  void _handleItemSelection(Map<String, dynamic> item) {
+    debugPrint('==================================================');
+    debugPrint('HANDLING ITEM SELECTION');
+    debugPrint('==================================================');
 
-    // Use Apple Music as the source for all chart and search results
-    final source = 'apple_music';
+    // Debug current state before selection
+    debugPrint('Current state before selection:');
+    debugPrint('  isShowingSearchResults: $isShowingSearchResults');
+    debugPrint('  isSearching: $isSearching');
+    debugPrint('  isLoadingCharts: $isLoadingCharts');
+    debugPrint('  isLoading: $isLoading');
+    debugPrint('  _itemSelected: $_itemSelected');
+    debugPrint('  selectedItem: ${selectedItem != null ? 'not null' : 'null'}');
 
+    // Ensure we're not in search mode
+    if (_searchState != SearchState.idle) {
+      debugPrint('Forcing search state to idle before item selection');
+      setState(() {
+        _searchState = SearchState.idle;
+      });
+    }
+
+    // Debug the raw item details
+    try {
+      debugPrint('Raw item details:');
+      debugPrint('  Type: ${item.runtimeType}');
+      debugPrint('  Keys: ${item.keys.join(', ')}');
+      item.forEach((key, value) {
+        debugPrint(
+            '  $key: ${value?.toString() ?? 'null'} (${value?.runtimeType ?? 'null'})');
+      });
+    } catch (e) {
+      debugPrint('Error debugging item: $e');
+    }
+
+    // Check for required fields
+    if (!item.containsKey('title') || !item.containsKey('artist')) {
+      debugPrint('WARNING: Item missing required fields (title or artist)');
+    }
+
+    // Extract item properties with null safety
     final id = item['id']?.toString() ?? '';
-    final title = item['title'] ?? 'Unknown';
-    final artist = item['artist'] ?? '';
-    final type = item['type']?.toString().toLowerCase() ?? '';
+    debugPrint('Extracted id: $id');
 
-    // Handle URL extraction for different result types
-    final String url = fromTopCharts
-        ? item['external_url'] ??
-            item['url'] ??
-            _constructUrl(source, type, id, title)
-        : item['url'] ?? _constructUrl(source, type, id, title);
+    final title = item['title']?.toString() ?? 'Unknown';
+    debugPrint('Extracted title: $title');
 
-    debugPrint(
-        "Computed values - source: $source, id: $id, title: $title, artist: $artist, type: $type");
+    final artist = item['artist']?.toString() ?? '';
+    debugPrint('Extracted artist: $artist');
 
+    final type = item['type']?.toString().toLowerCase() ?? 'track';
+    debugPrint('Extracted type: $type');
+
+    final url = item['url']?.toString() ?? '';
+    debugPrint('Extracted url: $url');
+
+    // Handle cover art URL extraction with fallbacks
+    String coverArtUrl = '';
+    if (item.containsKey('coverArtUrl') && item['coverArtUrl'] != null) {
+      coverArtUrl = item['coverArtUrl'].toString();
+    } else if (item.containsKey('cover_art_url') &&
+        item['cover_art_url'] != null) {
+      coverArtUrl = item['cover_art_url'].toString();
+    } else if (item.containsKey('artwork') && item['artwork'] != null) {
+      coverArtUrl = item['artwork'].toString();
+    }
+    debugPrint('Extracted coverArtUrl: $coverArtUrl');
+
+    // Create a new selected item map
+    final newSelectedItem = {
+      'id': id,
+      'title': title,
+      'artist': artist,
+      'type': type,
+      'url': url,
+      'coverArtUrl': coverArtUrl,
+    };
+    debugPrint('Created new selectedItem: $newSelectedItem');
+
+    // Update the state with the selected item
     setState(() {
+      selectedItem = newSelectedItem;
       _itemSelected = true;
-      isShowingSearchResults = false;
-      isLoadingCharts = false;
-      _isChartLoadRequested = false;
-      searchResults = null;
-      selectedItem = {
-        'title': title,
-        'artist': artist,
-        'type': type,
-        'source': source,
-        'url': url,
-        'coverArtUrl': item['coverArtUrl'] ??
-            item['artwork']?['url']
-                ?.toString()
-                .replaceAll('{w}x{h}', '500x500'),
-        'heroTag': 'selected_${DateTime.now().millisecondsSinceEpoch}',
-      };
-      debugPrint("Final selectedItem: ${selectedItem.toString()}");
+      errorMessage = '';
+      pastedLinkSource = null; // Clear any pasted link source
+
+      // Set the search field text to the title
+      if (!linkCtr.text.contains('http')) {
+        linkCtr.text = title;
+      }
     });
-    linkCtr.clear();
-    _searchFocusNode.unfocus();
+
+    debugPrint('Updated state: selectedItem set, _itemSelected=true');
+
+    // Force a rebuild to ensure UI updates correctly
+    if (mounted) {
+      Future.microtask(() {
+        setState(() {});
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine if search results should be shown - always show during searching or loading
-    // But never show if an item is selected
-    final bool shouldShowResults = selectedItem == null &&
-        (isShowingSearchResults || isSearching || isLoadingCharts || isLoading);
+    debugPrint('==================================================');
+    debugPrint('BUILDING ADD MUSIC PAGE');
+    debugPrint('==================================================');
 
-    // Load top charts on the main page if needed.
-    if (selectedItem == null &&
-        !_itemSelected &&
-        !shouldShowResults &&
-        searchResults == null &&
-        !isLoadingCharts &&
-        !_isChartLoadRequested) {
+    // Debug current state
+    debugPrint('Current state during build:');
+    debugPrint('  isShowingSearchResults: $isShowingSearchResults');
+    debugPrint('  isSearching: $isSearching');
+    debugPrint('  isLoadingCharts: $isLoadingCharts');
+    debugPrint('  isLoading: $isLoading');
+    debugPrint('  selectedItem: ${selectedItem != null ? 'not null' : 'null'}');
+    debugPrint('  _searchState: $_searchState');
+
+    // Debug searchResults structure if available
+    if (searchResults != null) {
+      debugPrint('searchResults structure:');
+      debugPrint('  Type: ${searchResults.runtimeType}');
+
+      if (searchResults is Map<String, dynamic>) {
+        final map = searchResults as Map<String, dynamic>;
+        debugPrint('  Keys: ${map.keys.join(', ')}');
+
+        if (map.containsKey('results')) {
+          final results = map['results'];
+          if (results is List) {
+            debugPrint('  Number of results: ${results.length}');
+          } else {
+            debugPrint('  "results" is not a List: ${results.runtimeType}');
+          }
+        }
+      }
+    } else {
+      debugPrint('searchResults is null');
+    }
+
+    // Determine if search results should be shown
+    // 1. Never show if an item is selected
+    // 2. Show during searching, loading, or when explicitly requested
+    final bool shouldShowResults =
+        selectedItem == null && _searchState != SearchState.idle;
+
+    // Ensure search results are hidden when an item is selected
+    if (selectedItem != null && _searchState != SearchState.idle) {
+      debugPrint(
+          'Item selected but search results still showing - fixing this');
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showTopChartsOnMainPage();
+        if (mounted) {
+          setState(() {
+            _searchState = SearchState.idle;
+          });
+        }
       });
     }
 
-    // Debug print to check visibility conditions
     debugPrint('shouldShowResults: $shouldShowResults');
-    debugPrint('selectedItem: $selectedItem');
-    debugPrint('isShowingSearchResults: $isShowingSearchResults');
-    debugPrint('isSearching: $isSearching');
-    debugPrint('isLoadingCharts: $isLoadingCharts');
-    debugPrint('isLoading: $isLoading');
 
     return AppScaffold(
       showGraphics: true,
@@ -452,80 +749,36 @@ class _AddMusicPageState extends State<AddMusicPage> {
                                 controller: linkCtr,
                                 focusNode: _searchFocusNode,
                                 isLoading: isLoading || isSearching,
-                                onTap: _showSearchUI,
+                                onTap: () {
+                                  debugPrint('Search bar tapped on main page');
+                                  _showSearchUI();
+                                },
                                 onPaste: (value) {
-                                  // Handle paste events for music links
-                                  final linkLower = value.toLowerCase();
-                                  final isSupported = linkLower
-                                          .contains('spotify.com') ||
-                                      linkLower.contains('apple.com/music') ||
-                                      linkLower.contains('music.apple.com') ||
-                                      linkLower.contains('deezer.com');
-
-                                  if (isSupported && !isLoading && mounted) {
-                                    // Determine the source of the link
-                                    String source = 'unknown';
-                                    if (linkLower.contains('spotify.com')) {
-                                      source = 'Spotify';
-                                    } else if (linkLower
-                                            .contains('apple.com/music') ||
-                                        linkLower.contains('music.apple.com')) {
-                                      source = 'Music';
-                                    } else if (linkLower
-                                        .contains('deezer.com')) {
-                                      source = 'Deezer';
-                                    }
-
-                                    setState(() {
-                                      isShowingSearchResults = false;
-                                      searchResults = null;
-                                      selectedItem = null;
-                                      pastedLinkSource = source;
-                                      errorMessage = '';
-                                    });
-                                  }
+                                  debugPrint(
+                                      'Paste detected on main page: $value');
+                                  _handleUrlPaste(value);
                                 },
                                 onSearch: (query) {
+                                  debugPrint(
+                                      'Search triggered on main page with query: $query');
                                   // Never initiate a new search if one is already in progress
                                   if (!isLoading && !isSearching) {
-                                    _handleSearch(query);
+                                    _performSearch(query);
+                                  } else {
+                                    debugPrint(
+                                        'Search ignored - already in progress');
                                   }
                                 },
                                 textInputAction: TextInputAction.search,
-                                onSubmitted: (_) {
+                                onSubmitted: (value) {
+                                  debugPrint(
+                                      'Search submitted on main page with value: $value');
                                   // When user hits enter/done, perform search if there's text
-                                  if (linkCtr.text.isNotEmpty) {
-                                    final linkLower =
-                                        linkCtr.text.toLowerCase();
-                                    final isSupported = linkLower
-                                            .contains('spotify.com') ||
-                                        linkLower.contains('apple.com/music') ||
-                                        linkLower.contains('music.apple.com') ||
-                                        linkLower.contains('deezer.com');
-
-                                    if (isSupported) {
-                                      // Just update the pasted link source
-                                      String source = 'unknown';
-                                      if (linkLower.contains('spotify.com')) {
-                                        source = 'Spotify';
-                                      } else if (linkLower
-                                              .contains('apple.com/music') ||
-                                          linkLower
-                                              .contains('music.apple.com')) {
-                                        source = 'Music';
-                                      } else if (linkLower
-                                          .contains('deezer.com')) {
-                                        source = 'Deezer';
-                                      }
-
-                                      setState(() {
-                                        selectedItem = null;
-                                        pastedLinkSource = source;
-                                        isShowingSearchResults = false;
-                                        errorMessage = '';
-                                      });
+                                  if (value.isNotEmpty) {
+                                    if (_isValidMusicUrl(value)) {
+                                      _handleUrlPaste(value);
                                     } else {
-                                      _handleSearch(linkCtr.text);
+                                      _performSearch(value);
                                     }
                                   }
                                 },
@@ -563,21 +816,12 @@ class _AddMusicPageState extends State<AddMusicPage> {
                                 AnimatedPrimaryButton(
                                   text: isLoading ? "Converting..." : "Convert",
                                   onTap: () {
-                                    // Debug prints
-                                    debugPrint('Convert button tapped');
-                                    debugPrint('isLoading: $isLoading');
-                                    debugPrint('selectedItem: $selectedItem');
-                                    debugPrint('linkCtr.text: ${linkCtr.text}');
-
                                     // Skip the action if loading
                                     if (isLoading) return;
 
                                     Future.delayed(
                                       const Duration(milliseconds: 180),
                                       () {
-                                        // Debug prints inside delayed callback
-                                        debugPrint('Inside delayed callback');
-
                                         // Check if we have a selected item or a link in the text field
                                         if (selectedItem != null) {
                                           debugPrint(
@@ -642,10 +886,15 @@ class _AddMusicPageState extends State<AddMusicPage> {
             ],
           ),
 
-          // Search overlay
+          // Search overlay - use Material for proper rendering and Positioned.fill to cover the entire screen
           if (shouldShowResults)
             Positioned.fill(
-              child: _buildSearchOverlay(),
+              child: Material(
+                color: Colors.transparent,
+                elevation:
+                    8, // Add elevation to ensure it appears above other content
+                child: _buildSearchOverlay(),
+              ),
             ),
         ],
       ),
@@ -653,6 +902,7 @@ class _AddMusicPageState extends State<AddMusicPage> {
   }
 
   Widget profileTopView() {
+    debugPrint('Building profile top view');
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -672,10 +922,25 @@ class _AddMusicPageState extends State<AddMusicPage> {
   }
 
   Widget _buildSearchOverlay() {
+    debugPrint('==================================================');
+    debugPrint('BUILDING SEARCH OVERLAY');
+    debugPrint('==================================================');
+
+    // Debug current state
+    debugPrint('Current state in search overlay:');
+    debugPrint('  isShowingSearchResults: $isShowingSearchResults');
+    debugPrint('  isSearching: $isSearching');
+    debugPrint('  isLoadingCharts: $isLoadingCharts');
+    debugPrint('  isLoading: $isLoading');
+    debugPrint('  selectedItem: ${selectedItem != null ? 'not null' : 'null'}');
+
     // Don't show search overlay if an item is selected and we're not loading/searching
     if (selectedItem != null) {
+      debugPrint('Search overlay not shown: selectedItem is not null');
       return const SizedBox.shrink();
     }
+
+    debugPrint('Building search overlay UI');
 
     // Create a background that covers the entire screen with the app's tan background color
     return AnimatedOpacity(
@@ -702,8 +967,9 @@ class _AddMusicPageState extends State<AddMusicPage> {
                             color: Colors.white,
                           ),
                           onPressed: () {
+                            debugPrint('Back button pressed in search overlay');
                             setState(() {
-                              isShowingSearchResults = false;
+                              _searchState = SearchState.idle;
                             });
                             _searchFocusNode.unfocus();
                           },
@@ -724,75 +990,34 @@ class _AddMusicPageState extends State<AddMusicPage> {
                       controller: linkCtr,
                       focusNode: _searchFocusNode,
                       isLoading: isLoading || isSearching,
-                      onTap: _showSearchUI,
+                      onTap: () {
+                        debugPrint('Search bar tapped in overlay');
+                        // No need to call _showSearchUI() here since we're already in the search UI
+                      },
                       height: 50,
                       height2: 46,
                       onPaste: (value) {
-                        // Handle paste events for music links
-                        final linkLower = value.toLowerCase();
-                        final isSupported = linkLower.contains('spotify.com') ||
-                            linkLower.contains('apple.com/music') ||
-                            linkLower.contains('music.apple.com') ||
-                            linkLower.contains('deezer.com');
-
-                        if (isSupported && !isLoading && mounted) {
-                          // Determine the source of the link
-                          String source = 'unknown';
-                          if (linkLower.contains('spotify.com')) {
-                            source = 'Spotify';
-                          } else if (linkLower.contains('apple.com/music') ||
-                              linkLower.contains('music.apple.com')) {
-                            source = 'Music';
-                          } else if (linkLower.contains('deezer.com')) {
-                            source = 'Deezer';
-                          }
-
-                          setState(() {
-                            isShowingSearchResults = false;
-                            searchResults = null;
-                            selectedItem = null;
-                            pastedLinkSource = source;
-                            errorMessage = '';
-                          });
-                        }
+                        debugPrint('Paste detected in search bar: $value');
+                        _handleUrlPaste(value);
                       },
                       onSearch: (query) {
+                        debugPrint('Search triggered with query: $query');
                         // Never initiate a new search if one is already in progress
                         if (!isLoading && !isSearching) {
-                          _handleSearch(query);
+                          _performSearch(query);
+                        } else {
+                          debugPrint('Search ignored - already in progress');
                         }
                       },
                       textInputAction: TextInputAction.search,
-                      onSubmitted: (_) {
+                      onSubmitted: (value) {
+                        debugPrint('Search submitted with value: $value');
                         // When user hits enter/done, perform search if there's text
-                        if (linkCtr.text.isNotEmpty) {
-                          final linkLower = linkCtr.text.toLowerCase();
-                          final isSupported =
-                              linkLower.contains('spotify.com') ||
-                                  linkLower.contains('apple.com/music') ||
-                                  linkLower.contains('music.apple.com') ||
-                                  linkLower.contains('deezer.com');
-
-                          if (isSupported) {
-                            // Just update the pasted link source
-                            String source = 'unknown';
-                            if (linkLower.contains('spotify.com')) {
-                              source = 'Spotify';
-                            } else if (linkLower.contains('apple.com/music') ||
-                                linkLower.contains('music.apple.com')) {
-                              source = 'Music';
-                            } else if (linkLower.contains('deezer.com')) {
-                              source = 'Deezer';
-                            }
-
-                            setState(() {
-                              selectedItem = null;
-                              pastedLinkSource = source;
-                              isShowingSearchResults = false;
-                              errorMessage = '';
-                            });
+                        if (value.isNotEmpty) {
+                          if (_isValidMusicUrl(value)) {
+                            _handleUrlPaste(value);
                           } else {
-                            _handleSearch(linkCtr.text);
+                            _performSearch(value);
                           }
                         }
                       },
@@ -813,8 +1038,22 @@ class _AddMusicPageState extends State<AddMusicPage> {
   }
 
   Widget _buildSearchResultsContent() {
-    // Show loading indicator while loading charts or searching
-    if (isLoadingCharts || isSearching) {
+    debugPrint('==================================================');
+    debugPrint('BUILDING SEARCH RESULTS CONTENT');
+    debugPrint('==================================================');
+
+    // Debug current state
+    debugPrint('Current state in search results content:');
+    debugPrint('  isShowingSearchResults: $isShowingSearchResults');
+    debugPrint('  isSearching: $isSearching');
+    debugPrint('  isLoadingCharts: $isLoadingCharts');
+    debugPrint('  isLoading: $isLoading');
+    debugPrint('  searchResults type: ${searchResults?.runtimeType}');
+
+    // Show loading indicator while loading or searching
+    if (isLoading || isSearching) {
+      debugPrint(
+          'Showing loading indicator: isLoading=$isLoading, isSearching=$isSearching');
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -828,11 +1067,7 @@ class _AddMusicPageState extends State<AddMusicPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                isLoadingCharts
-                    ? 'Loading top charts...'
-                    : isSearching
-                        ? 'Searching...'
-                        : 'Loading...',
+                isSearching ? 'Searching...' : 'Loading top charts...',
                 style: AppStyles.itemDesTs.copyWith(
                   fontSize: 16,
                   color: AppColors.textPrimary, // Dark text on tan background
@@ -846,10 +1081,13 @@ class _AddMusicPageState extends State<AddMusicPage> {
 
     // If searchResults is null, schedule loading top charts
     if (searchResults == null) {
+      debugPrint('searchResults is null, scheduling chart loading');
       // Schedule the loading after the build phase
-      if (!isLoadingCharts && !_isChartLoadRequested) {
+      if (!isLoading && !_isChartLoadRequested) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && !isLoadingCharts && searchResults == null) {
+          if (mounted && !isLoading && searchResults == null) {
+            debugPrint(
+                'Initiating top charts loading from post-frame callback');
             _loadTopCharts();
           }
         });
@@ -866,15 +1104,78 @@ class _AddMusicPageState extends State<AddMusicPage> {
       );
     }
 
-    // Ensure we have a valid results list
-    final results = searchResults!['results'] as List<dynamic>? ?? [];
+    debugPrint('searchResults is not null, analyzing structure:');
+    debugPrint('  searchResults type: ${searchResults.runtimeType}');
+    if (searchResults is Map) {
+      debugPrint(
+          '  searchResults keys: ${(searchResults as Map).keys.toList()}');
+    }
+
+    // Extract results data with careful handling of different formats
+    List<dynamic> results = [];
+
+    // Try to extract results from the standard format
+    if (searchResults!.containsKey('results') &&
+        searchResults!['results'] is List) {
+      results = searchResults!['results'] as List<dynamic>;
+      debugPrint(
+          'Extracted results from searchResults["results"] - count: ${results.length}');
+    }
+    // Fallback for direct list in searchResults
+    else if (searchResults is List) {
+      results = searchResults as List<dynamic>;
+      debugPrint(
+          'Extracted results directly from searchResults as List - count: ${results.length}');
+    }
+    // Fallback if searchResults itself is a single result item
+    else if (searchResults is Map &&
+        searchResults!.containsKey('title') &&
+        searchResults!.containsKey('artist')) {
+      results = [searchResults!];
+      debugPrint('Created results list from single item in searchResults');
+    } else {
+      debugPrint(
+          'WARNING: Could not extract results from searchResults: ${searchResults.runtimeType}');
+      // Last resort - try to convert the entire object to a list
+      try {
+        final jsonStr = json.encode(searchResults);
+        debugPrint(
+            'Converting searchResults via JSON: ${jsonStr.substring(0, min(100, jsonStr.length))}...');
+
+        final decoded = json.decode(jsonStr);
+        if (decoded is List) {
+          results = decoded;
+          debugPrint(
+              'Converted searchResults to List via JSON encoding/decoding - count: ${results.length}');
+        } else if (decoded is Map &&
+            decoded.containsKey('results') &&
+            decoded['results'] is List) {
+          results = decoded['results'];
+          debugPrint(
+              'Extracted results from JSON decoded searchResults - count: ${results.length}');
+        }
+      } catch (e) {
+        debugPrint('Error converting searchResults: $e');
+      }
+    }
+
+    debugPrint('Got ${results.length} search results');
 
     // Print the first result for debugging
     if (results.isNotEmpty) {
       debugPrint('First result: ${results.first}');
+      if (results.first is Map) {
+        final firstItem = results.first as Map;
+        debugPrint('First result keys: ${firstItem.keys.toList()}');
+        firstItem.forEach((key, value) {
+          debugPrint(
+              '  $key: ${value?.toString() ?? 'null'} (${value?.runtimeType ?? 'null'})');
+        });
+      }
     }
 
     if (results.isEmpty) {
+      debugPrint('No results found');
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -911,6 +1212,7 @@ class _AddMusicPageState extends State<AddMusicPage> {
 
     // Header for results
     final headerText = linkCtr.text.isEmpty ? "Top Charts" : "Search Results";
+    debugPrint('Rendering $headerText list with ${results.length} items');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -960,6 +1262,10 @@ class _AddMusicPageState extends State<AddMusicPage> {
             addSemanticIndexes: false,
             itemBuilder: (context, index) {
               final item = results[index];
+
+              // Debug each item as we render it
+              debugPrint('Rendering item $index: ${item['title']}');
+
               final type = item['type']?.toString().toLowerCase() ?? '';
 
               // Get appropriate icon based on content type
@@ -985,12 +1291,38 @@ class _AddMusicPageState extends State<AddMusicPage> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    // Log the tap event from main page top charts.
-                    debugPrint(
-                        "Item tapped from main page top charts for item: ${item.toString()}");
-                    // Always treat these results as top charts.
-                    _handleItemSelection(item, fromTopCharts: true);
+                    // Add extensive debugging for item selection
+                    debugPrint('==========================================');
+                    debugPrint('ITEM TAPPED IN SEARCH RESULTS');
+                    debugPrint('Item index: $index');
+                    debugPrint('Item title: ${item['title']}');
+                    debugPrint('Item type: ${item['type']}');
+                    debugPrint('Item artist: ${item['artist']}');
+                    debugPrint('Item id: ${item['id']}');
+                    debugPrint('Item url: ${item['url']}');
+                    debugPrint('Item coverArtUrl: ${item['coverArtUrl']}');
+                    debugPrint('Item keys: ${item.keys.toList()}');
+                    debugPrint('Item raw: $item');
+                    debugPrint('==========================================');
+
+                    // First close the search UI immediately for better UX
+                    setState(() {
+                      _searchState = SearchState.idle;
+                    });
+
+                    // Then handle the item selection after a short delay
+                    // This ensures the UI updates properly
+                    Future.delayed(const Duration(milliseconds: 50), () {
+                      if (mounted) {
+                        _handleItemSelection(item);
+                      }
+                    });
                   },
+                  // Add splash color for better tap feedback
+                  splashColor:
+                      AppColors.animatedBtnColorConvertTop.withOpacity(0.1),
+                  highlightColor:
+                      AppColors.animatedBtnColorConvertTop.withOpacity(0.05),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin:
@@ -1142,7 +1474,6 @@ class _AddMusicPageState extends State<AddMusicPage> {
     );
   }
 
-  // Widget to display selected item or pasted link information
   Widget _buildSelectedItemInfo() {
     if (selectedItem != null) {
       // Display selected item info
@@ -1426,311 +1757,6 @@ class _AddMusicPageState extends State<AddMusicPage> {
 
     // Return empty container if no item is selected and no link is pasted
     return const SizedBox.shrink();
-  }
-
-  // Widget to display top charts on the main page
-  Widget _buildMainPageTopCharts() {
-    return SizedBox(
-      height: 350, // Fixed total height
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 0, vertical: 12),
-            child: Text(
-              "Top Charts",
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _buildMainPageChartsList(maxItems: 5),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Widget to display top charts list on the main page
-  Widget _buildMainPageChartsList({int? maxItems}) {
-    // Show loading indicator while loading charts
-    if (isLoadingCharts) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppColors.textPrimary, // Dark spinner on tan background
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Loading top charts...',
-                style: AppStyles.itemDesTs.copyWith(
-                  fontSize: 16,
-                  color: AppColors.textPrimary, // Dark text on tan background
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // If searchResults is null, schedule loading top charts
-    if (searchResults == null) {
-      // Schedule the loading after the build phase
-      if (!isLoadingCharts && !_isChartLoadRequested) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && !isLoadingCharts && searchResults == null) {
-            _loadTopCharts();
-          }
-        });
-      }
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(
-              AppColors.textPrimary, // Dark spinner on tan background
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Ensure we have a valid results list
-    final results = searchResults!['results'] as List<dynamic>? ?? [];
-
-    if (results.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.search_off,
-                color: AppColors.textPrimary,
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'No results found',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Try a different search term',
-                style: TextStyle(
-                  color: AppColors.textPrimary.withOpacity(0.7),
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Limit the number of items if maxItems is specified
-    final displayResults = maxItems != null && maxItems < results.length
-        ? results.sublist(0, maxItems)
-        : results;
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      itemCount: displayResults.length,
-      physics: const AlwaysScrollableScrollPhysics(),
-      addAutomaticKeepAlives: false,
-      addRepaintBoundaries: true,
-      addSemanticIndexes: false,
-      itemBuilder: (context, index) {
-        final item = displayResults[index];
-        final type = item['type']?.toString().toLowerCase() ?? '';
-
-        // Get appropriate icon based on content type
-        IconData typeIcon;
-        switch (type) {
-          case 'track':
-            typeIcon = Icons.music_note;
-            break;
-          case 'album':
-            typeIcon = Icons.album;
-            break;
-          case 'artist':
-            typeIcon = Icons.person;
-            break;
-          case 'playlist':
-            typeIcon = Icons.queue_music;
-            break;
-          default:
-            typeIcon = Icons.music_note;
-        }
-
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              // Log the tap event from main page top charts.
-              debugPrint(
-                  "Item tapped from main page top charts for item: ${item.toString()}");
-              // Always treat these results as top charts.
-              _handleItemSelection(item, fromTopCharts: true);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    // Cover art with nice shadow
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: item['coverArtUrl'] != null
-                            ? Image.network(
-                                item['coverArtUrl'],
-                                width: 64,
-                                height: 64,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  // Fallback if image fails to load
-                                  return Container(
-                                    width: 64,
-                                    height: 64,
-                                    color: Colors.grey[200],
-                                    child: Icon(
-                                      typeIcon,
-                                      color: AppColors.textPrimary,
-                                      size: 30,
-                                    ),
-                                  );
-                                },
-                              )
-                            : Container(
-                                width: 64,
-                                height: 64,
-                                color: Colors.grey[200],
-                                child: Icon(
-                                  typeIcon,
-                                  color: AppColors.textPrimary,
-                                  size: 30,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['title'] ?? 'Unknown',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item['artist'] ?? '',
-                            style: TextStyle(
-                              color: AppColors.textPrimary.withOpacity(0.7),
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 6),
-                          // Type badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.animatedBtnColorConvertTop
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: AppColors.animatedBtnColorConvertTop
-                                    .withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  typeIcon,
-                                  size: 12,
-                                  color: AppColors.textPrimary,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  type.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 16,
-                      color: AppColors.textPrimary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   String _constructUrl(String source, String type, String id, String title) {
