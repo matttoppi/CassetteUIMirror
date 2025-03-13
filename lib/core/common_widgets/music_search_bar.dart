@@ -15,6 +15,7 @@ class MusicSearchBar extends StatefulWidget {
   final TextInputAction? textInputAction;
   final Function(String)? onSubmitted;
   final bool isLoading;
+  final VoidCallback? onTap;
 
   const MusicSearchBar({
     super.key,
@@ -28,6 +29,7 @@ class MusicSearchBar extends StatefulWidget {
     this.textInputAction,
     this.onSubmitted,
     this.isLoading = false,
+    this.onTap,
   });
 
   @override
@@ -87,6 +89,7 @@ class _MusicSearchBarState extends State<MusicSearchBar> {
       width: MediaQuery.of(context).size.width - 32,
       child: Stack(
         children: [
+          // Shadow container
           Positioned(
             bottom: 0,
             right: 0,
@@ -99,86 +102,98 @@ class _MusicSearchBarState extends State<MusicSearchBar> {
               ),
             ),
           ),
-          Container(
-            height: widget.height2 ?? 50,
-            width: MediaQuery.of(context).size.width - 36,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(
-                color: AppColors.textPrimary,
-                width: 1,
+          // Main container with GestureDetector
+          GestureDetector(
+            onTap: () {
+              // When tapped, request focus on the text field
+              widget.focusNode?.requestFocus();
+              // Call the onTap callback if provided
+              if (widget.onTap != null) {
+                widget.onTap!();
+              }
+            },
+            child: Container(
+              height: widget.height2 ?? 50,
+              width: MediaQuery.of(context).size.width - 36,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(
+                  color: AppColors.textPrimary,
+                  width: 1,
+                ),
+                borderRadius: const BorderRadius.all(Radius.circular(8)),
               ),
-              borderRadius: const BorderRadius.all(Radius.circular(8)),
-            ),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.text,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: widget.controller,
-                        focusNode: widget.focusNode,
-                        textInputAction: widget.textInputAction,
-                        onSubmitted: (value) {
-                          // Only unfocus if there's an onSubmitted handler
-                          if (widget.onSubmitted != null) {
-                            // Let the parent decide whether to unfocus
-                            widget.onSubmitted!(value);
-                          }
-                        },
-                        // Ensure keyboard shows on mobile devices
-                        keyboardType: TextInputType.text,
-                        decoration: InputDecoration(
-                          hintText: widget.hint,
-                          hintStyle: AppStyles.textFieldHintTextStyle,
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        style: AppStyles.textFieldHintTextStyle.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                        enableInteractiveSelection: true,
-                        mouseCursor: WidgetStateMouseCursor.textable,
-                        contextMenuBuilder: (context, editableTextState) {
-                          if (SystemContextMenu.isSupported(context)) {
-                            return SystemContextMenu.editableText(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.text,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: widget.controller,
+                          focusNode: widget.focusNode,
+                          textInputAction: widget.textInputAction,
+                          onTap: widget.onTap,
+                          onSubmitted: (value) {
+                            // Only unfocus if there's an onSubmitted handler
+                            if (widget.onSubmitted != null) {
+                              // Let the parent decide whether to unfocus
+                              widget.onSubmitted!(value);
+                            }
+                          },
+                          // Ensure keyboard shows on mobile devices
+                          keyboardType: TextInputType.text,
+                          decoration: InputDecoration(
+                            hintText: widget.hint,
+                            hintStyle: AppStyles.textFieldHintTextStyle,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          style: AppStyles.textFieldHintTextStyle.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                          enableInteractiveSelection: true,
+                          mouseCursor: WidgetStateMouseCursor.textable,
+                          contextMenuBuilder: (context, editableTextState) {
+                            if (SystemContextMenu.isSupported(context)) {
+                              return SystemContextMenu.editableText(
+                                editableTextState: editableTextState,
+                              );
+                            }
+                            return AdaptiveTextSelectionToolbar.editableText(
                               editableTextState: editableTextState,
                             );
-                          }
-                          return AdaptiveTextSelectionToolbar.editableText(
-                            editableTextState: editableTextState,
-                          );
-                        },
-                        onChanged: (value) => _onTextChanged(),
-                      ),
-                    ),
-                    if (_hasContent)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.clear,
-                          color: AppColors.textPrimary,
-                          size: 20,
+                          },
+                          onChanged: (value) => _onTextChanged(),
                         ),
-                        onPressed: _clearText,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
                       ),
-                    // Show loading indicator when in loading state
-                    if (widget.isLoading)
-                      Container(
-                        margin: const EdgeInsets.only(left: 8),
-                        width: 20,
-                        height: 20,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.animatedBtnColorConvertTop,
+                      if (_hasContent)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.clear,
+                            color: AppColors.textPrimary,
+                            size: 20,
+                          ),
+                          onPressed: _clearText,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      // Show loading indicator when in loading state
+                      if (widget.isLoading)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          width: 20,
+                          height: 20,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.animatedBtnColorConvertTop,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -39,3 +39,4 @@ flutter/
 # Allow Vercel configuration files
 !vercel.json
 !build.sh
+.qodo
