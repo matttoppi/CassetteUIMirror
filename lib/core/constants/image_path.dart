@@ -1,7 +1,6 @@
 const basePath = "lib/assets/images";
 const appLogo = '$basePath/app_logo.png';
 const appLogoText = '$basePath/app_logo_text.png';
-const appLogoTextHiRes = '$basePath/cassette_name_logo.png';
 const appLogoTextSmall = '$basePath/app_logo_text_small.png';
 const homeGraphics = '$basePath/home_graphics.png';
 const bgRedBlue = '$basePath/bg_red_blue.png';

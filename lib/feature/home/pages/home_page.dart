@@ -1107,18 +1107,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final devicePixelRatio =
         mediaQuery?.devicePixelRatio ?? 1.0; // Get device pixel ratio
 
-    // Use percentage-based padding for different screen sizes
+    // Use consistent padding across all screen sizes
     final horizontalPadding =
-        screenWidth < 400 ? screenWidth * 0.04 : screenWidth * 0.05;
+        screenWidth * 0.04; // 4% of screen width for all sizes
 
-    // On web, we need to account for different viewport sizes
-    final maxWidth = kIsWeb
-        ? (screenWidth > 800 ? 500.0 : screenWidth * 0.85)
-        : screenWidth * 0.9;
+    // Use a consistent width approach for all platforms
+    // Remove conditional sizing to ensure consistent appearance
+    final maxWidth = screenWidth * 0.9; // 90% of screen width for all platforms
 
     // Calculate appropriate cache height based on device pixel ratio
     // Higher value for high-density displays to ensure crisp rendering
-    final int cacheHeight = (300 * devicePixelRatio).round();
+    final int cacheHeight =
+        (350 * devicePixelRatio).round(); // Increased for better quality
 
     // Use RepaintBoundary for the logo which doesn't change often
     return RepaintBoundary(
@@ -1126,14 +1126,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            // Limit width on larger screens to prevent stretched look
+            // Use consistent width constraint
             maxWidth: maxWidth,
           ),
           child: Image.asset(
-            // Always use the full-sized app_logo_text.png
             appLogoText,
-            fit: BoxFit.contain,
-            // Use device pixel ratio to determine appropriate cache size
+            fit: BoxFit.fitWidth, // Changed to fitWidth for consistent sizing
+            width: maxWidth, // Explicitly set width to ensure consistency
             cacheHeight: cacheHeight,
           ),
         ),
@@ -1831,7 +1830,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final devicePixelRatio =
         MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
 
-    // Always use the full-sized app_logo_text.png
+    // IMPORTANT: Always prioritize loading the main app_logo_text.png for consistent branding
+    // This is the primary graphic used on the homepage across all screen sizes
     precacheImage(const AssetImage(appLogoText), context);
 
     // Always preload these common assets
