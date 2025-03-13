@@ -272,37 +272,39 @@ class AppStyles {
   }
 
   // PROFILE PAGE STYLES ----------------------------
-  // Styles for the profile page components
+  // Updated styles for the profile page components
 
   static const TextStyle profileNameStyle = TextStyle(
     color: Colors.white,
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: 'Roboto',
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.5,
   );
 
   static const TextStyle profileUsernameStyle = TextStyle(
     color: Color(0xCCB4B4B4),
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Teko',
-    fontWeight: FontWeight.w400,
-    letterSpacing: 1.26,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 1.0,
   );
 
   static const TextStyle profileBioStyle = TextStyle(
     color: Colors.white,
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Roboto',
     fontWeight: FontWeight.w400,
     height: 1.4,
+    letterSpacing: 0.2,
   );
 
   static const TextStyle profileActionButtonTextStyle = TextStyle(
     color: Colors.white,
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Teko',
     fontWeight: FontWeight.w600,
-    letterSpacing: 1.12,
+    letterSpacing: 1.0,
   );
 
   static const TextStyle profileTabStyle = TextStyle(
@@ -743,101 +745,104 @@ class AppStyles {
   static TextStyle profileNameTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.colorWhite,
       fontSize: 22,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0.7);
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5);
 
   static TextStyle profileUserNameTs = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.colorWhite.withOpacity(0.54),
+      color: AppColors.colorWhite.withOpacity(0.8),
       fontSize: 16,
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0.7);
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5);
 
   static TextStyle profileBioTs = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.colorWhite.withOpacity(0.88),
-      fontSize: 14,
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0.7);
+      color: AppColors.colorWhite.withOpacity(0.95),
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      height: 1.3,
+      letterSpacing: 0.4);
 
   static TextStyle profileLinkTs = GoogleFonts.atkinsonHyperlegible(
-      color: AppColors.colorWhite.withOpacity(0.88),
+      color: AppColors.colorWhite.withOpacity(0.95),
       fontSize: 14,
       decoration: TextDecoration.underline,
-      decorationColor: AppColors.colorWhite.withOpacity(0.88),
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0.7);
+      decorationColor: AppColors.colorWhite.withOpacity(0.95),
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5);
 
   static TextStyle profileShareTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.colorWhite,
       fontSize: 15,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.7);
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5);
 
   static TextStyle profileAddMusicTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
       fontSize: 15,
       fontWeight: FontWeight.w700,
-      letterSpacing: 0.7);
+      letterSpacing: 0.5);
 
   static TextStyle profileTabTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.grayColor,
       fontSize: 18,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3);
+
   static TextStyle profileTabSelectedTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.colorWhite,
       fontSize: 18,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3);
 
   static TextStyle itemTypeTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.animatedBtnColorToolBarTop,
       fontSize: 14,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3);
 
   static TextStyle itemTitleTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
-      fontSize: 16,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+      fontSize: 17,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.2);
 
   static TextStyle itemRichTextTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.animatedBtnColorToolBarTop,
-      fontSize: 16,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2);
 
   static TextStyle itemRichText2Ts = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
       fontSize: 14,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2);
 
   static TextStyle itemDesTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
-      fontSize: 12,
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0);
+      fontSize: 13,
+      fontWeight: FontWeight.w400,
+      height: 1.3,
+      letterSpacing: 0.2);
 
   static TextStyle itemFromTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
       fontSize: 14,
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0);
+      fontWeight: FontWeight.w400,
+      letterSpacing: 0.1);
 
   static TextStyle itemSongDurationTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
       fontSize: 14,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 0);
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.1);
 
   static TextStyle itemUsernameTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.textPrimary,
-      fontSize: 16,
-      fontWeight: FontWeight.bold,
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
       decoration: TextDecoration.underline,
       decorationColor: AppColors.textPrimary,
-      letterSpacing: 0);
+      letterSpacing: 0.1);
 
   static TextStyle trackTrackTitleTs = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.colorWhite.withOpacity(0.78),
