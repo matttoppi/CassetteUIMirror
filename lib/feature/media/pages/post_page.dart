@@ -213,6 +213,9 @@ class _PostPageState extends State<PostPage> {
       }
     }
 
+    // Get postId from postData if available
+    final postId = widget.postData['postId'] as String?;
+
     return AppScaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -236,7 +239,11 @@ class _PostPageState extends State<PostPage> {
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(isLoggedIn: isLoggedIn),
+                child: TrackToolbar(
+                  isLoggedIn: isLoggedIn,
+                  postId: postId,
+                  pageType: elementType?.toLowerCase(),
+                ),
               ),
               const SizedBox(height: 50),
               if (isDesktop)

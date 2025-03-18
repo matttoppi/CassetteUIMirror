@@ -18,6 +18,7 @@ import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'dart:math' show max;
 import 'package:cassettefrontend/core/services/api_service.dart';
+import 'package:cassettefrontend/core/env.dart';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -382,7 +383,11 @@ class _EntityPageState extends State<EntityPage> {
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(isLoggedIn: isLoggedIn),
+                child: TrackToolbar(
+                  isLoggedIn: isLoggedIn,
+                  postId: widget.postId,
+                  pageType: widget.type,
+                ),
               ),
               const SizedBox(height: 24),
               // Use different layout based on screen size
@@ -1245,13 +1250,18 @@ class _EntityPageState extends State<EntityPage> {
   void _shareEntityPage() {
     if (widget.postId == null) return;
 
+    // Get the base URL from the current page when possible
+    final baseUrl =
+        Uri.base.toString().isNotEmpty ? Uri.base.origin : Env.appDomain;
+
     String shareUrl = '';
     if (widget.type == 'artist') {
-      shareUrl = '${Uri.base.origin}/artist/${widget.postId}';
+      shareUrl = '$baseUrl/artist/${widget.postId}';
     } else {
-      shareUrl = '${Uri.base.origin}/track/${widget.postId}';
+      shareUrl = '$baseUrl/track/${widget.postId}';
     }
 
+    print('Sharing URL: $shareUrl'); // Add debugging output
     AppUtils.onShare(context, shareUrl);
   }
 
@@ -1280,7 +1290,11 @@ class _EntityPageState extends State<EntityPage> {
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(isLoggedIn: isLoggedIn),
+                child: TrackToolbar(
+                  isLoggedIn: isLoggedIn,
+                  postId: widget.postId,
+                  pageType: widget.type,
+                ),
               ),
               const SizedBox(height: 50),
               if (isDesktop)

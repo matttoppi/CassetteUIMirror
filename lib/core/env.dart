@@ -8,8 +8,19 @@ class Env {
       const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
   static String get profileBucket =>
       kDebugMode ? 'profile_bucket' : 'profile-pictures';
-  static String get appDomain =>
-      kDebugMode ? 'https://localhost:56752' : 'https://cassetteinc.org';
+
+  // Updated to use localhost:3000 in debug mode
+  static String get appDomain {
+    if (kDebugMode) {
+      // Get base URL from window.location in web
+      if (Uri.base.toString().isNotEmpty) {
+        return Uri.base.origin;
+      }
+      // Default to localhost:3000 for development
+      return 'http://localhost:3000';
+    }
+    return 'https://cassetteinc.org';
+  }
 
   // Production values can be added as needed
   // static const prodSupabaseUrl = "...";

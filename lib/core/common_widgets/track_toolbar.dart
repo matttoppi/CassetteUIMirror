@@ -2,23 +2,69 @@ import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/storage/preference_helper.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
+import 'package:cassettefrontend/core/env.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class TrackToolbar extends StatefulWidget {
   bool? isLoggedIn;
-  TrackToolbar({super.key,this.isLoggedIn});
+  final String? postId;
+  final String? pageType;
+
+  TrackToolbar({
+    super.key,
+    this.isLoggedIn,
+    this.postId,
+    this.pageType,
+  });
 
   @override
   State<TrackToolbar> createState() => _TrackToolbarState();
 }
 
 class _TrackToolbarState extends State<TrackToolbar> {
-
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+  }
+
+  void _shareCurrentPage() {
+    if (widget.postId == null || widget.pageType == null) {
+      // Use the current origin if available for the base URL, otherwise fall back to Env.appDomain
+      final baseUrl =
+          Uri.base.toString().isNotEmpty ? Uri.base.origin : Env.appDomain;
+      AppUtils.onShare(context, baseUrl);
+      return;
+    }
+
+    // Get the base URL from the current page when possible
+    final baseUrl =
+        Uri.base.toString().isNotEmpty ? Uri.base.origin : Env.appDomain;
+
+    // Append appropriate path based on page type
+    String shareUrl = baseUrl;
+
+    switch (widget.pageType) {
+      case 'track':
+        shareUrl = '$baseUrl/track/${widget.postId}';
+        break;
+      case 'artist':
+        shareUrl = '$baseUrl/artist/${widget.postId}';
+        break;
+      case 'album':
+        shareUrl = '$baseUrl/album/${widget.postId}';
+        break;
+      case 'playlist':
+        shareUrl = '$baseUrl/playlist/${widget.postId}';
+        break;
+      default:
+        // Just share base domain if we don't have specific info
+        break;
+    }
+
+    print('Sharing URL: $shareUrl'); // Add debugging output
+    AppUtils.onShare(context, shareUrl);
   }
 
   @override
@@ -28,19 +74,19 @@ class _TrackToolbarState extends State<TrackToolbar> {
       children: [
         widget.isLoggedIn ?? false
             ? Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: GestureDetector(
-                onTap: (){
-                  context.go('/profile');
-                },
-                child: CircleAvatar(
+                padding: const EdgeInsets.only(left: 6),
+                child: GestureDetector(
+                  onTap: () {
+                    context.go('/profile');
+                  },
+                  child: CircleAvatar(
                     radius: 24.0,
                     backgroundImage:
                         NetworkImage(AppUtils.profileModel.profilePath ?? ''),
                     backgroundColor: Colors.transparent,
                   ),
-              ),
-            )
+                ),
+              )
             : IconButton(
                 onPressed: () {
                   context.go('/');
@@ -59,9 +105,7 @@ class _TrackToolbarState extends State<TrackToolbar> {
         )),
         const SizedBox(width: 4),
         IconButton(
-          onPressed: () async {
-            AppUtils.onShare(context, "https://femtopedia.de/shareplustest");
-          },
+          onPressed: () => _shareCurrentPage(),
           color: AppColors.colorWhite,
           icon: Image.asset(
             icShare,

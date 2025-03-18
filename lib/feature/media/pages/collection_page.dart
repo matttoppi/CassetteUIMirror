@@ -18,6 +18,7 @@ import 'package:intl/intl.dart';
 import 'package:cassettefrontend/core/services/track_service.dart';
 import 'dart:math' show max;
 import 'package:cassettefrontend/core/services/api_service.dart';
+import 'package:cassettefrontend/core/env.dart';
 
 /// Handles display of track collections (playlists and albums)
 /// Both types share similar UI as they are collections of tracks
@@ -335,13 +336,18 @@ class _CollectionPageState extends State<CollectionPage> {
   void _shareCollectionPage() {
     if (widget.postId == null) return;
 
+    // Get the base URL from the current page when possible
+    final baseUrl =
+        Uri.base.toString().isNotEmpty ? Uri.base.origin : Env.appDomain;
+
     String shareUrl = '';
     if (widget.type == 'album') {
-      shareUrl = '${Uri.base.origin}/album/${widget.postId}';
+      shareUrl = '$baseUrl/album/${widget.postId}';
     } else {
-      shareUrl = '${Uri.base.origin}/playlist/${widget.postId}';
+      shareUrl = '$baseUrl/playlist/${widget.postId}';
     }
 
+    print('Sharing URL: $shareUrl'); // Add debugging output
     AppUtils.onShare(context, shareUrl);
   }
 
@@ -363,30 +369,36 @@ class _CollectionPageState extends State<CollectionPage> {
     }
 
     return AppScaffold(
-      body: SingleChildScrollView(
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                dominateColor,
-                dominateColor.withOpacity(0.7),
-                dominateColor.withOpacity(0.4),
-                AppColors.appBg.withOpacity(0.6),
-                AppColors.appBg,
-              ],
-              // Extend gradient further down the page
-              stops: const [0.0, 0.1, 0.25, 0.5, 0.7],
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              dominateColor,
+              dominateColor.withOpacity(0.85),
+              dominateColor.withOpacity(0.6),
+              dominateColor.withOpacity(0.4),
+              dominateColor.withOpacity(0.25),
+              dominateColor.withOpacity(0.15),
+              AppColors.appBg.withOpacity(0.3),
+              AppColors.appBg,
+            ],
+            stops: const [0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.0],
           ),
+        ),
+        child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(isLoggedIn: isLoggedIn),
+                child: TrackToolbar(
+                  isLoggedIn: isLoggedIn,
+                  postId: widget.postId,
+                  pageType: widget.type,
+                ),
               ),
               const SizedBox(height: 24),
               // Use different layout based on screen size
@@ -1588,7 +1600,11 @@ class _CollectionPageState extends State<CollectionPage> {
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(isLoggedIn: isLoggedIn),
+                child: TrackToolbar(
+                  isLoggedIn: isLoggedIn,
+                  postId: widget.postId,
+                  pageType: widget.type,
+                ),
               ),
               const SizedBox(height: 50),
               if (isDesktop)
