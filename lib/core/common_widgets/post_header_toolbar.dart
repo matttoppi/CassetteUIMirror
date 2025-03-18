@@ -6,12 +6,13 @@ import 'package:cassettefrontend/core/env.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class TrackToolbar extends StatefulWidget {
+// Renamed from TrackToolbar to PostHeaderToolbar to better reflect its purpose
+class PostHeaderToolbar extends StatefulWidget {
   bool? isLoggedIn;
   final String? postId;
   final String? pageType;
 
-  TrackToolbar({
+  PostHeaderToolbar({
     super.key,
     this.isLoggedIn,
     this.postId,
@@ -19,10 +20,10 @@ class TrackToolbar extends StatefulWidget {
   });
 
   @override
-  State<TrackToolbar> createState() => _TrackToolbarState();
+  State<PostHeaderToolbar> createState() => _PostHeaderToolbarState();
 }
 
-class _TrackToolbarState extends State<TrackToolbar> {
+class _PostHeaderToolbarState extends State<PostHeaderToolbar> {
   @override
   void initState() {
     // TODO: implement initState

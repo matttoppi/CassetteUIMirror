@@ -1,6 +1,6 @@
 import 'package:cassettefrontend/core/common_widgets/animated_primary_button.dart';
 import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
-import 'package:cassettefrontend/core/common_widgets/track_toolbar.dart';
+import 'package:cassettefrontend/core/common_widgets/post_header_toolbar.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/storage/preference_helper.dart';
@@ -394,7 +394,7 @@ class _CollectionPageState extends State<CollectionPage> {
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(
+                child: PostHeaderToolbar(
                   isLoggedIn: isLoggedIn,
                   postId: widget.postId,
                   pageType: widget.type,
@@ -1600,7 +1600,7 @@ class _CollectionPageState extends State<CollectionPage> {
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(
+                child: PostHeaderToolbar(
                   isLoggedIn: isLoggedIn,
                   postId: widget.postId,
                   pageType: widget.type,

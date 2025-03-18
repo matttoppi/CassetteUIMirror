@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
-import 'package:cassettefrontend/core/common_widgets/track_toolbar.dart';
+import 'package:cassettefrontend/core/common_widgets/post_header_toolbar.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/storage/preference_helper.dart';
 
@@ -239,7 +239,7 @@ class _PostPageState extends State<PostPage> {
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TrackToolbar(
+                child: PostHeaderToolbar(
                   isLoggedIn: isLoggedIn,
                   postId: postId,
                   pageType: elementType?.toLowerCase(),
