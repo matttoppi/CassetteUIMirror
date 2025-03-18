@@ -17,6 +17,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'dart:math' show max;
+import 'package:cassettefrontend/core/services/api_service.dart';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -59,6 +60,10 @@ class _EntityPageState extends State<EntityPage> {
   bool hasPreview = false;
   bool isLoadingAudio = false;
   StreamSubscription<PlayerState>? _playerStateSubscription;
+  // Add a property to track loading errors
+  bool _loadError = false;
+  // Add loading state tracking
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -78,6 +83,15 @@ class _EntityPageState extends State<EntityPage> {
     print('EntityPage postData: ${widget.postData}');
 
     isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
+
+    // Check if we need to load data based on postId
+    if (widget.postId != null &&
+        widget.postData == null &&
+        widget.trackId == null) {
+      print('Loading data for postId: ${widget.postId}');
+      setState(() => _isLoading = true);
+      _loadPostDataByPostId(widget.postId!);
+    }
 
     // Initialize data from postData if available
     if (widget.postData != null) {
@@ -328,6 +342,18 @@ class _EntityPageState extends State<EntityPage> {
   Widget build(BuildContext context) {
     // Check if we're on a desktop-sized screen (width > 900px)
     final isDesktop = MediaQuery.of(context).size.width > 900;
+
+    // Show loading skeleton while data is loading
+    if (_isLoading) {
+      return _buildLoadingSkeleton(isDesktop);
+    }
+
+    // Show retry widget if there was an error loading data
+    if (_loadError && widget.postId != null) {
+      return AppScaffold(
+        body: _buildRetryWidget(),
+      );
+    }
 
     return AppScaffold(
       body: Container(
@@ -1072,6 +1098,331 @@ class _EntityPageState extends State<EntityPage> {
             side: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
+      ),
+    );
+  }
+
+  // Add new method to load data by postId if necessary
+  Future<void> _loadPostDataByPostId(String postId) async {
+    try {
+      print('Loading data by postId: $postId');
+
+      setState(() {
+        // Show loading state
+        _isLoading = true;
+        name = 'Loading...';
+        artistName = '';
+        imageUrl = '';
+      });
+
+      final apiService = ApiService();
+      final data = await apiService.fetchPostById(postId);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          // Determine element type if not already set
+          String? elementType = widget.type;
+          if (elementType == null && data['elementType'] != null) {
+            elementType = (data['elementType'] as String).toLowerCase();
+            print('Determined element type from API data: $elementType');
+          }
+
+          // Process the data similar to how we process postData in initState
+          if (data['details'] != null) {
+            // Update entity data based on retrieved post data
+            if (elementType == 'artist') {
+              name = data['details']['name']?.toString() ?? 'Unknown Artist';
+              artistName = '';
+            } else {
+              name = data['details']['title']?.toString() ?? 'Unknown Title';
+              artistName =
+                  data['details']['artist']?.toString() ?? 'Unknown Artist';
+            }
+
+            // Get image URL
+            imageUrl = data['details']['coverArtUrl']?.toString() ??
+                data['details']['imageUrl']?.toString() ??
+                '';
+
+            // Get preview URL if available
+            if (data['platforms'] != null) {
+              final platforms = data['platforms'] as Map<String, dynamic>;
+              final spotify = platforms['spotify'] as Map<String, dynamic>?;
+              final deezer = platforms['deezer'] as Map<String, dynamic>?;
+              final appleMusic =
+                  platforms['applemusic'] as Map<String, dynamic>?;
+
+              previewUrl = spotify?['previewUrl']?.toString() ??
+                  deezer?['previewUrl']?.toString() ??
+                  appleMusic?['previewUrl']?.toString();
+
+              hasPreview = previewUrl != null && previewUrl!.isNotEmpty;
+
+              // Fallback for image URL
+              if (imageUrl.isEmpty) {
+                imageUrl = spotify?['artworkUrl']?.toString() ??
+                    deezer?['artworkUrl']?.toString() ??
+                    appleMusic?['artworkUrl']?.toString() ??
+                    '';
+              }
+            }
+
+            // Get description if available
+            des = data['caption']?.toString();
+            desUsername = data['username']?.toString();
+
+            // Generate color palette if we have an image
+            if (imageUrl.isNotEmpty) {
+              _generatePalette(imageUrl);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading data for postId $postId: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          // Show error state with retry option
+          name = 'Content Not Found';
+          artistName = 'This link may have expired or been removed';
+          imageUrl = '';
+          _loadError = true;
+        });
+
+        // Show error snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load content: ${e.toString()}'),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _loadPostDataByPostId(postId),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Add a retry widget that can be shown when loading fails
+  Widget _buildRetryWidget() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'Unable to load content',
+            style: AppStyles.trackNameTs.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This content may have been removed or the link is invalid',
+            style: AppStyles.trackArtistNameTs,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _loadPostDataByPostId(widget.postId!),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Add/update sharing functionality to use postId in URL
+  void _shareEntityPage() {
+    if (widget.postId == null) return;
+
+    String shareUrl = '';
+    if (widget.type == 'artist') {
+      shareUrl = '${Uri.base.origin}/artist/${widget.postId}';
+    } else {
+      shareUrl = '${Uri.base.origin}/track/${widget.postId}';
+    }
+
+    AppUtils.onShare(context, shareUrl);
+  }
+
+  // Add a loading skeleton widget
+  Widget _buildLoadingSkeleton(bool isDesktop) {
+    return AppScaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.grey.shade300,
+              Colors.grey.shade200,
+              Colors.grey.shade100,
+              AppColors.appBg.withOpacity(0.8),
+              AppColors.appBg,
+            ],
+            stops: const [0.0, 0.2, 0.4, 0.6, 0.8],
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TrackToolbar(isLoggedIn: isLoggedIn),
+              ),
+              const SizedBox(height: 50),
+              if (isDesktop)
+                _buildDesktopLoadingSkeleton()
+              else
+                _buildMobileLoadingSkeleton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLoadingSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Text(widget.type == "artist" ? "Artist" : "Track",
+              style: AppStyles.trackTrackTitleTs),
+          const SizedBox(height: 24),
+          // Shimmer effect for image
+          Container(
+            width: MediaQuery.of(context).size.width / 2.3,
+            height: MediaQuery.of(context).size.width / 2.3,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.grey.shade300,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Shimmer effect for title
+          Container(
+            width: 200,
+            height: 24,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.grey.shade300,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Shimmer effect for artist
+          Container(
+            width: 150,
+            height: 18,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.grey.shade300,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Shimmer effect for streaming links
+          Container(
+            height: 60,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLoadingSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left side - Cover art and basic info
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(widget.type == "artist" ? "Artist" : "Track",
+                    style: AppStyles.trackTrackTitleTs),
+                const SizedBox(height: 24),
+                // Shimmer effect for image
+                Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey.shade300,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Shimmer effect for title
+                Container(
+                  width: 200,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.grey.shade300,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Shimmer effect for artist
+                Container(
+                  width: 150,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.grey.shade300,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Right side with spacing and shimmer effect for links
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 40, top: 60),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Shimmer effect for description
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey.shade200,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Shimmer effect for streaming links
+                  Container(
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.grey.shade200,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

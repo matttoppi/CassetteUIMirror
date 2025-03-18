@@ -116,6 +116,36 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> fetchPostById(String postId) async {
+    print('🔍 Fetching post data for postId: $postId');
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/social/posts/$postId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          print('✅ Successfully fetched post data for postId: $postId');
+          return data;
+        } else {
+          final error = data['errorMessage'] ?? 'Failed to fetch post data';
+          print('❌ API Error: $error');
+          throw Exception(error);
+        }
+      } else {
+        print('❌ HTTP Error: ${response.statusCode}');
+        throw Exception('Failed to fetch post data: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [FetchPost] Error: $e');
+      throw Exception('Failed to connect to API: $e');
+    }
+  }
+
   // Helper method to get default headers for API requests
   Map<String, String> getDefaultHeaders() {
     return {

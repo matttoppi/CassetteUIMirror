@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cassettefrontend/feature/media/pages/entity_page.dart';
 import 'package:cassettefrontend/feature/media/pages/collection_page.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:cassettefrontend/core/constants/app_constants.dart';
+import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
+import 'package:cassettefrontend/core/common_widgets/track_toolbar.dart';
+import 'package:cassettefrontend/core/styles/app_styles.dart';
+import 'package:cassettefrontend/core/storage/preference_helper.dart';
 
-class PostPage extends StatelessWidget {
+class PostPage extends StatefulWidget {
   final Map<String, dynamic> postData;
 
   const PostPage({
@@ -11,18 +18,79 @@ class PostPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    print('===== PostPage BUILD =====');
-    print('PostPage received data type: ${postData.runtimeType}');
-    print('PostPage received data keys: ${postData.keys.toList()}');
-    print('PostPage received data: $postData');
+  State<PostPage> createState() => _PostPageState();
+}
+
+class _PostPageState extends State<PostPage> {
+  bool _isNavigating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Defer navigation until after the first frame
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _processAndNavigate();
+    });
+  }
+
+  void _processAndNavigate() {
+    if (_isNavigating) return;
 
     try {
       // Validate required fields
-      final elementType = postData['elementType'] as String?;
-      final musicElementId = postData['musicElementId'] as String?;
-      final postId = postData['postId'] as String?;
-      final details = postData['details'] as Map<String, dynamic>?;
+      final elementType = widget.postData['elementType'] as String?;
+      final musicElementId = widget.postData['musicElementId'] as String?;
+      final postId = widget.postData['postId'] as String?;
+
+      if (elementType == null || postId == null) {
+        // Don't navigate if missing critical data
+        return;
+      }
+
+      setState(() {
+        _isNavigating = true;
+      });
+
+      // Navigate based on element type
+      switch (elementType.toLowerCase()) {
+        case 'track':
+          print('Navigating to track page with postId: $postId');
+          context.go('/track/$postId', extra: widget.postData);
+          break;
+        case 'artist':
+          print('Navigating to artist page with postId: $postId');
+          context.go('/artist/$postId', extra: widget.postData);
+          break;
+        case 'album':
+          print('Navigating to album page with postId: $postId');
+          context.go('/album/$postId', extra: widget.postData);
+          break;
+        case 'playlist':
+          print('Navigating to playlist page with postId: $postId');
+          context.go('/playlist/$postId', extra: widget.postData);
+          break;
+        default:
+          print('ERROR: Unknown element type: $elementType');
+          break;
+      }
+    } catch (e) {
+      print('Error in navigation: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('===== PostPage BUILD =====');
+    print('PostPage received data type: ${widget.postData.runtimeType}');
+    print('PostPage received data keys: ${widget.postData.keys.toList()}');
+    print('PostPage received data: ${widget.postData}');
+
+    try {
+      // Validate required fields
+      final elementType = widget.postData['elementType'] as String?;
+      final musicElementId = widget.postData['musicElementId'] as String?;
+      final postId = widget.postData['postId'] as String?;
+      final details = widget.postData['details'] as Map<String, dynamic>?;
 
       print('Extracted values:');
       print('- elementType: $elementType (${elementType.runtimeType})');
@@ -90,36 +158,8 @@ class PostPage extends StatelessWidget {
         );
       }
 
-      print('Routing to ${elementType!.toLowerCase()} page');
-
-      // Route to the appropriate page based on element type
-      switch (elementType.toLowerCase()) {
-        case 'track':
-        case 'artist':
-          print(
-              'Creating EntityPage with type=${elementType.toLowerCase()}, trackId=$musicElementId, postId=$postId');
-          return EntityPage(
-            type: elementType.toLowerCase(),
-            trackId: musicElementId,
-            postId: postId,
-            postData: postData,
-          );
-        case 'album':
-        case 'playlist':
-          print(
-              'Creating CollectionPage with type=${elementType.toLowerCase()}, trackId=$musicElementId, postId=$postId');
-          return CollectionPage(
-            type: elementType.toLowerCase(),
-            trackId: musicElementId,
-            postId: postId,
-            postData: postData,
-          );
-        default:
-          print('ERROR: Unknown element type: $elementType');
-          return Center(
-            child: Text('Error: Unknown element type "$elementType"'),
-          );
-      }
+      // Show an enhanced loading UI while we prepare to navigate
+      return _buildLoadingUI(context, elementType);
     } catch (e, stackTrace) {
       print('ERROR in PostPage: $e');
       print('Stack trace: $stackTrace');
@@ -146,5 +186,178 @@ class PostPage extends StatelessWidget {
         ),
       );
     }
+  }
+
+  // Enhanced loading UI that matches the styling of other pages
+  Widget _buildLoadingUI(BuildContext context, String? elementType) {
+    // Check if we're on a desktop-sized screen (width > 900px)
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final isLoggedIn = PreferenceHelper.getBool(PreferenceHelper.isLoggedIn);
+
+    // Get a nice loading title based on element type
+    String loadingTitle = 'Loading';
+    if (elementType != null) {
+      switch (elementType.toLowerCase()) {
+        case 'track':
+          loadingTitle = 'Loading Track';
+          break;
+        case 'artist':
+          loadingTitle = 'Loading Artist';
+          break;
+        case 'album':
+          loadingTitle = 'Loading Album';
+          break;
+        case 'playlist':
+          loadingTitle = 'Loading Playlist';
+          break;
+      }
+    }
+
+    return AppScaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.grey.shade300,
+              Colors.grey.shade200,
+              Colors.grey.shade100,
+              AppColors.appBg.withOpacity(0.8),
+              AppColors.appBg,
+            ],
+            stops: const [0.0, 0.2, 0.4, 0.6, 0.8],
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TrackToolbar(isLoggedIn: isLoggedIn),
+              ),
+              const SizedBox(height: 50),
+              if (isDesktop)
+                _buildDesktopLoadingSkeleton(loadingTitle)
+              else
+                _buildMobileLoadingSkeleton(loadingTitle),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLoadingSkeleton(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Text(title, style: AppStyles.trackTrackTitleTs),
+          const SizedBox(height: 24),
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+          const SizedBox(height: 24),
+          // Shimmer effect for image
+          Container(
+            width: MediaQuery.of(context).size.width / 2.3,
+            height: MediaQuery.of(context).size.width / 2.3,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.grey.shade300,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Shimmer effect for title
+          Container(
+            width: 200,
+            height: 24,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.grey.shade300,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Shimmer effect for artist
+          Container(
+            width: 150,
+            height: 18,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.grey.shade300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLoadingSkeleton(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left side - Cover art and basic info
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(title, style: AppStyles.trackTrackTitleTs),
+                const SizedBox(height: 24),
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+                const SizedBox(height: 24),
+                // Shimmer effect for image
+                Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey.shade300,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Right side with spacing
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 40, top: 60),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Shimmer effect for title
+                  Container(
+                    width: 200,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.grey.shade300,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Shimmer effect for artist
+                  Container(
+                    width: 150,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.grey.shade300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

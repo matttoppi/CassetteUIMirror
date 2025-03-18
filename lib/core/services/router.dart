@@ -12,6 +12,7 @@ import 'package:cassettefrontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/spotify_callback_page.dart';
+import 'package:cassettefrontend/core/services/api_service.dart';
 
 class AppRouter {
   static GoRouter getRouter(bool isAuth) {
@@ -51,6 +52,7 @@ class AppRouter {
 
             // If we have postData, use it directly
             if (postData != null) {
+              print('Route /track/$id: Using provided postData');
               return EntityPage(
                 type: 'track',
                 trackId: postData['musicElementId'] as String?,
@@ -59,7 +61,21 @@ class AppRouter {
               );
             }
 
-            // Fallback if no postData
+            // If no postData, determine if this is a post ID or track ID
+            print(
+                'Route /track/$id: No postData provided, determining ID type');
+            if (id != null && id.startsWith('p_')) {
+              print('Route /track/$id: ID appears to be a post ID');
+              // This appears to be a post ID, we'll load data in EntityPage
+              return EntityPage(
+                type: 'track',
+                trackId: null,
+                postId: id,
+              );
+            }
+
+            // Fallback - treat as a track ID directly
+            print('Route /track/$id: Treating as direct track ID');
             return EntityPage(
               type: 'track',
               trackId: id,
@@ -74,11 +90,36 @@ class AppRouter {
             final id = state.pathParameters['id'];
             final postData = state.extra as Map<String, dynamic>?;
 
+            // If we have postData, use it directly
+            if (postData != null) {
+              print('Route /artist/$id: Using provided postData');
+              return EntityPage(
+                type: 'artist',
+                trackId: postData['musicElementId'] as String?,
+                postId: id,
+                postData: postData,
+              );
+            }
+
+            // If no postData, determine if this is a post ID or artist ID
+            print(
+                'Route /artist/$id: No postData provided, determining ID type');
+            if (id != null && id.startsWith('p_')) {
+              print('Route /artist/$id: ID appears to be a post ID');
+              // This appears to be a post ID, we'll load data in EntityPage
+              return EntityPage(
+                type: 'artist',
+                trackId: null,
+                postId: id,
+              );
+            }
+
+            // Fallback - treat as an artist ID directly
+            print('Route /artist/$id: Treating as direct artist ID');
             return EntityPage(
               type: 'artist',
-              trackId: postData?['musicElementId'] as String?,
+              trackId: id,
               postId: id,
-              postData: postData,
             );
           },
         ),
@@ -88,10 +129,37 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id'];
             final postData = state.extra as Map<String, dynamic>?;
+
+            // If we have postData, use it directly
+            if (postData != null) {
+              print('Route /album/$id: Using provided postData');
+              return CollectionPage(
+                type: 'album',
+                trackId: postData['musicElementId'] as String?,
+                postId: id,
+                postData: postData,
+              );
+            }
+
+            // If no postData, determine if this is a post ID or album ID
+            print(
+                'Route /album/$id: No postData provided, determining ID type');
+            if (id != null && id.startsWith('p_')) {
+              print('Route /album/$id: ID appears to be a post ID');
+              // This appears to be a post ID, we'll load data in CollectionPage
+              return CollectionPage(
+                type: 'album',
+                trackId: null,
+                postId: id,
+              );
+            }
+
+            // Fallback - treat as an album ID directly
+            print('Route /album/$id: Treating as direct album ID');
             return CollectionPage(
               type: 'album',
               trackId: id,
-              postData: postData,
+              postId: id,
             );
           },
         ),
@@ -101,10 +169,37 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id'];
             final postData = state.extra as Map<String, dynamic>?;
+
+            // If we have postData, use it directly
+            if (postData != null) {
+              print('Route /playlist/$id: Using provided postData');
+              return CollectionPage(
+                type: 'playlist',
+                trackId: postData['musicElementId'] as String?,
+                postId: id,
+                postData: postData,
+              );
+            }
+
+            // If no postData, determine if this is a post ID or playlist ID
+            print(
+                'Route /playlist/$id: No postData provided, determining ID type');
+            if (id != null && id.startsWith('p_')) {
+              print('Route /playlist/$id: ID appears to be a post ID');
+              // This appears to be a post ID, we'll load data in CollectionPage
+              return CollectionPage(
+                type: 'playlist',
+                trackId: null,
+                postId: id,
+              );
+            }
+
+            // Fallback - treat as a playlist ID directly
+            print('Route /playlist/$id: Treating as direct playlist ID');
             return CollectionPage(
               type: 'playlist',
               trackId: id,
-              postData: postData,
+              postId: id,
             );
           },
         ),
@@ -205,9 +300,19 @@ class AppRouter {
             print('Router received postId: $postId');
             print('Router received extra data: $postData');
 
-            final data = postData ?? {'postId': postId};
-            print('Creating PostPage with data: $data');
-            return PostPage(postData: data);
+            // If we have data in extra, use it directly
+            if (postData != null) {
+              print(
+                  'Creating PostPage with existing postData and postId: $postId');
+              // Make sure the postId from the URL is used
+              final updatedData = Map<String, dynamic>.from(postData);
+              updatedData['postId'] = postId;
+              return PostPage(postData: updatedData);
+            }
+
+            // If no data is provided, create minimal data with postId
+            print('Creating PostPage with minimal data and postId: $postId');
+            return PostPage(postData: {'postId': postId});
           },
         ),
       ],
