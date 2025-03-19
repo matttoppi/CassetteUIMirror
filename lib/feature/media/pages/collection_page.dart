@@ -226,6 +226,8 @@ class _CollectionPageState extends State<CollectionPage> {
         name = 'Loading...';
         artistName = '';
         coverArtUrl = '';
+        // Set interim page title while loading
+        WebUtils.setDocumentTitle('Loading... | Cassette');
       });
 
       final apiService = ApiService();
@@ -252,10 +254,20 @@ class _CollectionPageState extends State<CollectionPage> {
             des = data['caption'] as String?;
             desUsername = data['username'] as String?;
 
-            // Parse album-specific details
+            // Set page title based on loaded data
             if (elementType == 'album') {
+              if (artistName.isNotEmpty) {
+                WebUtils.setDocumentTitle('$name by $artistName | Cassette');
+              } else {
+                WebUtils.setDocumentTitle('$name | Cassette');
+              }
+
+              // Parse album-specific details
               releaseDate = details['releaseDate'] as String?;
               trackCount = details['trackCount'] as int?;
+            } else {
+              // For playlists, just use the title
+              WebUtils.setDocumentTitle('$name | Cassette');
             }
 
             // Parse tracks if available
@@ -316,12 +328,15 @@ class _CollectionPageState extends State<CollectionPage> {
           artistName = 'This link may have expired or been removed';
           coverArtUrl = '';
           _loadError = true;
+
+          // Update page title for error state
+          WebUtils.setDocumentTitle('Collection Not Found | Cassette');
         });
 
         // Show error snackbar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not load collection: ${e.toString()}'),
+            content: Text('Could not load content: ${e.toString()}'),
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: 'Retry',

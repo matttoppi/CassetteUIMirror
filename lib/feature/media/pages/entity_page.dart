@@ -1227,6 +1227,8 @@ class _EntityPageState extends State<EntityPage> {
         name = 'Loading...';
         artistName = '';
         imageUrl = '';
+        // Set interim page title while loading
+        WebUtils.setDocumentTitle('Loading... | Cassette');
       });
 
       final apiService = ApiService();
@@ -1280,10 +1282,16 @@ class _EntityPageState extends State<EntityPage> {
             if (elementType == 'artist') {
               name = data['details']['name']?.toString() ?? 'Unknown Artist';
               artistName = '';
+
+              // Update page title for artist
+              WebUtils.setDocumentTitle('$name | Cassette');
             } else {
               name = data['details']['title']?.toString() ?? 'Unknown Title';
               artistName =
                   data['details']['artist']?.toString() ?? 'Unknown Artist';
+
+              // Update page title for track
+              WebUtils.setDocumentTitle('$name by $artistName | Cassette');
             }
 
             // Get image URL
@@ -1338,6 +1346,9 @@ class _EntityPageState extends State<EntityPage> {
           artistName = 'This link may have expired or been removed';
           imageUrl = '';
           _loadError = true;
+
+          // Update page title for error state
+          WebUtils.setDocumentTitle('Content Not Found | Cassette');
         });
 
         // Show error snackbar

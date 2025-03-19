@@ -24,14 +24,60 @@ class PostPage extends StatefulWidget {
 
 class _PostPageState extends State<PostPage> {
   bool _isNavigating = false;
+  String _pageTitle = 'Cassette'; // Default page title
 
   @override
   void initState() {
     super.initState();
+    // Set an initial page title immediately
+    _setInitialTitle();
+
     // Defer navigation until after the first frame
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _processAndNavigate();
     });
+  }
+
+  // Set an initial title based on available data
+  void _setInitialTitle() {
+    try {
+      final elementType = widget.postData['elementType'] as String?;
+      final details = widget.postData['details'] as Map<String, dynamic>?;
+
+      // Set temporary page title while loading
+      String initialTitle = 'Loading | Cassette';
+
+      if (details != null && elementType != null) {
+        switch (elementType.toLowerCase()) {
+          case 'track':
+            if (details['title'] != null) {
+              initialTitle = '${details['title']} | Cassette';
+            }
+            break;
+          case 'artist':
+            if (details['name'] != null) {
+              initialTitle = '${details['name']} | Cassette';
+            }
+            break;
+          case 'album':
+            if (details['title'] != null) {
+              initialTitle = '${details['title']} | Cassette';
+            }
+            break;
+          case 'playlist':
+            if (details['title'] != null) {
+              initialTitle = '${details['title']} | Cassette';
+            }
+            break;
+        }
+      }
+
+      _pageTitle = initialTitle;
+      WebUtils.setDocumentTitle(initialTitle);
+    } catch (e) {
+      print('Error setting initial title: $e');
+      WebUtils.setDocumentTitle('Cassette');
+    }
   }
 
   void _processAndNavigate() {
@@ -94,36 +140,36 @@ class _PostPageState extends State<PostPage> {
       final details = widget.postData['details'] as Map<String, dynamic>?;
 
       // Set page title based on post type and details
-      String pageTitle = 'Cassette';
       if (details != null && elementType != null) {
         switch (elementType.toLowerCase()) {
           case 'track':
             if (details['title'] != null && details['artist'] != null) {
-              pageTitle =
+              _pageTitle =
                   '${details['title']} - ${details['artist']} | Cassette';
             }
             break;
           case 'artist':
             if (details['name'] != null) {
-              pageTitle = '${details['name']} | Cassette';
+              _pageTitle = '${details['name']} | Cassette';
             }
             break;
           case 'album':
             if (details['title'] != null && details['artist'] != null) {
-              pageTitle =
+              _pageTitle =
                   '${details['title']} - ${details['artist']} | Cassette';
             }
             break;
           case 'playlist':
             if (details['title'] != null) {
-              pageTitle = '${details['title']} | Cassette';
+              _pageTitle = '${details['title']} | Cassette';
             }
             break;
         }
       }
       // Set the document title
-      WebUtils.setDocumentTitle(pageTitle);
+      WebUtils.setDocumentTitle(_pageTitle);
 
+      print('Set page title: $_pageTitle');
       print('Extracted values:');
       print('- elementType: $elementType (${elementType.runtimeType})');
       print(
