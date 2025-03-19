@@ -19,6 +19,7 @@ import 'package:cassettefrontend/core/services/track_service.dart';
 import 'dart:math' show max;
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/env.dart';
+import 'package:cassettefrontend/core/utils/web_utils.dart';
 
 /// Handles display of track collections (playlists and albums)
 /// Both types share similar UI as they are collections of tracks
@@ -353,6 +354,24 @@ class _CollectionPageState extends State<CollectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Set page title based on collection type and details
+    String pageTitle = 'Cassette';
+    if (widget.type != null && name.isNotEmpty) {
+      switch (widget.type!.toLowerCase()) {
+        case 'album':
+          if (artistName.isNotEmpty) {
+            pageTitle = '$name by $artistName | Cassette';
+          } else {
+            pageTitle = '$name | Cassette';
+          }
+          break;
+        case 'playlist':
+          pageTitle = '$name | Cassette';
+          break;
+      }
+      WebUtils.setDocumentTitle(pageTitle);
+    }
+
     // Check if we're on a desktop-sized screen (width > 900px)
     final isDesktop = MediaQuery.of(context).size.width > 900;
 

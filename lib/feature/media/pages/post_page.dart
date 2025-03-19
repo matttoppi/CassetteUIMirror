@@ -8,6 +8,7 @@ import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
 import 'package:cassettefrontend/core/common_widgets/post_header_toolbar.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/storage/preference_helper.dart';
+import 'package:cassettefrontend/core/utils/web_utils.dart';
 
 class PostPage extends StatefulWidget {
   final Map<String, dynamic> postData;
@@ -91,6 +92,37 @@ class _PostPageState extends State<PostPage> {
       final musicElementId = widget.postData['musicElementId'] as String?;
       final postId = widget.postData['postId'] as String?;
       final details = widget.postData['details'] as Map<String, dynamic>?;
+
+      // Set page title based on post type and details
+      String pageTitle = 'Cassette';
+      if (details != null && elementType != null) {
+        switch (elementType.toLowerCase()) {
+          case 'track':
+            if (details['title'] != null && details['artist'] != null) {
+              pageTitle =
+                  '${details['title']} - ${details['artist']} | Cassette';
+            }
+            break;
+          case 'artist':
+            if (details['name'] != null) {
+              pageTitle = '${details['name']} | Cassette';
+            }
+            break;
+          case 'album':
+            if (details['title'] != null && details['artist'] != null) {
+              pageTitle =
+                  '${details['title']} - ${details['artist']} | Cassette';
+            }
+            break;
+          case 'playlist':
+            if (details['title'] != null) {
+              pageTitle = '${details['title']} | Cassette';
+            }
+            break;
+        }
+      }
+      // Set the document title
+      WebUtils.setDocumentTitle(pageTitle);
 
       print('Extracted values:');
       print('- elementType: $elementType (${elementType.runtimeType})');

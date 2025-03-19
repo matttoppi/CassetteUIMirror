@@ -19,6 +19,7 @@ import 'dart:async';
 import 'dart:math' show max;
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/env.dart';
+import 'package:cassettefrontend/core/utils/web_utils.dart';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -341,6 +342,24 @@ class _EntityPageState extends State<EntityPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Set page title based on entity type and details
+    String pageTitle = 'Cassette';
+    if (widget.type != null && name.isNotEmpty) {
+      switch (widget.type!.toLowerCase()) {
+        case 'artist':
+          pageTitle = '$name | Cassette';
+          break;
+        case 'track':
+          if (artistName.isNotEmpty) {
+            pageTitle = '$name by $artistName | Cassette';
+          } else {
+            pageTitle = '$name | Cassette';
+          }
+          break;
+      }
+      WebUtils.setDocumentTitle(pageTitle);
+    }
+
     // Check if we're on a desktop-sized screen (width > 900px)
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
