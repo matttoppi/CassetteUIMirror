@@ -13,8 +13,10 @@ import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/services/music_search_service.dart';
 import 'package:cassettefrontend/core/constants/element_type.dart';
+import 'package:cassettefrontend/core/env.dart';
 import 'dart:async';
 import 'dart:ui' show lerpDouble;
+import 'dart:math' show max;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:flutter/foundation.dart';
@@ -212,20 +214,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Precache images to avoid jank when they first appear
     _precacheAssets();
 
-    // Move API warmup to didChangeDependencies since it might use BuildContext indirectly
-    _apiService.warmupLambdas().then((results) {
-      if (!mounted) return;
+    // Only run Lambda warmup if it's enabled in configuration
+    if (Env.enableLambdaWarmup) {
+      _apiService.warmupLambdas().then((results) {
+        if (!mounted) return;
 
-      if (!results.values.every((success) => success)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Warning: Some services may be temporarily slower or unavailable'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    });
+        if (!results.values.every((success) => success)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Warning: Some services may be temporarily slower or unavailable'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      });
+    }
 
     // When dependencies are available, set the animation start
     if (!_fadeController.isAnimating && _fadeController.isDismissed) {
@@ -480,7 +484,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                         return Column(
                           children: [
-                            const SizedBox(height: 18),
+                            // Use SizedBox with MediaQuery to ensure proper spacing considering device notches
+                            SizedBox(
+                                height: max(18.0,
+                                    MediaQuery.of(context).padding.top * 0.3)),
                             // Wrap in RepaintBoundary to improve performance
                             RepaintBoundary(
                               child: Transform.translate(
@@ -526,7 +533,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         final minPadding = screenHeight * 0.05;
 
                         // Calculate the end position - right below the toolbar
-                        const toolbarHeight = 65.0; // AuthToolbar height
+                        // Make toolbar height responsive based on screen width
+                        final screenWidth = MediaQuery.of(context).size.width;
+                        final toolbarHeight = screenWidth < 320
+                            ? 50.0
+                            : screenWidth < 400
+                                ? 58.0
+                                : 65.0; // Adjust toolbar height based on screen size
                         const navBarTopPadding = 18.0; // SizedBox above toolbar
                         final safeTop = topPadding; // Use actual safe area
                         const logoHeight = 140.0; // Estimated logo block height
@@ -849,7 +862,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           // Calculate height to extend to bottom of screen with consistent padding
                                           maxHeight: screenSize.height -
                                               (safeTop + // Top safe area
-                                                  toolbarHeight + // AuthToolbar height
+                                                  // Make toolbar height responsive based on screen width
+                                                  (screenWidth < 320
+                                                      ? 50.0
+                                                      : screenWidth < 400
+                                                          ? 58.0
+                                                          : 65.0) + // AuthToolbar height adjusted to screen size
                                                   navBarTopPadding + // Padding above toolbar
                                                   minPadding + // Min padding below toolbar (matches top)
                                                   58 + // Search bar height

@@ -9,6 +9,11 @@ class Env {
   static String get profileBucket =>
       kDebugMode ? 'profile_bucket' : 'profile-pictures';
 
+  // Feature flags
+  // Control whether lambda warmup is enabled
+  static bool get enableLambdaWarmup =>
+      const bool.fromEnvironment('ENABLE_LAMBDA_WARMUP', defaultValue: false);
+
   // Updated to use localhost:3000 in debug mode
   static String get appDomain {
     if (kDebugMode) {

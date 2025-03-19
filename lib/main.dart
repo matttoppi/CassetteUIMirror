@@ -28,13 +28,20 @@ void main() async {
     );
     print('Supabase initialized successfully');
 
-    // Initialize API service and warm up Lambdas
+    // Initialize API service and warm up Lambdas if enabled
     final apiService = ApiService();
-    apiService.warmupLambdas().then((results) {
-      print('Lambda warmup results: $results');
-    }).catchError((error) {
-      print('Lambda warmup error: $error');
-    });
+
+    // Only perform lambda warmup if enabled in config
+    if (Env.enableLambdaWarmup) {
+      print('Lambda warmup enabled, starting warmup...');
+      apiService.warmupLambdas().then((results) {
+        print('Lambda warmup results: $results');
+      }).catchError((error) {
+        print('Lambda warmup error: $error');
+      });
+    } else {
+      print('Lambda warmup disabled by configuration');
+    }
   } catch (e) {
     print('Initialization error: $e');
   }

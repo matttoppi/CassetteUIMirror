@@ -5,6 +5,7 @@ import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:math' show max;
 
 class AuthToolbar extends StatefulWidget {
   final Function burgerMenuFnc;
@@ -73,9 +74,15 @@ class _AuthToolbarState extends State<AuthToolbar>
     final bool isVeryNarrow =
         screenWidth < 320; // Threshold for very narrow screens
 
+    // Calculate dynamic horizontal padding to ensure elements don't overlap the edge
+    // Use SafeArea's padding if available, or fallback to a minimum safe value
+    final padding = MediaQuery.of(context).padding;
+    final horizontalPadding = max(16.0, padding.left + 4); // Left padding
+    final rightPadding = max(16.0, padding.right + 4); // Right padding
+
     // Build content without animations
     final Widget content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.only(left: horizontalPadding, right: rightPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -130,13 +137,14 @@ class _AuthToolbarState extends State<AuthToolbar>
                   width: isVeryNarrow ? 50 : (isNarrow ? 70 : 100),
                   height: isNarrow ? 28 : 32,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(
+                    width: 8), // Increased spacing before burger menu
                 AppUtils.burgerMenu(
                   onPressed: () {
                     widget.burgerMenuFnc();
                   },
                   // Use smaller size on narrow screens
-                  size: isVeryNarrow ? 30.0 : (isNarrow ? 36.0 : null),
+                  size: isVeryNarrow ? 24.0 : (isNarrow ? 32.0 : null),
                 ),
               ],
             ),
