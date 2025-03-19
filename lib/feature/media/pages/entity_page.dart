@@ -66,6 +66,8 @@ class _EntityPageState extends State<EntityPage> {
   bool _loadError = false;
   // Add loading state tracking
   bool _isLoading = false;
+  // Add platforms data to store from API response
+  Map<String, dynamic>? platformsData;
 
   @override
   void dispose() {
@@ -617,10 +619,61 @@ class _EntityPageState extends State<EntityPage> {
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: 2),
                                   child: widget.postData != null
-                                      ? AppUtils.trackSocialLinksWidget(
-                                          platforms:
-                                              widget.postData!['platforms'])
-                                      : AppUtils.trackSocialLinksWidget(),
+                                      ? () {
+                                          // Add debugging for platforms data
+                                          print(
+                                              'Rendering social links with platforms data:');
+                                          print('PostData: ${widget.postData}');
+                                          if (widget.postData!
+                                              .containsKey('platforms')) {
+                                            print(
+                                                'Platforms found in postData: ${widget.postData!['platforms']}');
+
+                                            // Check if platforms data contains the expected structure
+                                            final platforms =
+                                                widget.postData!['platforms']
+                                                    as Map<String, dynamic>?;
+                                            if (platforms != null) {
+                                              platforms.forEach((key, value) {
+                                                print('Platform: $key');
+                                                if (value
+                                                    is Map<String, dynamic>) {
+                                                  print('URL: ${value['url']}');
+                                                }
+                                              });
+                                            }
+
+                                            // Use platforms from postData
+                                            return AppUtils
+                                                .trackSocialLinksWidget(
+                                                    platforms: widget.postData![
+                                                        'platforms']);
+                                          } else {
+                                            print(
+                                                'No platforms key found in postData!');
+
+                                            // Fall back to platformsData stored in state
+                                            if (platformsData != null) {
+                                              print(
+                                                  'Using platformsData from state: $platformsData');
+                                              return AppUtils
+                                                  .trackSocialLinksWidget(
+                                                      platforms: platformsData);
+                                            }
+
+                                            return AppUtils
+                                                .trackSocialLinksWidget();
+                                          }
+                                        }()
+                                      : platformsData != null
+                                          ? () {
+                                              print(
+                                                  'Using platforms from state since no postData (desktop)');
+                                              return AppUtils
+                                                  .trackSocialLinksWidget(
+                                                      platforms: platformsData);
+                                            }()
+                                          : AppUtils.trackSocialLinksWidget(),
                                 ),
                               ),
                             ),
@@ -777,9 +830,46 @@ class _EntityPageState extends State<EntityPage> {
               child: Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: widget.postData != null
-                    ? AppUtils.trackSocialLinksWidget(
-                        platforms: widget.postData!['platforms'])
-                    : AppUtils.trackSocialLinksWidget(),
+                    ? () {
+                        // Add debugging for platforms data
+                        print('Rendering social links with platforms data:');
+                        print('PostData: ${widget.postData}');
+                        if (widget.postData!.containsKey('platforms')) {
+                          print(
+                              'Platforms found in postData: ${widget.postData!['platforms']}');
+
+                          // Check if platforms data contains the expected structure
+                          final platforms = widget.postData!['platforms']
+                              as Map<String, dynamic>?;
+                          if (platforms != null) {
+                            platforms.forEach((key, value) {
+                              print('Platform: $key');
+                              if (value is Map<String, dynamic>) {
+                                print('URL: ${value['url']}');
+                              }
+                            });
+                          }
+                          return AppUtils.trackSocialLinksWidget(
+                              platforms: widget.postData!['platforms']);
+                        } else {
+                          print('No platforms key found in postData!');
+                          // Use platforms data from state if available
+                          if (platformsData != null) {
+                            print('Using platforms from state');
+                            return AppUtils.trackSocialLinksWidget(
+                                platforms: platformsData);
+                          }
+                          return AppUtils.trackSocialLinksWidget();
+                        }
+                      }()
+                    : platformsData != null
+                        ? () {
+                            print(
+                                'Using platforms from state since no postData');
+                            return AppUtils.trackSocialLinksWidget(
+                                platforms: platformsData);
+                          }()
+                        : AppUtils.trackSocialLinksWidget(),
               ),
             ),
           ),
@@ -1142,6 +1232,32 @@ class _EntityPageState extends State<EntityPage> {
       final apiService = ApiService();
       final data = await apiService.fetchPostById(postId);
 
+      // Add detailed debug info for the API response
+      print('✅ API Response received for postId: $postId');
+      print('✅ API Response data keys: ${data.keys.toList()}');
+
+      // Specifically check for platforms data
+      if (data.containsKey('platforms')) {
+        print('✅ Platforms data found in API response:');
+        print(data['platforms']);
+
+        // Examine each platform data structure
+        final platforms = data['platforms'] as Map<String, dynamic>?;
+        if (platforms != null) {
+          platforms.forEach((platform, platformData) {
+            print('Platform: $platform');
+            if (platformData is Map<String, dynamic>) {
+              final url = platformData['url'];
+              print('URL: $url (${url.runtimeType})');
+            } else {
+              print('Platform data is not a Map: ${platformData.runtimeType}');
+            }
+          });
+        }
+      } else {
+        print('❌ No platforms data found in API response!');
+      }
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -1150,6 +1266,12 @@ class _EntityPageState extends State<EntityPage> {
           if (elementType == null && data['elementType'] != null) {
             elementType = (data['elementType'] as String).toLowerCase();
             print('Determined element type from API data: $elementType');
+          }
+
+          // Store platforms data in state
+          if (data.containsKey('platforms')) {
+            platformsData = data['platforms'] as Map<String, dynamic>;
+            print('✅ Stored platforms data in state: $platformsData');
           }
 
           // Process the data similar to how we process postData in initState
@@ -1182,6 +1304,9 @@ class _EntityPageState extends State<EntityPage> {
                   appleMusic?['previewUrl']?.toString();
 
               hasPreview = previewUrl != null && previewUrl!.isNotEmpty;
+
+              print('Preview URL: $previewUrl');
+              print('Has preview: $hasPreview');
 
               // Fallback for image URL
               if (imageUrl.isEmpty) {

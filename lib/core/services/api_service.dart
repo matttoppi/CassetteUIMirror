@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math' as math;
 
 class ApiService {
   // API URLs for different environments
@@ -120,13 +121,21 @@ class ApiService {
     print('🔍 Fetching post data for postId: $postId');
 
     try {
+      // Use the correct endpoint for fetching posts according to the API documentation
+      final endpoint = '$baseUrl/social/posts/$postId';
+      print('Using endpoint: $endpoint');
+
       final response = await http.get(
-        Uri.parse('$baseUrl/social/posts/$postId'),
+        Uri.parse(endpoint),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        // Debug the response
+        print(
+            '✅ Post data response: ${response.body.substring(0, math.min(500, response.body.length))}...');
 
         if (data['success'] == true) {
           print('✅ Successfully fetched post data for postId: $postId');

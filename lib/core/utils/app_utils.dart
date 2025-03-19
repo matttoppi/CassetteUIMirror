@@ -149,6 +149,10 @@ class AppUtils {
   }
 
   static Widget trackSocialLinksWidget({Map<String, dynamic>? platforms}) {
+    // Add debugging to help diagnose issues
+    print('=== Track Social Links Widget ===');
+    print('Platforms data: $platforms');
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -158,12 +162,39 @@ class AppUtils {
               if (platforms?.containsKey('spotify') ?? false) {
                 final spotifyData =
                     platforms!['spotify'] as Map<String, dynamic>;
-                final url = spotifyData['url'] ??
-                    spotifyData['link'] ??
-                    spotifyData['href'] ??
-                    '';
+                print('Spotify data: $spotifyData');
+
+                // Handle case where url is missing or empty
+                String url = '';
+
+                // Try to get URL from different possible fields
+                if (spotifyData.containsKey('url') &&
+                    spotifyData['url'] != null &&
+                    spotifyData['url'].toString().isNotEmpty) {
+                  url = spotifyData['url'].toString();
+                } else if (spotifyData.containsKey('href') &&
+                    spotifyData['href'] != null &&
+                    spotifyData['href'].toString().isNotEmpty) {
+                  url = spotifyData['href'].toString();
+                } else if (spotifyData.containsKey('link') &&
+                    spotifyData['link'] != null &&
+                    spotifyData['link'].toString().isNotEmpty) {
+                  url = spotifyData['link'].toString();
+                } else if (spotifyData.containsKey('platformSpecificId') &&
+                    spotifyData['platformSpecificId'] != null) {
+                  // Construct Spotify URL from ID based on entity type
+                  final elementType =
+                      spotifyData['elementType']?.toString()?.toLowerCase() ??
+                          'track';
+                  url =
+                      'https://open.spotify.com/$elementType/${spotifyData['platformSpecificId']}';
+                }
+
+                print('Opening Spotify URL: $url');
                 if (url.isNotEmpty) {
                   openUrlOnNewTab(url);
+                } else {
+                  print('⚠️ No valid Spotify URL found in platform data');
                 }
               }
             } catch (e) {
@@ -179,15 +210,56 @@ class AppUtils {
               if (platforms?.containsKey('applemusic') ?? false) {
                 final appleData =
                     platforms!['applemusic'] as Map<String, dynamic>;
-                final url = appleData['url'] ??
-                    appleData['link'] ??
-                    appleData['href'] ??
-                    '';
+                print('Apple Music data: $appleData');
+
+                // Handle case where url is missing or empty
+                String url = '';
+
+                // Try to get URL from different possible fields
+                if (appleData.containsKey('url') &&
+                    appleData['url'] != null &&
+                    appleData['url'].toString().isNotEmpty) {
+                  url = appleData['url'].toString();
+                } else if (appleData.containsKey('href') &&
+                    appleData['href'] != null &&
+                    appleData['href'].toString().isNotEmpty) {
+                  url = appleData['href'].toString();
+                } else if (appleData.containsKey('link') &&
+                    appleData['link'] != null &&
+                    appleData['link'].toString().isNotEmpty) {
+                  url = appleData['link'].toString();
+                } else if (appleData.containsKey('platformSpecificId') &&
+                    appleData['platformSpecificId'] != null) {
+                  // Construct Apple Music URL based on entity type
+                  final elementType =
+                      appleData['elementType']?.toString()?.toLowerCase() ??
+                          'track';
+
+                  // Apple Music URLs are structured differently based on type
+                  if (elementType == 'artist') {
+                    url =
+                        'https://music.apple.com/artist/${appleData['platformSpecificId']}';
+                  } else if (elementType == 'album') {
+                    url =
+                        'https://music.apple.com/album/${appleData['platformSpecificId']}';
+                  } else if (elementType == 'playlist') {
+                    url =
+                        'https://music.apple.com/playlist/${appleData['platformSpecificId']}';
+                  } else {
+                    // Default to track
+                    url =
+                        'https://music.apple.com/album/track/${appleData['platformSpecificId']}';
+                  }
+                }
+
+                print('Opening Apple Music URL: $url');
                 if (url.isNotEmpty) {
                   openUrlOnNewTab(url);
+                } else {
+                  print('⚠️ No valid Apple Music URL found in platform data');
                 }
               }
-              // Check for apple_music key (with underscore)
+              // Keep other Apple Music checks for compatibility
               else if (platforms?.containsKey('apple_music') ?? false) {
                 final appleData =
                     platforms!['apple_music'] as Map<String, dynamic>;
@@ -198,9 +270,7 @@ class AppUtils {
                 if (url.isNotEmpty) {
                   openUrlOnNewTab(url);
                 }
-              }
-              // Check for appleMusic key (camelCase)
-              else if (platforms?.containsKey('appleMusic') ?? false) {
+              } else if (platforms?.containsKey('appleMusic') ?? false) {
                 final appleData =
                     platforms!['appleMusic'] as Map<String, dynamic>;
                 final url = appleData['url'] ??
@@ -210,9 +280,7 @@ class AppUtils {
                 if (url.isNotEmpty) {
                   openUrlOnNewTab(url);
                 }
-              }
-              // Check for apple-music key (with dash)
-              else if (platforms?.containsKey('apple-music') ?? false) {
+              } else if (platforms?.containsKey('apple-music') ?? false) {
                 final appleData =
                     platforms!['apple-music'] as Map<String, dynamic>;
                 final url = appleData['url'] ??
@@ -234,12 +302,39 @@ class AppUtils {
             try {
               if (platforms?.containsKey('deezer') ?? false) {
                 final deezerData = platforms!['deezer'] as Map<String, dynamic>;
-                final url = deezerData['url'] ??
-                    deezerData['link'] ??
-                    deezerData['href'] ??
-                    '';
+                print('Deezer data: $deezerData');
+
+                // Handle case where url is missing or empty
+                String url = '';
+
+                // Try to get URL from different possible fields
+                if (deezerData.containsKey('url') &&
+                    deezerData['url'] != null &&
+                    deezerData['url'].toString().isNotEmpty) {
+                  url = deezerData['url'].toString();
+                } else if (deezerData.containsKey('href') &&
+                    deezerData['href'] != null &&
+                    deezerData['href'].toString().isNotEmpty) {
+                  url = deezerData['href'].toString();
+                } else if (deezerData.containsKey('link') &&
+                    deezerData['link'] != null &&
+                    deezerData['link'].toString().isNotEmpty) {
+                  url = deezerData['link'].toString();
+                } else if (deezerData.containsKey('platformSpecificId') &&
+                    deezerData['platformSpecificId'] != null) {
+                  // Construct Deezer URL from ID based on entity type
+                  final elementType =
+                      deezerData['elementType']?.toString()?.toLowerCase() ??
+                          'track';
+                  url =
+                      'https://www.deezer.com/$elementType/${deezerData['platformSpecificId']}';
+                }
+
+                print('Opening Deezer URL: $url');
                 if (url.isNotEmpty) {
                   openUrlOnNewTab(url);
+                } else {
+                  print('⚠️ No valid Deezer URL found in platform data');
                 }
               }
             } catch (e) {
