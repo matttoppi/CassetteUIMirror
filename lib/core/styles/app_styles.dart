@@ -705,6 +705,44 @@ class AppStyles {
       fontWeight: FontWeight.bold,
       letterSpacing: 0.5);
 
+  static TextStyle profileSubtitleTextStyle = GoogleFonts.robotoFlex(
+    color: AppColors.textPrimary,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+  );
+
+  static TextStyle profileBioTextStyle = GoogleFonts.robotoFlex(
+    color: AppColors.textPrimary,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 1.4,
+  );
+
+  static TextStyle activityPostTitleTextStyle = GoogleFonts.robotoFlex(
+    color: AppColors.textPrimary,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+  );
+
+  static TextStyle activityPostDateTextStyle = GoogleFonts.robotoFlex(
+    color: AppColors.textPrimary.withOpacity(0.6),
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+  );
+
+  static TextStyle activityPostSubtitleTextStyle = GoogleFonts.robotoFlex(
+    color: AppColors.textPrimary,
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+  );
+
+  static TextStyle activityPostDescriptionTextStyle = GoogleFonts.robotoFlex(
+    color: AppColors.textPrimary,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 1.4,
+  );
+
   static TextStyle addServiceTextStyle = GoogleFonts.atkinsonHyperlegible(
       color: AppColors.appBg,
       fontSize: 20,

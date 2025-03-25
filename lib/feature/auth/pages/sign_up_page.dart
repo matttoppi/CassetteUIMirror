@@ -6,6 +6,7 @@ import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/env.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/main.dart';
@@ -32,7 +33,9 @@ class _SignUpPageState extends State<SignUpPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passController = TextEditingController();
   TextEditingController confirmPassController = TextEditingController();
+  TextEditingController usernameController = TextEditingController();
   Map<String, String> validation = {"": ""};
+  final _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -158,6 +161,28 @@ class _SignUpPageState extends State<SignUpPage> {
               hint: "Enter your email address",
               controller: emailController,
               errorText: validation.keys.first == "email"
+                  ? validation.values.first
+                  : null,
+              onChanged: (v) {
+                validation = {"": ""};
+                setState(() {});
+              },
+            ),
+          ),
+          const SizedBox(height: 28),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text("Username",
+                textAlign: TextAlign.left,
+                style: AppStyles.authTextFieldLabelTextStyle),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextFieldWidget(
+              hint: "Choose a username",
+              controller: usernameController,
+              errorText: validation.keys.first == "username"
                   ? validation.values.first
                   : null,
               onChanged: (v) {
@@ -311,224 +336,96 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
+  Future<void> _signUp() async {
+    if (validateSignUpForm().keys.first != "") return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await _authService.signUp(
+        email: emailController.text.trim().toLowerCase(),
+        password: passController.text,
+        username: usernameController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (response['success'] == true) {
+        // Show success message
+        AppUtils.showToast(
+          context: context,
+          title: "Account created successfully!",
+        );
+
+        // Update global auth state
+        isAuthenticated = true;
+
+        // Add a small delay to allow the toast to be visible
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (!mounted) return;
+        context.go('/profile');
+      } else {
+        AppUtils.showToast(
+          context: context,
+          title: response['message'] ??
+              "Failed to create account. Please try again.",
+        );
+      }
+    } catch (error) {
+      print('❌ [Auth] Sign up error: $error');
+      if (!mounted) return;
+
+      String errorMessage = error.toString();
+      if (errorMessage.contains('email already exists')) {
+        errorMessage =
+            'This email is already registered. Please sign in instead.';
+      } else if (errorMessage.contains('username already exists')) {
+        errorMessage =
+            'This username is already taken. Please choose another one.';
+      }
+
+      AppUtils.showToast(
+        context: context,
+        title: errorMessage,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Map<String, String> validateSignUpForm() {
     if (emailController.text.isEmpty) {
       validation = {"email": "Please Enter Email"};
     } else if (!Validation.validateEmail(emailController.text)) {
       validation = {"email": "Please Enter A Valid Email"};
-    } else if (emailController.text.split('@').first.length < 3) {
-      validation = {"email": "Email prefix must be at least 3 characters"};
+    } else if (usernameController.text.isEmpty) {
+      validation = {"username": "Please Enter Username"};
     } else if (passController.text.isEmpty) {
       validation = {"password": "Please Enter Password"};
     } else if (passController.text.length < 8) {
       validation = {"password": "Please Enter At-Least 8 Digit Password"};
     } else if (confirmPassController.text.isEmpty) {
       validation = {"conPassword": "Please Enter Confirm Password"};
-    } else if (confirmPassController.text != passController.text) {
+    } else if (passController.text != confirmPassController.text) {
       validation = {
-        "conPassword": "Confirm Password does not match with Password"
+        "conPassword": "Password And Confirm Password Must Be Same"
       };
     } else if (!_isChecked) {
       validation = {
         "isChecked":
-            "Please agree to all the terms and conditions before Sign Up"
+            "Please agree to all the terms and conditions before signing up"
       };
     } else {
       validation = {"": ""};
     }
     setState(() {});
     return validation;
-  }
-
-  Future<void> _signUp() async {
-    if (validateSignUpForm().keys.first != "") return;
-    if (!mounted) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // Generate temporary username
-      final emailPrefix = emailController.text.split('@').first;
-      final rawUsername =
-          'temp_${emailPrefix.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '').toLowerCase()}';
-      final usersTableUsername =
-          rawUsername.length > 30 ? rawUsername.substring(0, 30) : rawUsername;
-
-      print(
-          '[DEBUG] Starting signup process for email: ${emailController.text.trim().toLowerCase()}');
-
-      // Add delay to ensure proper request handling
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      try {
-        print('[DEBUG] Preparing signup request with:');
-        print('[DEBUG] Email: ${emailController.text.trim().toLowerCase()}');
-        print('[DEBUG] Username data: $usersTableUsername');
-
-        // Basic signup with error catching
-        final AuthResponse response;
-        try {
-          // Add request logging
-          final signUpData = {
-            'email': emailController.text.trim().toLowerCase(),
-            'password': passController.text,
-            'data': {
-              'username': usersTableUsername,
-            },
-          };
-          print(
-              '[DEBUG] SignUp request data (excluding password): ${signUpData..remove('password')}');
-
-          try {
-            response = await supabase.auth.signUp(
-              email: emailController.text.trim().toLowerCase(),
-              password: passController.text,
-              data: {
-                'username': usersTableUsername,
-              },
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                throw TimeoutException('Signup request timed out');
-              },
-            );
-
-            if (response.user == null) {
-              throw AuthException('Signup failed - no user returned');
-            }
-
-            // Log response details
-            print('[DEBUG] Auth response received:');
-            print('[DEBUG] User ID: ${response.user?.id}');
-            print('[DEBUG] User email: ${response.user?.email}');
-            print('[DEBUG] Session present: ${response.session != null}');
-          } catch (authError) {
-            print('[ERROR] Auth signup error details:');
-            print('[ERROR] Error type: ${authError.runtimeType}');
-            print('[ERROR] Full error: $authError');
-
-            if (authError is AuthException) {
-              print('[ERROR] Status code: ${authError.statusCode}');
-              print('[ERROR] Message: ${authError.message}');
-              throw authError; // Throw the original error
-            }
-
-            // For other types of errors, wrap them in a more descriptive AuthException
-            throw AuthException(
-                'Failed to create account. Please try again later.');
-          }
-        } catch (authError) {
-          print('[ERROR] Auth signup error details:');
-          print('[ERROR] Error type: ${authError.runtimeType}');
-          print('[ERROR] Full error: $authError');
-
-          if (authError is AuthException) {
-            print('[ERROR] Status code: ${authError.statusCode}');
-            print('[ERROR] Message: ${authError.message}');
-          }
-
-          throw AuthException(
-              'Failed to create account: ${authError.toString()}');
-        }
-
-        final user = response.user!;
-        print('[DEBUG] User created successfully with ID: ${user.id}');
-
-        try {
-          // Create user profile in Users table
-          print('[DEBUG] Auth UID: ${user.id} (Type: ${user.id.runtimeType})');
-          print('[DEBUG] AuthUserId to insert: ${user.id}');
-          print('[DEBUG] Attempting to insert with payload:');
-          final payload = {
-            'UserId': user.id,
-            'AuthUserId': user.id,
-            'Username': usersTableUsername,
-            'Email': user.email!,
-            'Bio': '',
-            'AvatarUrl': '',
-            'JoinDate': DateTime.now().toIso8601String()
-          };
-          print('[DEBUG] ${json.encode(payload)}');
-
-          // Test select permission first
-          print('[DEBUG] Testing SELECT permission...');
-          try {
-            final selectTest = await supabase.from('Users').select().limit(1);
-            print(
-                '[DEBUG] SELECT test successful: ${selectTest.length} rows found');
-          } catch (selectError) {
-            print('[ERROR] SELECT test failed: $selectError');
-          }
-
-          // Attempt insert with error details
-          print('[DEBUG] Attempting INSERT...');
-          try {
-            final response =
-                await supabase.from('Users').insert(payload).select().single();
-            print(
-                '[DEBUG] Insert successful. Response: ${json.encode(response)}');
-          } catch (insertError) {
-            print('[ERROR] Detailed insert error:');
-            print('[ERROR] Error type: ${insertError.runtimeType}');
-            print('[ERROR] Full error: $insertError');
-            if (insertError is PostgrestException) {
-              print('[ERROR] Code: ${insertError.code}');
-              print('[ERROR] Message: ${insertError.message}');
-              print('[ERROR] Details: ${insertError.details}');
-              print('[ERROR] Hint: ${insertError.hint}');
-            }
-            rethrow;
-          }
-
-          print('[DEBUG] User profile created in database');
-
-          // Only navigate if both auth and database operations succeed
-          if (response.session != null) {
-            context.go('/edit_profile');
-          } else {
-            context.go('/verify-email');
-          }
-        } catch (dbError) {
-          print('[ERROR] Database error: $dbError');
-          final errorMsg =
-              dbError is PostgrestException && dbError.code == '42501'
-                  ? 'Database permissions issue - contact support'
-                  : 'Profile creation failed';
-
-          if (mounted) {
-            AppUtils.showToast(context: context, title: errorMsg);
-          }
-          rethrow;
-        }
-      } catch (error) {
-        print('[ERROR] Signup process error: $error');
-
-        String errorMessage = error is AuthException
-            ? error.toString()
-            : 'An unexpected error occurred. Please try again.';
-
-        if (mounted) {
-          AppUtils.showToast(
-            context: context,
-            title: errorMessage,
-          );
-        }
-      }
-    } catch (error) {
-      print('[ERROR] Signup process error: $error');
-
-      String errorMessage = error is AuthException
-          ? error.toString()
-          : 'An unexpected error occurred. Please try again.';
-
-      if (mounted) {
-        AppUtils.showToast(
-          context: context,
-          title: errorMessage,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
   }
 }

@@ -20,6 +20,7 @@ import 'dart:math' show max;
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/utils/web_utils.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 
 /// Handles display of standalone entities (individual tracks and artists)
 /// Both types share similar UI as they are single items without inner track listings
@@ -1231,7 +1232,8 @@ class _EntityPageState extends State<EntityPage> {
         WebUtils.setDocumentTitle('Loading... | Cassette');
       });
 
-      final apiService = ApiService();
+      final authService = AuthService();
+      final apiService = ApiService(authService);
       final data = await apiService.fetchPostById(postId);
 
       // Add detailed debug info for the API response
@@ -1343,7 +1345,7 @@ class _EntityPageState extends State<EntityPage> {
           _isLoading = false;
           // Show error state with retry option
           name = 'Content Not Found';
-          artistName = 'This link may have expired or been removed';
+          artistName = 'This link may have been removed or the link is invalid';
           imageUrl = '';
           _loadError = true;
 

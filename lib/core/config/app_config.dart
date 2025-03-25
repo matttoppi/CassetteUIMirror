@@ -1,5 +1,6 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 
 /// Application configuration settings
 class AppConfig {
@@ -9,14 +10,17 @@ class AppConfig {
   /// Initialize configuration
   static Future<void> initialize() async {
     try {
-      // For web, we need to specify the filename and load from assets
-      if (kIsWeb) {
-        await dotenv.load(fileName: ".env");
-        print('Web environment variables loaded successfully');
-      } else {
-        await dotenv.load();
-        print('Native environment variables loaded successfully');
-      }
+      // Try to load from web directory first for web builds
+      await dotenv.load(fileName: 'web/.env').catchError((e) async {
+        print(
+            'Failed to load .env from web directory, trying root directory...');
+        // If that fails, try loading from root directory
+        await dotenv.load(fileName: '.env').catchError((e) {
+          print('Warning: Failed to load .env file: $e');
+          // Continue execution even if .env fails to load
+          // as we'll fall back to environment variables
+        });
+      });
 
       // Verify critical environment variables
       final webhookUrl = reportWebhookUrl;
@@ -26,12 +30,8 @@ class AppConfig {
         print('Webhook URL configured successfully');
       }
     } catch (e) {
-      print('Warning: Failed to load .env file: $e');
-      if (e is Error) {
-        print('Stack trace: ${e.stackTrace}');
-      }
-      // Continue execution even if .env file is not found
-      // We'll fall back to compile-time environment variables
+      print('Warning: Error during .env initialization: $e');
+      // Continue execution as we'll fall back to environment variables
     }
   }
 

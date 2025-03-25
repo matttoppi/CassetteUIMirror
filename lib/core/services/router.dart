@@ -13,18 +13,57 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cassettefrontend/spotify_callback_page.dart';
 import 'package:cassettefrontend/core/services/api_service.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 
 class AppRouter {
+  static final _authService = AuthService();
+
   static GoRouter getRouter(bool isAuth) {
-    final GoRouter router = GoRouter(
-      initialLocation: isAuthenticated ? '/profile' : '/',
+    return GoRouter(
+      initialLocation: isAuth ? '/profile' : '/',
       debugLogDiagnostics: true,
-      navigatorKey: navigatorKey,
+      refreshListenable: _authService, // Listen to auth state changes
+      redirect: (context, state) async {
+        // Get current auth state
+        final isAuthenticated = await _authService.isAuthenticated();
+        final isSigningIn = state.matchedLocation == '/signin';
+        final isSigningUp = state.matchedLocation == '/signup';
+        final isHome = state.matchedLocation == '/';
+
+        // Get user data to check if profile is complete
+        final userData = await _authService.getCurrentUser();
+        final hasCompletedProfile = userData != null &&
+            userData['bio'] != null &&
+            userData['bio'].toString().isNotEmpty;
+
+        // Handle authentication redirects
+        if (!isAuthenticated) {
+          // Allow access to public routes
+          if (isSigningIn || isSigningUp || isHome) {
+            return null;
+          }
+          // Redirect to signin for protected routes
+          return '/signin';
+        }
+
+        // User is authenticated
+        if (isSigningIn || isSigningUp || isHome) {
+          // If profile is not complete, redirect to edit profile
+          if (!hasCompletedProfile) {
+            return '/profile/edit';
+          }
+          // Otherwise go to profile
+          return '/profile';
+        }
+
+        // No redirect needed
+        return null;
+      },
       routes: [
         GoRoute(
           name: 'home',
           path: '/',
-          builder: (context, state) => HomePage(),
+          builder: (context, state) => const HomePage(),
         ),
         GoRoute(
           name: 'spotify_callback',
@@ -39,7 +78,45 @@ class AppRouter {
           name: 'profile',
           path: '/profile',
           builder: (context, state) {
-            return const ProfilePage();
+            return FutureBuilder<Map<String, dynamic>?>(
+              future: _authService.getCurrentUser(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final userData = snapshot.data;
+                if (userData == null) {
+                  print(
+                      '❌ [Router] No user data available, redirecting to sign in');
+                  return const SignInPage();
+                }
+
+                // Try to get user ID in order of preference
+                final userId = userData['userId'] ??
+                    userData['id'] ??
+                    userData['authUserId'];
+
+                print('✅ [Router] Loading profile for user ID: $userId');
+                print(
+                    '📝 [Router] Available user data: ${userData.keys.join(', ')}');
+
+                if (userId == null) {
+                  print('❌ [Router] No valid user ID found in data');
+                  return const SignInPage();
+                }
+
+                return ProfilePage(userIdentifier: userId.toString());
+              },
+            );
+          },
+        ),
+        GoRoute(
+          name: 'user_profile',
+          path: '/profile/:identifier',
+          builder: (context, state) {
+            final identifier = state.pathParameters['identifier']!;
+            return ProfilePage(userIdentifier: identifier);
           },
         ),
         // Media routes for different types
@@ -210,40 +287,16 @@ class AppRouter {
         GoRoute(
           name: 'signup',
           path: '/signup',
-          pageBuilder: (context, state) {
-            return CustomTransitionPage(
-              key: state.pageKey,
-              child: const SignUpPage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: child,
-                );
-              },
-            );
-          },
+          builder: (context, state) => const SignUpPage(),
         ),
         GoRoute(
           name: 'signin',
           path: '/signin',
-          pageBuilder: (context, state) {
-            return CustomTransitionPage(
-              key: state.pageKey,
-              child: const SignInPage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: child,
-                );
-              },
-            );
-          },
+          builder: (context, state) => const SignInPage(),
         ),
         GoRoute(
           name: 'edit_profile',
-          path: '/edit_profile',
+          path: '/profile/edit',
           builder: (context, state) => const EditProfilePage(),
         ),
         GoRoute(
@@ -316,16 +369,7 @@ class AppRouter {
           },
         ),
       ],
-      redirect: (BuildContext context, GoRouterState state) {
-        if (!isAuthenticated && state.matchedLocation.startsWith('/profile')) {
-          return '/';
-        } else {
-          return null;
-        }
-        // print('Router: Redirecting for path: ${state.uri.path}');
-      },
       errorPageBuilder: (context, state) => MaterialPage(child: ErrorPage()),
     );
-    return router;
   }
 }

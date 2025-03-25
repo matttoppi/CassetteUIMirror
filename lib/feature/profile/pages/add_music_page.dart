@@ -8,6 +8,7 @@ import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/services/music_search_service.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
@@ -57,7 +58,8 @@ class _AddMusicPageState extends State<AddMusicPage> {
   bool _itemSelected = false;
 
   // Services and controllers
-  final ApiService _apiService = ApiService();
+  final AuthService _authService = AuthService();
+  late final ApiService _apiService;
   final MusicSearchService _musicSearchService = MusicSearchService();
   final FocusNode _searchFocusNode = FocusNode();
   TextEditingController linkCtr = TextEditingController();
@@ -67,6 +69,7 @@ class _AddMusicPageState extends State<AddMusicPage> {
   @override
   void initState() {
     super.initState();
+    _apiService = ApiService(_authService);
 
     // Add focus listener for search field
     _searchFocusNode.addListener(_onSearchFocusChanged);
@@ -911,7 +914,7 @@ class _AddMusicPageState extends State<AddMusicPage> {
           CircleAvatar(
             radius: 30.0,
             backgroundImage:
-                NetworkImage(AppUtils.profileModel.profilePath ?? ''),
+                NetworkImage(AppUtils.userProfile.profilePath ?? ''),
             backgroundColor: Colors.transparent,
           ),
           const SizedBox(width: 22),

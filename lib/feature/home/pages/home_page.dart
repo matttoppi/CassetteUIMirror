@@ -21,6 +21,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
+import 'package:cassettefrontend/core/services/auth_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -30,7 +31,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
+  final _authService = AuthService();
+  late final ApiService _apiService;
   final MusicSearchService _musicSearchService = MusicSearchService();
   bool isMenuVisible = false;
   late final AnimationController _fadeController;
@@ -70,6 +72,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _apiService = ApiService(_authService);
 
     // Create animation controllers first
     _fadeController = AnimationController(
@@ -1294,6 +1297,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Cancel any previous operations
     _cancelPreviousOperations();
 
+    // Mark this as a critical auth operation
+    _authService.beginCriticalOperation();
+
     // Batch all state changes together
     _updateStateWithBatchedChanges(() {
       isLoading = true;
@@ -1316,7 +1322,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     try {
       final response = await _apiService.convertMusicLink(link);
 
-      if (!mounted) return;
+      if (!mounted) {
+        _authService.endCriticalOperation();
+        return;
+      }
 
       _updateStateWithBatchedChanges(() {
         isLoading = false;
@@ -1327,9 +1336,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             false; // Re-enable auto focus for future interactions
       });
 
+      _authService.endCriticalOperation();
       context.go('/post', extra: response);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        _authService.endCriticalOperation();
+        return;
+      }
 
       _updateStateWithBatchedChanges(() {
         isLoading = false;
@@ -1337,6 +1350,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         isSearchActive = true;
         isShowingSearchResults = false; // Ensure results stay hidden on error
       });
+
+      _authService.endCriticalOperation();
 
       // Use a microtask to ensure animations start after the state changes are applied
       Future.microtask(() {

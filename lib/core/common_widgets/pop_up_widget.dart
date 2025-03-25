@@ -6,6 +6,7 @@ import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 
 class PopUpWidget extends StatefulWidget {
   bool isMenuVisible;
@@ -18,6 +19,8 @@ class PopUpWidget extends StatefulWidget {
 }
 
 class _PopUpWidgetState extends State<PopUpWidget> {
+  final _authService = AuthService();
+
   @override
   Widget build(BuildContext context) {
     return Visibility(
@@ -55,13 +58,29 @@ class _PopUpWidgetState extends State<PopUpWidget> {
                               if (widget.onPop != null) {
                                 widget.onPop!(); // Close the popup first
                               }
-                              await supabase.auth.signOut();
+                              await _authService.signOut();
+
+                              // Update global auth state
+                              isAuthenticated = false;
+
+                              if (!mounted) return;
+
+                              // Show success message
                               AppUtils.showToast(
-                                  context: context, title: "Signed Out");
+                                context: context,
+                                title: "Successfully signed out",
+                              );
+
+                              // Navigate to home
+                              context.go('/');
                             } catch (e) {
+                              print('❌ [Auth] Sign out error: $e');
+                              if (!mounted) return;
+
                               AppUtils.showToast(
-                                  context: context,
-                                  title: "Error signing out: ${e.toString()}");
+                                context: context,
+                                title: "Error signing out. Please try again.",
+                              );
                             }
                           } else {
                             if (widget.onPop != null) {
@@ -168,5 +187,33 @@ class _PopUpWidgetState extends State<PopUpWidget> {
         // dense: true,
         onTap: onTap,
         title: Text(text, style: AppStyles.popUpItemStyle));
+  }
+
+  void _handleSignOut() async {
+    try {
+      await _authService.signOut();
+
+      // Update global auth state
+      isAuthenticated = false;
+
+      if (!mounted) return;
+
+      // Show success message
+      AppUtils.showToast(
+        context: context,
+        title: "Successfully signed out",
+      );
+
+      // Navigate to home
+      context.go('/');
+    } catch (e) {
+      print('❌ [Auth] Sign out error: $e');
+      if (!mounted) return;
+
+      AppUtils.showToast(
+        context: context,
+        title: "Error signing out. Please try again.",
+      );
+    }
   }
 }

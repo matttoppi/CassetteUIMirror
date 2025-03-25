@@ -3,6 +3,7 @@ import 'package:cassettefrontend/core/common_widgets/app_scaffold.dart';
 import 'package:cassettefrontend/core/common_widgets/auth_toolbar.dart';
 import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/main.dart';
@@ -10,7 +11,6 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -26,6 +26,7 @@ class _SignInPageState extends State<SignInPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passController = TextEditingController();
   Map<String, String> validation = {"": ""};
+  final _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -69,8 +70,8 @@ class _SignInPageState extends State<SignInPage> {
               const SizedBox(height: 19),
               _isLoading
                   ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: AppUtils.loader())
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: AppUtils.loader())
                   : const SizedBox(),
               const SizedBox(height: 19),
               AnimatedPrimaryButton(
@@ -309,24 +310,53 @@ class _SignInPageState extends State<SignInPage> {
     });
 
     try {
-      final AuthResponse response = await supabase.auth.signInWithPassword(
-          email: emailController.text, password: passController.text);
+      final response = await _authService.signIn(
+        email: emailController.text.trim().toLowerCase(),
+        password: passController.text,
+      );
 
-      if (response.session != null) {
+      if (!mounted) return;
+
+      if (response['success'] == true) {
+        // Show success message
+        AppUtils.showToast(
+          context: context,
+          title: "Successfully signed in!",
+        );
+
+        // Update global auth state
         isAuthenticated = true;
+
+        // Navigate to profile
+        if (!mounted) return;
         context.go('/profile');
       } else {
         AppUtils.showToast(
-            context: context, title: "Something Went Wrong, Please try again!");
+          context: context,
+          title: response['message'] ?? "Failed to sign in. Please try again.",
+        );
       }
     } catch (error) {
-      print("error at signin $error");
-      AppUtils.showToast(context: context, title: error.toString());
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      print("❌ [Auth] Sign in error: $error");
+      if (!mounted) return;
 
+      String errorMessage = error.toString();
+      if (errorMessage.contains('invalid credentials')) {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (errorMessage.contains('not found')) {
+        errorMessage = 'Account not found. Please sign up first.';
+      }
+
+      AppUtils.showToast(
+        context: context,
+        title: errorMessage,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 }

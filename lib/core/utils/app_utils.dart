@@ -4,7 +4,7 @@ import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
-import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
+import 'package:cassettefrontend/feature/profile/model/user_profile_models.dart';
 import 'package:cassettefrontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,21 +14,35 @@ import 'dart:js' as js;
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 
 class AppUtils {
-  static ProfileModel profileModel = ProfileModel(
-      id: 1,
-      fullName: "Matt Toppi",
-      userName: "@MattToppi280",
-      link: "instragram.com/@MattToppi280",
-      bio: "Founder of Cassette. Lead developer and music lover at heart",
-      profilePath:
-          // "https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-          "https://images.unsplash.com/photo-1608008961553-0c83c2883ad2?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      services: [
-        Services(serviceName: "Spotify"),
-        Services(serviceName: "Apple Music"),
-      ]);
+  static UserBio userProfile = UserBio(
+    userId: "1",
+    username: "@MattToppi280",
+    fullName: "Matt Toppi",
+    bio: "Founder of Cassette. Lead developer and music lover at heart",
+    avatarUrl:
+        "https://images.unsplash.com/photo-1608008961553-0c83c2883ad2?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    link: "instragram.com/@MattToppi280",
+    conversionStats: ConversionStats(
+        tracksConverted: 0,
+        albumsConverted: 0,
+        artistsConverted: 0,
+        playlistsConverted: 0),
+    connectedServices: [
+      ConnectedService(
+        serviceType: "Spotify",
+        connectedAt: DateTime.now(),
+      ),
+      ConnectedService(
+        serviceType: "Apple Music",
+        connectedAt: DateTime.now(),
+      ),
+    ],
+  );
+
+  static final _authService = AuthService();
 
   static Widget burgerMenu(
       {required VoidCallback onPressed, Color? iconColor, double? size}) {
@@ -413,8 +427,9 @@ class AppUtils {
 
   static Future<void> googleSignInSignUpFnc() async {
     try {
-      await supabase.auth.signInWithOAuth(OAuthProvider.google,
-          redirectTo: '${Env.appDomain}/profile');
+      // TODO: Implement OAuth with backend
+      final response = await _authService.signInWithOAuth(
+          provider: 'google', redirectUrl: '${Env.appDomain}/profile');
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
     }
@@ -422,10 +437,9 @@ class AppUtils {
 
   static Future<void> appleSignInSignUpFnc() async {
     try {
-      await supabase.auth.signInWithOAuth(
-        OAuthProvider.apple,
-        redirectTo: '${Env.appDomain}/profile',
-      );
+      // TODO: Implement OAuth with backend
+      final response = await _authService.signInWithOAuth(
+          provider: 'apple', redirectUrl: '${Env.appDomain}/profile');
     } catch (e) {
       debugPrint('Apple Sign-In Error: $e');
     }
@@ -433,12 +447,11 @@ class AppUtils {
 
   static Future<void> spotifySignInSignUpFnc() async {
     try {
-      await supabase.auth.signInWithOAuth(
-        OAuthProvider.spotify,
-        redirectTo: '${Env.appDomain}/profile',
-      );
+      // TODO: Implement OAuth with backend
+      final response = await _authService.signInWithOAuth(
+          provider: 'spotify', redirectUrl: '${Env.appDomain}/profile');
     } catch (e) {
-      debugPrint('Apple Sign-In Error: $e');
+      debugPrint('Spotify Sign-In Error: $e');
     }
   }
 

@@ -4,16 +4,17 @@ import 'package:cassettefrontend/core/common_widgets/app_toolbar.dart';
 import 'package:cassettefrontend/core/common_widgets/text_field_widget.dart';
 import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
-import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
-import 'package:cassettefrontend/feature/profile/model/profile_model.dart';
-import 'package:cassettefrontend/main.dart'; // Import for supabase client
+import 'package:cassettefrontend/feature/profile/model/user_profile_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_auth_ui/supabase_auth_ui.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
+import 'package:cassettefrontend/core/services/api_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:logging/logging.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -23,6 +24,7 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
+  final _logger = Logger('EditProfilePage');
   bool isMenuVisible = false;
   int value = 0;
   bool _isUsernameValid = true;
@@ -34,7 +36,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   TextEditingController linkCtr = TextEditingController();
   TextEditingController bioCtr = TextEditingController();
 
-  List<Services> allServicesList = [];
+  List<ConnectedService> allServicesList = [];
+  final _authService = AuthService();
+  Map<String, dynamic> userData = {};
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -43,41 +48,85 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadUserData() async {
-    final user = supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        // Try to fetch existing profile
-        final data = await supabase
-            .from('Users')
-            .select()
-            .eq('UserId', user.id)
-            .single();
+    try {
+      final headers = await _authService.authHeaders;
+      final response = await http.get(
+        Uri.parse('${ApiService.baseUrl}/user/profile'),
+        headers: headers,
+      );
 
-        setState(() {
-          String username = data['Username'] ?? '';
-          // Don't display temporary usernames
-          if (!username.startsWith('temp_')) {
-            nameCtr.text = username;
-            userNameCtr.text = username;
-          }
-          bioCtr.text = data['Bio'] ?? '';
-          linkCtr.text = data['AvatarUrl'] ?? '';
-        });
-      } catch (e) {
-        print('[DEBUG] No existing profile found, using auth metadata');
-        // If no profile exists, use auth metadata
-        final metadata = user.userMetadata;
-        setState(() {
-          String username = metadata?['username'] ?? '';
-          // Don't display temporary usernames from metadata either
-          if (!username.startsWith('temp_')) {
-            nameCtr.text = username;
-            userNameCtr.text = username;
-          }
-          bioCtr.text = metadata?['bio'] ?? '';
-          linkCtr.text = metadata?['profile_picture'] ?? '';
-        });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            userData = data['user'];
+            nameCtr.text = userData['fullName'] ?? '';
+            userNameCtr.text = userData['username'] ?? '';
+            bioCtr.text = userData['bio'] ?? '';
+            linkCtr.text = userData['avatarUrl'] ?? '';
+            isLoading = false;
+          });
+        }
       }
+    } catch (e) {
+      _logger.warning('Error loading user data: $e');
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _checkUsernameAvailability(String username) async {
+    try {
+      final headers = await _authService.authHeaders;
+      final response = await http.get(
+        Uri.parse('${ApiService.baseUrl}/user/check-username/$username'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (!data['available']) {
+          setState(() {
+            _isUsernameValid = false;
+            _usernameError =
+                'Username already exists. Please choose a different one.';
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      _logger.warning('Error checking username availability: $e');
+    }
+  }
+
+  Future<void> _updateProfile({
+    required String username,
+    required String fullName,
+    required String bio,
+    required String avatarUrl,
+  }) async {
+    try {
+      final headers = await _authService.authHeaders;
+      final response = await http.put(
+        Uri.parse('${ApiService.baseUrl}/user/profile'),
+        headers: headers,
+        body: json.encode({
+          'username': username,
+          'fullName': fullName,
+          'bio': bio,
+          'avatarUrl': avatarUrl,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update profile');
+      }
+
+      final data = json.decode(response.body);
+      if (!data['success']) {
+        throw Exception(data['message'] ?? 'Failed to update profile');
+      }
+    } catch (e) {
+      throw Exception('Error updating profile: $e');
     }
   }
 
@@ -89,21 +138,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
       });
       return false;
     }
-    if (username.length > 30) {
+
+    if (username.length < 3) {
       setState(() {
         _isUsernameValid = false;
-        _usernameError = 'Username must be 30 characters or less';
+        _usernameError = 'Username must be at least 3 characters long';
       });
       return false;
     }
-    if (username.startsWith('temp_')) {
-      setState(() {
-        _isUsernameValid = false;
-        _usernameError = 'Username cannot start with "temp_"';
-      });
-      return false;
-    }
-    // Add basic character validation
+
     if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)) {
       setState(() {
         _isUsernameValid = false;
@@ -112,6 +155,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       });
       return false;
     }
+
     setState(() {
       _isUsernameValid = true;
       _usernameError = '';
@@ -125,218 +169,278 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     if (!_validateUsername(userNameCtr.text)) {
+      if (!mounted) return;
       AppUtils.showToast(context: context, title: _usernameError);
       _startCooldown();
       return;
     }
 
-    final user = supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        // Check if username exists first
-        final existingUser = await supabase
-            .from('Users')
-            .select('Username')
-            .eq('Username', userNameCtr.text)
-            .neq('UserId', user.id)
-            .maybeSingle();
-
-        if (existingUser != null) {
-          if (mounted) {
-            AppUtils.showToast(
-                context: context,
-                title:
-                    "Username already exists. Please choose a different one.");
-            _startCooldown();
-          }
-          return;
-        }
-
-        // Proceed with updates if username is unique
-        await supabase.auth.updateUser(UserAttributes(
-          data: {
-            'username': userNameCtr.text,
-            'bio': bioCtr.text,
-            'profile_picture': linkCtr.text,
-            'is_temporary_username': false,
-          },
-        ));
-
-        try {
-          await supabase.from('Users').update({
-            'Username': userNameCtr.text,
-            'Bio': bioCtr.text,
-            'AvatarUrl': linkCtr.text,
-          }).eq('UserId', user.id);
-        } catch (e) {
-          print('[DEBUG] Profile update failed, trying insert');
-          await supabase.from('Users').insert({
-            'UserId': user.id,
-            'Username': userNameCtr.text,
-            'Email': user.email!,
-            'Bio': bioCtr.text,
-            'AvatarUrl': linkCtr.text,
-            'JoinDate': DateTime.now().toIso8601String()
-          });
-        }
-
-        if (mounted) {
-          AppUtils.showToast(
-              context: context, title: "Profile updated successfully");
-          context.go('/profile');
-        }
-      } catch (e) {
-        print('[ERROR] Profile save error: $e');
-        if (mounted) {
-          AppUtils.showToast(context: context, title: "Error updating profile");
-          _startCooldown();
-        }
+    try {
+      await _checkUsernameAvailability(userNameCtr.text);
+      if (!_isUsernameValid) {
+        if (!mounted) return;
+        AppUtils.showToast(context: context, title: _usernameError);
+        _startCooldown();
+        return;
       }
+
+      await _updateProfile(
+        username: userNameCtr.text,
+        fullName: nameCtr.text,
+        bio: bioCtr.text,
+        avatarUrl: linkCtr.text,
+      );
+
+      if (!mounted) return;
+      AppUtils.showToast(
+        context: context,
+        title: "Profile updated successfully",
+      );
+      context.go('/profile');
+    } catch (e) {
+      _logger.warning('Error saving profile changes: $e');
+      if (!mounted) return;
+      AppUtils.showToast(
+        context: context,
+        title: e.toString(),
+      );
+      _startCooldown();
     }
   }
 
   void _startCooldown() {
     setState(() => _isSaveOnCooldown = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _isSaveOnCooldown = false);
-      }
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _isSaveOnCooldown = false);
     });
+  }
+
+  Future<void> _uploadImage(String filePath) async {
+    try {
+      if (!mounted) return;
+      AppUtils.showToast(
+        context: context,
+        title: "Image upload functionality coming soon",
+      );
+    } catch (e) {
+      _logger.warning('Error uploading image: $e');
+      if (!mounted) return;
+      AppUtils.showToast(
+        context: context,
+        title: "Error uploading image",
+      );
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final image = await AppUtils.uploadPhoto();
+      if (image != null) {
+        await _uploadImage(image.path);
+      }
+    } catch (e) {
+      _logger.warning('Error picking image: $e');
+      if (!mounted) return;
+      AppUtils.showToast(
+        context: context,
+        title: "Error uploading image",
+      );
+    }
   }
 
   fillAllServices() {
     allServicesList
-      ..add(Services(serviceName: "Spotify"))
-      ..add(Services(serviceName: "Apple Music"))
-      ..add(Services(serviceName: "YouTube Music"))
-      ..add(Services(serviceName: "Tidal"))
-      ..add(Services(serviceName: "Deezer"));
+      ..add(
+          ConnectedService(serviceType: "Spotify", connectedAt: DateTime.now()))
+      ..add(ConnectedService(
+          serviceType: "Apple Music", connectedAt: DateTime.now()))
+      ..add(ConnectedService(
+          serviceType: "YouTube Music", connectedAt: DateTime.now()))
+      ..add(ConnectedService(serviceType: "Tidal", connectedAt: DateTime.now()))
+      ..add(
+          ConnectedService(serviceType: "Deezer", connectedAt: DateTime.now()));
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-        showGraphics: true,
-        onBurgerPop: () {
-          setState(() {
-            isMenuVisible = !isMenuVisible;
-          });
-        },
-        isMenuVisible: isMenuVisible,
-        body: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Fixed header section
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 18),
-                  AppToolbar(burgerMenuFnc: () {
-                    setState(() {
-                      isMenuVisible = !isMenuVisible;
-                    });
-                  }),
-                  const SizedBox(height: 18),
-                  profileTopView(),
-                  const SizedBox(height: 38),
-                ],
-              ),
-
-              // Scrollable content
+      showGraphics: true,
+      onBurgerPop: () {
+        setState(() {
+          isMenuVisible = !isMenuVisible;
+        });
+      },
+      isMenuVisible: isMenuVisible,
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppToolbar(
+              burgerMenuFnc: () {
+                setState(() {
+                  isMenuVisible = !isMenuVisible;
+                });
+              },
+            ),
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
               Expanded(
-                child: ClipRect(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          connectServiceView(),
-                          const SizedBox(height: 28),
-                          labelTextFieldWidget(),
-                          const SizedBox(height: 56),
-                          AnimatedPrimaryButton(
-                            text: "Save Changes",
-                            onTap: () {
-                              _saveChanges();
-                            },
-                            height: 40,
-                            width: MediaQuery.of(context).size.width - 46 + 16,
-                            radius: 10,
-                            initialPos: 6,
-                            topBorderWidth: 3,
-                            bottomBorderWidth: 3,
-                            colorTop: AppColors.animatedBtnColorConvertTop,
-                            textStyle: AppStyles.animatedBtnFreeAccTextStyle,
-                            borderColorTop:
-                                AppColors.animatedBtnColorConvertTop,
-                            colorBottom:
-                                AppColors.animatedBtnColorConvertBottom,
-                            borderColorBottom:
-                                AppColors.animatedBtnColorConvertBottomBorder,
-                          ),
-                          const SizedBox(height: 56),
-                        ],
-                      ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Stack(
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  width: 4,
+                                  color:
+                                      Theme.of(context).scaffoldBackgroundColor,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    spreadRadius: 2,
+                                    blurRadius: 10,
+                                    color: Colors.black.withOpacity(0.1),
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                                shape: BoxShape.circle,
+                                image: DecorationImage(
+                                  fit: BoxFit.cover,
+                                  image: NetworkImage(
+                                    linkCtr.text.isNotEmpty
+                                        ? linkCtr.text
+                                        : 'https://via.placeholder.com/150',
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    width: 4,
+                                    color: Theme.of(context)
+                                        .scaffoldBackgroundColor,
+                                  ),
+                                  color: Colors.green,
+                                ),
+                                child: InkWell(
+                                  onTap: _pickImage,
+                                  child: const Icon(
+                                    Icons.edit,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 35),
+                        TextFieldWidget(
+                          hint: 'Full Name',
+                          controller: nameCtr,
+                          onChanged: (name) {},
+                        ),
+                        const SizedBox(height: 24),
+                        TextFieldWidget(
+                          hint: 'Username',
+                          controller: userNameCtr,
+                          onChanged: (username) {
+                            _validateUsername(username);
+                          },
+                          errorText: _isUsernameValid ? null : _usernameError,
+                        ),
+                        const SizedBox(height: 24),
+                        TextFieldWidget(
+                          hint: 'Bio',
+                          controller: bioCtr,
+                          maxLines: 5,
+                          onChanged: (bio) {},
+                        ),
+                        const SizedBox(height: 35),
+                        AnimatedPrimaryButton(
+                          text: 'Save',
+                          onTap: _saveChanges,
+                          height: 40,
+                          width: MediaQuery.of(context).size.width - 46 + 16,
+                          radius: 10,
+                          initialPos: 6,
+                          topBorderWidth: 3,
+                          bottomBorderWidth: 3,
+                          colorTop: AppColors.animatedBtnColorConvertTop,
+                          textStyle: AppStyles.animatedBtnFreeAccTextStyle,
+                          borderColorTop: AppColors.animatedBtnColorConvertTop,
+                          colorBottom: AppColors.animatedBtnColorConvertBottom,
+                          borderColorBottom:
+                              AppColors.animatedBtnColorConvertBottomBorder,
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-        ));
+          ],
+        ),
+      ),
+    );
   }
 
-  profileTopView() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () async {
-              uploadImageFnc(AppUtils.profileModel.id);
-            },
-            child: Container(
-              // color: Colors.red,
-              height: 70,
-              width: 70,
-              child: Stack(
-                children: [
-                  SizedBox(
-                    width: 65,
-                    height: 65,
-                    child: CircleAvatar(
-                      radius: 30.0,
-                      backgroundImage:
-                          NetworkImage(AppUtils.profileModel.profilePath ?? ''),
-                      backgroundColor: Colors.transparent,
+  Widget profileTopView() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: _pickImage,
+          child: SizedBox(
+            height: 70,
+            width: 70,
+            child: Stack(
+              children: [
+                const SizedBox(
+                  width: 65,
+                  height: 65,
+                  child: CircleAvatar(
+                    radius: 30.0,
+                    backgroundImage: NetworkImage('placeholder_url'),
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    height: 24,
+                    width: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.appBg,
+                      border: Border.all(color: AppColors.textPrimary),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      color: AppColors.textPrimary,
+                      size: 16,
                     ),
                   ),
-                  Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.appBg,
-                              border: Border.all(color: AppColors.textPrimary)),
-                          child: const Icon(
-                            Icons.edit,
-                            color: AppColors.textPrimary,
-                            size: 16,
-                          ))),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 22),
-          Text("Edit Your Profile", style: AppStyles.profileTitleTextStyle),
-        ],
-      ),
+        ),
+        const SizedBox(width: 22),
+        Text("Edit Your Profile", style: AppStyles.profileTitleTextStyle),
+      ],
     );
   }
 
@@ -379,12 +483,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: AppUtils.profileModel.services?.length,
+            itemCount: AppUtils.userProfile.connectedServices.length,
             itemBuilder: (context, index) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: serviceRow(
-                    AppUtils.profileModel.services?[index].serviceName),
+                    AppUtils.userProfile.connectedServices[index].serviceType),
               );
             },
           ),
@@ -496,8 +600,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         InkWell(
             onTap: () {
               setState(() {
-                AppUtils.profileModel.services?.removeWhere(
-                    (element) => element.serviceName == serviceName);
+                AppUtils.userProfile.connectedServices.removeWhere(
+                    (element) => element.serviceType == serviceName);
               });
             },
             child: Image.asset(icDelete, fit: BoxFit.scaleDown, height: 22)),
@@ -535,10 +639,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     value = 0;
     allServicesList.clear();
     fillAllServices();
-    if (AppUtils.profileModel.services?.isNotEmpty ?? false) {
-      for (var i in AppUtils.profileModel.services!) {
+    if (AppUtils.userProfile.connectedServices != null &&
+        AppUtils.userProfile.connectedServices.isNotEmpty) {
+      for (var i in AppUtils.userProfile.connectedServices) {
         allServicesList
-            .removeWhere((element) => element.serviceName == i.serviceName);
+            .removeWhere((element) => element.serviceType == i.serviceType);
       }
     }
     SmartDialog.show(
@@ -578,10 +683,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: allServicesList.length,
                   itemBuilder: (context, index) {
-                    return AppUtils.profileModel.services
-                                ?.map((e) => e.serviceName)
+                    return AppUtils.userProfile.connectedServices
+                                ?.map((e) => e.serviceType)
                                 .toList()
-                                .contains(allServicesList[index].serviceName) ??
+                                .contains(allServicesList[index].serviceType) ??
                             false
                         ? SizedBox()
                         : RadioListTile(
@@ -597,11 +702,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             title: Row(
                               children: [
                                 getServiceIcon(
-                                    allServicesList[index].serviceName ?? '',
+                                    allServicesList[index].serviceType ?? '',
                                     iconHeight: 18),
                                 const SizedBox(width: 6),
                                 Text(
-                                  allServicesList[index].serviceName ?? '',
+                                  allServicesList[index].serviceType ?? '',
                                   style: AppStyles.dialogItemsTextStyle,
                                 ),
                               ],
@@ -643,33 +748,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   addServiceFnc() {
     if (allServicesList.isNotEmpty) {
-      AppUtils.profileModel.services
-          ?.add(Services(serviceName: allServicesList[value].serviceName));
-      if (allServicesList[value].serviceName == "Apple Music") {
+      AppUtils.userProfile.connectedServices?.add(ConnectedService(
+          serviceType: allServicesList[value].serviceType,
+          connectedAt: DateTime.now()));
+      if (allServicesList[value].serviceType == "Apple Music") {
         AppUtils.authenticateAppleMusic();
       }
       setState(() {});
-    }
-  }
-
-  uploadImageFnc(userId) async {
-    final image = await AppUtils.uploadPhoto();
-    if (image != null) {
-      final imageBytes = await image.readAsBytes();
-      final storagePath =
-          'profile/${userId}${DateTime.now().millisecondsSinceEpoch}';
-      await Supabase.instance.client.storage
-          .from(Env.profileBucket)
-          .uploadBinary(
-            storagePath,
-            imageBytes,
-            fileOptions: FileOptions(contentType: image.mimeType, upsert: true),
-          )
-          .then(
-        (value) {
-          print("profile uploaded : ${value}");
-        },
-      );
     }
   }
 }

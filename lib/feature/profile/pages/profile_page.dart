@@ -5,16 +5,22 @@ import 'package:cassettefrontend/core/constants/app_constants.dart';
 import 'package:cassettefrontend/core/constants/image_path.dart';
 import 'package:cassettefrontend/core/styles/app_styles.dart';
 import 'package:cassettefrontend/core/utils/app_utils.dart';
-import 'package:cassettefrontend/feature/profile/json/profile_items_json.dart';
-import 'package:cassettefrontend/feature/profile/model/profile_item_model.dart';
-import 'package:cassettefrontend/main.dart'; // Import for supabase client
+import 'package:cassettefrontend/feature/profile/model/user_profile_models.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
+import 'package:cassettefrontend/core/services/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:cassettefrontend/feature/profile/services/profile_service.dart';
+import 'package:cassettefrontend/core/common_widgets/loading_widget.dart';
+import 'package:cassettefrontend/core/common_widgets/error_widget.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String userIdentifier; // Can be either UUID or username
+
+  const ProfilePage({Key? key, required this.userIdentifier}) : super(key: key);
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -22,58 +28,184 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
+  late ProfileService _profileService;
+  final _authService = AuthService();
+  late final ApiService _apiService;
+  UserBio? _userBio;
+  List<ActivityPost> _activityPosts = [];
   bool isMenuVisible = false;
-  List<ProfileItemsJson> profileItemList = [];
   late TabController tabController;
   int selectedIndex = 0;
-  Map<String, dynamic> userData = {};
-  bool isLoading = true;
+  int _currentPage = 1;
+  int _totalItems = 0;
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  String? _error;
+  String? _selectedElementType;
+  bool _isCurrentUser = false;
+  bool _isMounted = true; // Track mounted state
+  String? _lastLoadedUserId; // Track last loaded user ID
 
   @override
   void initState() {
     super.initState();
+    _apiService = ApiService(_authService);
+    _profileService = ProfileService(_apiService);
     tabController = TabController(length: 4, vsync: this);
     tabController.addListener(() {
       setState(() {
         selectedIndex = tabController.index;
       });
     });
-    profileItemList = (profileItemsJson as List)
-        .map((item) => ProfileItemsJson.fromJson(item))
-        .toList();
-    _loadUserData();
+    _loadProfile();
   }
 
-  Future<void> _loadUserData() async {
-    final user = supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        final data = await supabase
-            .from('Users')
-            .select()
-            .eq('AuthUserId', user.id)
-            .single();
-
-        setState(() {
-          userData = {
-            'FullName': data['FullName'] ?? '',
-            'Username': data['Username'] ?? '',
-            'Bio': data['Bio'] ?? '',
-            'AvatarUrl': data['AvatarUrl'] ?? ''
-          };
-          isLoading = false;
-        });
-      } catch (e) {
-        print('[ERROR] Profile load failed: $e');
-        setState(() => isLoading = false);
-      }
+  @override
+  void didUpdateWidget(ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only reload if the user identifier changed
+    if (oldWidget.userIdentifier != widget.userIdentifier) {
+      _loadProfile();
     }
   }
 
   @override
   void dispose() {
+    _isMounted = false;
     tabController.dispose();
     super.dispose();
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (_isMounted) {
+      setState(fn);
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    if (!_isMounted) return;
+
+    // Check if we already loaded this user's profile
+    if (_lastLoadedUserId == widget.userIdentifier && _userBio != null) {
+      return;
+    }
+
+    try {
+      _safeSetState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      // Check if this is the current user's profile
+      final currentUser = await _authService.getCurrentUser();
+      if (!_isMounted) return;
+
+      // If we're in edit mode, we need the current user's data
+      final isEditMode = widget.userIdentifier == 'edit';
+      final userIdToFetch = isEditMode && currentUser != null
+          ? currentUser['userId']?.toString() ?? 'edit'
+          : widget.userIdentifier;
+
+      final isCurrentUser = currentUser != null &&
+          (currentUser['userId'].toString() == userIdToFetch ||
+              currentUser['username'].toString().toLowerCase() ==
+                  userIdToFetch.toLowerCase());
+
+      if (isEditMode && !isCurrentUser) {
+        throw Exception('You must be logged in to edit your profile');
+      }
+
+      final data = await _profileService.fetchUserProfile(userIdToFetch);
+      if (!_isMounted) return;
+
+      _safeSetState(() {
+        _userBio = data.bio;
+        _activityPosts = data.activity.items;
+        _totalItems = data.activity.totalItems;
+        _currentPage = data.activity.page;
+        _isLoading = false;
+        _isCurrentUser = isCurrentUser;
+        _lastLoadedUserId = userIdToFetch; // Update last loaded user ID
+      });
+    } catch (e) {
+      if (!_isMounted) return;
+      print('❌ Error loading profile: $e');
+      _safeSetState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || _activityPosts.length >= _totalItems || !_isMounted)
+      return;
+
+    try {
+      _safeSetState(() {
+        _isLoadingMore = true;
+      });
+
+      final nextPage = _currentPage + 1;
+      final moreActivity = await _profileService.fetchUserActivity(
+        widget.userIdentifier,
+        page: nextPage,
+        elementType: _selectedElementType,
+      );
+
+      if (!_isMounted) return;
+
+      _safeSetState(() {
+        _activityPosts.addAll(moreActivity.items);
+        _currentPage = nextPage;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!_isMounted) return;
+
+      _safeSetState(() {
+        _error = e.toString();
+        _isLoadingMore = false;
+      });
+    }
+  }
+
+  Future<void> _filterByElementType(String? type) async {
+    if (!_isMounted) return;
+
+    // If selecting the same filter or clearing the current filter, do nothing
+    if (_selectedElementType == type ||
+        (type == null && _selectedElementType == null)) return;
+
+    try {
+      _safeSetState(() {
+        _isLoading = true;
+        _error = null;
+        _selectedElementType = type;
+      });
+
+      final activity = await _profileService.fetchUserActivity(
+        widget.userIdentifier,
+        page: 1,
+        elementType: type,
+      );
+
+      if (!_isMounted) return;
+
+      _safeSetState(() {
+        _activityPosts = activity.items;
+        _totalItems = activity.totalItems;
+        _currentPage = activity.page;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!_isMounted) return;
+      print('❌ Error filtering activity: $e');
+      _safeSetState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -85,7 +217,7 @@ class _ProfilePageState extends State<ProfilePage>
         });
       },
       isMenuVisible: isMenuVisible,
-      body: isLoading
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildProfileContent(),
     );
@@ -93,19 +225,14 @@ class _ProfilePageState extends State<ProfilePage>
 
   Widget _buildProfileContent() {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Determine if we're on a small screen
     final isSmallScreen = screenWidth < 400;
-    // Determine if we're on a large screen (tablet/desktop)
     final isLargeScreen = screenWidth > 800;
-
-    // Adjust header height based on screen size
     final profileHeaderHeight =
         isSmallScreen ? 220.0 : (isLargeScreen ? 280.0 : 250.0);
 
     return NestedScrollView(
       headerSliverBuilder: (context, innerBoxScrolled) {
         return [
-          // App Bar with logo and hamburger menu
           SliverAppBar(
             backgroundColor: AppColors.textPrimary,
             elevation: 0,
@@ -117,7 +244,6 @@ class _ProfilePageState extends State<ProfilePage>
             title: _buildToolbar(),
             toolbarHeight: isSmallScreen ? 45 : 50,
           ),
-          // Profile Details Section
           SliverPersistentHeader(
             pinned: false,
             delegate: _ProfileHeaderDelegate(
@@ -131,7 +257,6 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             ),
           ),
-          // Tab Bar
           SliverPersistentHeader(
             pinned: true,
             delegate: SliverAppBarDelegate(
@@ -148,8 +273,7 @@ class _ProfilePageState extends State<ProfilePage>
         ];
       },
       body: TabBarView(
-        physics:
-            const NeverScrollableScrollPhysics(), // Disable tab swiping to avoid controller conflicts
+        physics: const NeverScrollableScrollPhysics(),
         controller: tabController,
         children: [
           _buildContentList(), // Playlists
@@ -163,13 +287,11 @@ class _ProfilePageState extends State<ProfilePage>
 
   Widget _buildToolbar() {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Use a fixed maximum width for the logo to prevent overflow on wide screens
     final logoMaxWidth = screenWidth < 600 ? screenWidth * 0.3 : 180.0;
 
     return Stack(
       alignment: Alignment.center,
       children: [
-        // App logo
         Align(
           alignment: Alignment.centerLeft,
           child: Padding(
@@ -183,7 +305,6 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ),
         ),
-        // Burger menu
         Align(
           alignment: Alignment.centerRight,
           child: Padding(
@@ -195,7 +316,6 @@ class _ProfilePageState extends State<ProfilePage>
                 });
               },
               iconColor: AppColors.colorWhite,
-              // Adjust size based on screen width
               size: screenWidth < 400 ? 36.0 : 40.0,
             ),
           ),
@@ -205,37 +325,30 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildProfileDetails() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Determine if we're on a small screen
-    final isSmallScreen = screenWidth < 400;
-    // Determine if we're on a large screen (tablet/desktop)
-    final isLargeScreen = screenWidth > 800;
+    if (_userBio == null) return const SizedBox();
 
-    // Adjust avatar size based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    final isLargeScreen = screenWidth > 800;
     final avatarRadius = isSmallScreen ? 30.0 : (isLargeScreen ? 40.0 : 34.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: isSmallScreen ? 4 : 8),
-        // Profile avatar and name section
         Row(
           children: [
-            // Profile Avatar with animation
             Hero(
               tag: 'profile-avatar',
               child: CircleAvatar(
                 radius: avatarRadius,
-                backgroundImage: NetworkImage(
-                  userData['AvatarUrl'] ??
-                      AppUtils.profileModel.profilePath ??
-                      '',
-                ),
+                backgroundImage: _userBio!.avatarUrl != null
+                    ? NetworkImage(_userBio!.avatarUrl!)
+                    : null,
                 backgroundColor: Colors.transparent,
               ),
             ),
             SizedBox(width: isSmallScreen ? 8 : 12),
-            // Name and username
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +357,7 @@ class _ProfilePageState extends State<ProfilePage>
                     children: [
                       Expanded(
                         child: Text(
-                          userData['FullName'] ?? '',
+                          _userBio!.fullName ?? '',
                           style: AppStyles.profileNameTs.copyWith(
                             fontSize:
                                 isSmallScreen ? 18 : (isLargeScreen ? 24 : 20),
@@ -252,7 +365,6 @@ class _ProfilePageState extends State<ProfilePage>
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Edit button with ripple effect
                       Material(
                         color: Colors.transparent,
                         child: InkWell(
@@ -268,7 +380,7 @@ class _ProfilePageState extends State<ProfilePage>
                     ],
                   ),
                   Text(
-                    userData['Username'] ?? '',
+                    _userBio!.username,
                     style: AppStyles.profileUserNameTs.copyWith(
                       fontSize: isSmallScreen ? 14 : 16,
                     ),
@@ -279,61 +391,48 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ],
         ),
-
         SizedBox(height: isSmallScreen ? 8 : 12),
-        // Bio
         Text(
-          userData['Bio'] ?? '',
+          _userBio!.bio,
           style: AppStyles.profileBioTs.copyWith(
             fontSize: isSmallScreen ? 13 : 14,
           ),
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
-
         SizedBox(height: isSmallScreen ? 12 : 16),
-        // Link and service icons
         Row(
           children: [
             Image.asset(icLink, height: isSmallScreen ? 16 : 18),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                AppUtils.profileModel.link ?? '',
+                _userBio!.link ?? '',
                 style: AppStyles.profileLinkTs.copyWith(
                   fontSize: isSmallScreen ? 12 : 14,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            // Service icons with horizontal scroll
             SizedBox(
               width: isSmallScreen ? 100 : (isLargeScreen ? 140 : 120),
               child: _buildServiceIcons(),
             ),
           ],
         ),
-
         SizedBox(height: isSmallScreen ? 12 : 16),
-        // Action buttons
         _buildActionButtons(),
       ],
     );
   }
 
   Widget _buildServiceIcons() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Determine if we're on a small screen
-    final isSmallScreen = screenWidth < 400;
-    // Determine if we're on a large screen (tablet/desktop)
-    final isLargeScreen = screenWidth > 800;
+    if (_userBio == null) return const SizedBox();
 
-    // Use ScrollConfiguration to customize the horizontal scroll behavior
     return ScrollConfiguration(
-      // Apply custom scroll physics to make horizontal scrolling require more effort
       behavior: const ScrollBehavior().copyWith(
-        physics: const ClampingScrollPhysics(), // More resistance
-        overscroll: false, // Disable overscroll glow
+        physics: const ClampingScrollPhysics(),
+        overscroll: false,
         dragDevices: {
           PointerDeviceKind.touch,
           PointerDeviceKind.mouse,
@@ -341,18 +440,16 @@ class _ProfilePageState extends State<ProfilePage>
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        // Make horizontal scrolling require more deliberate movement
         physics: const AlwaysScrollableScrollPhysics(
-          parent: PageScrollPhysics(), // Requires more effort to scroll
+          parent: PageScrollPhysics(),
         ),
         child: Row(
-          children: AppUtils.profileModel.services
-                  ?.map((service) => Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: _getServiceIcon(service.serviceName ?? ''),
-                      ))
-                  .toList() ??
-              [],
+          children: _userBio!.connectedServices
+              .map((service) => Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: _getServiceIcon(service.serviceType),
+                  ))
+              .toList(),
         ),
       ),
     );
@@ -360,28 +457,17 @@ class _ProfilePageState extends State<ProfilePage>
 
   Widget _buildActionButtons() {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Determine if we're on a small screen
     final isSmallScreen = screenWidth < 400;
-    // Determine if we're on a large screen (tablet/desktop)
     final isLargeScreen = screenWidth > 800;
-
-    // Calculate button width based on screen size
-    // For large screens, use fixed widths to avoid buttons becoming too large
     final buttonWidth = isLargeScreen
-        ? (screenWidth * 0.15) // Cap at 15% of screen width for large screens
-        : ((screenWidth - (isSmallScreen ? 30 : 40)) /
-            2.1); // Responsive for small/medium
-
-    // Adjust button height based on screen size
+        ? (screenWidth * 0.15)
+        : ((screenWidth - (isSmallScreen ? 30 : 40)) / 2.1);
     final buttonHeight = isSmallScreen ? 32.0 : (isLargeScreen ? 40.0 : 36.0);
-
-    // Adjust font size based on screen size
     final fontSize = isSmallScreen ? 12.0 : (isLargeScreen ? 15.0 : 14.0);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Share Profile button
         AnimatedPrimaryButton(
           centerWidget: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -397,12 +483,9 @@ class _ProfilePageState extends State<ProfilePage>
           ),
           width: buttonWidth,
           height: buttonHeight,
-          onTap: () =>
-              AppUtils.onShare(context, AppUtils.profileModel.link ?? ''),
+          onTap: () => AppUtils.onShare(context, _userBio?.link ?? ''),
           radius: 12,
         ),
-
-        // Add Music button
         AnimatedPrimaryButton(
           topBorderWidth: 2,
           colorTop: AppColors.appBg,
@@ -435,7 +518,6 @@ class _ProfilePageState extends State<ProfilePage>
 
   Widget _buildTabBar() {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Determine if we're on a small screen
     final isSmallScreen = screenWidth < 400;
 
     return TabBar(
@@ -463,7 +545,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildContentList() {
-    if (profileItemList.isEmpty) {
+    if (_activityPosts.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -483,33 +565,26 @@ class _ProfilePageState extends State<ProfilePage>
     }
 
     return ListView.builder(
-      itemCount: profileItemList.length,
+      itemCount: _activityPosts.length,
       shrinkWrap: true,
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(top: 5),
       itemBuilder: (context, index) {
-        return _buildContentItem(profileItemList[index], index);
+        return _buildActivityPostItem(_activityPosts[index]);
       },
     );
   }
 
-  Widget _buildContentItem(ProfileItemsJson item, int index) {
+  Widget _buildActivityPostItem(ActivityPost post) {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Determine if we're on a small screen
     final isSmallScreen = screenWidth < 400;
-    // Determine if we're on a large screen (tablet/desktop)
     final isLargeScreen = screenWidth > 800;
-
-    // Adjust image size based on screen width
     final imageHeight = isSmallScreen ? 100.0 : (isLargeScreen ? 150.0 : 130.0);
     final imageWidth = isSmallScreen ? 95.0 : (isLargeScreen ? 145.0 : 125.0);
-
-    // Adjust horizontal padding based on screen size
     final horizontalPadding =
         isSmallScreen ? 6.0 : (isLargeScreen ? 16.0 : 12.0);
 
     return Container(
-      // Adjust margins based on screen size
       margin: EdgeInsets.symmetric(
           vertical: 4,
           horizontal: isSmallScreen ? 4 : (isLargeScreen ? 16 : 8)),
@@ -533,24 +608,28 @@ class _ProfilePageState extends State<ProfilePage>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thumbnail with rounded corners
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: AppUtils.cacheImage(
-              imageUrl: item.source ?? '',
-              borderRadius: BorderRadius.circular(6),
-              height: imageHeight,
-              width: imageWidth,
-              fit: BoxFit.cover,
-            ),
+            child: post.imageUrl != null
+                ? Image.network(
+                    post.imageUrl!,
+                    height: imageHeight,
+                    width: imageWidth,
+                    fit: BoxFit.cover,
+                  )
+                : Container(
+                    height: imageHeight,
+                    width: imageWidth,
+                    color: AppColors.textPrimary.withOpacity(0.1),
+                    child: Icon(Icons.music_note,
+                        color: AppColors.textPrimary.withOpacity(0.5)),
+                  ),
           ),
           SizedBox(width: isSmallScreen ? 8 : 12),
-          // Content details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: title and share button
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -558,7 +637,6 @@ class _ProfilePageState extends State<ProfilePage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Type label (Song, Playlist, etc.) - replaced with badge
                           Container(
                             margin: const EdgeInsets.only(bottom: 6),
                             padding: const EdgeInsets.symmetric(
@@ -577,13 +655,13 @@ class _ProfilePageState extends State<ProfilePage>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  _getTypeIcon(item.type ?? ''),
+                                  _getTypeIcon(post.elementType),
                                   size: 12,
                                   color: Colors.red,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  (item.type ?? '').toUpperCase(),
+                                  post.elementType.toUpperCase(),
                                   style: const TextStyle(
                                     color: Colors.red,
                                     fontSize: 10,
@@ -593,9 +671,8 @@ class _ProfilePageState extends State<ProfilePage>
                               ],
                             ),
                           ),
-                          // Title - adjust size based on screen width
                           Text(
-                            item.title ?? '',
+                            post.title,
                             style: AppStyles.itemTitleTs.copyWith(
                               fontSize: isSmallScreen
                                   ? 14
@@ -604,36 +681,9 @@ class _ProfilePageState extends State<ProfilePage>
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2), // Reduced spacing
-                          // Duration info based on type - with muted color
-                          item.type == "Song"
-                              ? Text(
-                                  "${item.artist} | ${item.album} | ${item.duration}",
-                                  style: AppStyles.itemSongDurationTs.copyWith(
-                                    color:
-                                        AppColors.textPrimary.withOpacity(0.6),
-                                    fontSize: isSmallScreen ? 11 : 12,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                )
-                              : _buildRichText(
-                                  "${item.songCount} songs | ${item.duration}",
-                                  style: AppStyles.itemRichTextTs.copyWith(
-                                    color:
-                                        AppColors.textPrimary.withOpacity(0.6),
-                                    fontSize: isSmallScreen ? 11 : 12,
-                                  ),
-                                  style2: AppStyles.itemRichText2Ts.copyWith(
-                                    color:
-                                        AppColors.textPrimary.withOpacity(0.6),
-                                    fontSize: isSmallScreen ? 11 : 12,
-                                  ),
-                                ),
                         ],
                       ),
                     ),
-                    // Share button - adjust size based on screen width
                     AnimatedPrimaryButton(
                       centerWidget: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -652,15 +702,14 @@ class _ProfilePageState extends State<ProfilePage>
                       initialPos: 3,
                       width: isSmallScreen ? 40 : 50,
                       height: isSmallScreen ? 24 : 28,
-                      onTap: () => _shareItem(item),
+                      onTap: () {},
                       radius: 12,
                     ),
                   ],
                 ),
                 SizedBox(height: isSmallScreen ? 6 : 8),
-                // Description - slightly smaller and more muted
                 Text(
-                  item.description ?? '',
+                  post.description,
                   style: AppStyles.itemDesTs.copyWith(
                     fontSize: isSmallScreen ? 12 : (isLargeScreen ? 14 : 13),
                     color: AppColors.textPrimary.withOpacity(0.7),
@@ -669,9 +718,8 @@ class _ProfilePageState extends State<ProfilePage>
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: isSmallScreen ? 8 : 10),
-                // Creator info - slightly smaller
                 _buildRichText(
-                  "from: ${item.username}",
+                  "from: ${post.username}",
                   leadingText: "from: ",
                   style: AppStyles.itemFromTs.copyWith(
                     fontSize: isSmallScreen ? 11 : 12,
@@ -686,11 +734,6 @@ class _ProfilePageState extends State<ProfilePage>
         ],
       ),
     );
-  }
-
-  void _shareItem(ProfileItemsJson item) {
-    // Implement share functionality
-    AppUtils.onShare(context, item.shareLink ?? '');
   }
 
   Widget _buildRichText(String text,
@@ -718,27 +761,27 @@ class _ProfilePageState extends State<ProfilePage>
 
   Widget _getServiceIcon(String serviceName) {
     switch (serviceName) {
-      case "Spotify":
+      case "spotify":
         return _serviceIcon(
           icSpotify,
           AppColors.greenAppColor,
         );
-      case "Apple Music":
+      case "apple":
         return _serviceIcon(
           icApple,
           AppColors.animatedBtnColorToolBarTop,
         );
-      case "YouTube Music":
+      case "youtube":
         return _serviceIcon(
           icYtMusic,
           AppColors.animatedBtnColorToolBarTop,
         );
-      case "Tidal":
+      case "tidal":
         return _serviceIcon(
           icTidal,
           AppColors.textPrimary,
         );
-      case "Deezer":
+      case "deezer":
         return _serviceIcon(
           icDeezer,
           AppColors.textPrimary,
@@ -753,12 +796,8 @@ class _ProfilePageState extends State<ProfilePage>
 
   Widget _serviceIcon(String image, Color color) {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Determine if we're on a small screen
     final isSmallScreen = screenWidth < 400;
-    // Determine if we're on a large screen (tablet/desktop)
     final isLargeScreen = screenWidth > 800;
-
-    // Adjust icon size based on screen width
     final iconSize = isSmallScreen ? 20.0 : (isLargeScreen ? 28.0 : 24.0);
 
     return Container(
@@ -777,14 +816,14 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   IconData _getTypeIcon(String type) {
-    switch (type) {
-      case "Song":
+    switch (type.toLowerCase()) {
+      case "track":
         return Icons.music_note;
-      case "Playlist":
+      case "playlist":
         return Icons.playlist_play;
-      case "Artist":
+      case "artist":
         return Icons.person;
-      case "Album":
+      case "album":
         return Icons.album;
       default:
         return Icons.help;
@@ -808,7 +847,6 @@ class _ProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Return the child directly without the opacity animation
     return child;
   }
 

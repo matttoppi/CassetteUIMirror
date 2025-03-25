@@ -4,11 +4,17 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:palette_generator/palette_generator.dart';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
+import 'auth_service.dart';
 
 class TrackService {
-  final ApiService _apiService = ApiService();
+  final _authService = AuthService();
+  late final ApiService _apiService;
   Map<String, dynamic>? _cachedDummyData;
   Map<String, dynamic>? _currentTrackData;
+
+  TrackService() {
+    _apiService = ApiService(_authService);
+  }
 
   Future<Map<String, dynamic>> getTrackData(String trackId) async {
     Map<String, dynamic> trackData;

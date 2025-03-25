@@ -20,6 +20,7 @@ import 'dart:math' show max;
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/env.dart';
 import 'package:cassettefrontend/core/utils/web_utils.dart';
+import 'package:cassettefrontend/core/services/auth_service.dart';
 
 /// Handles display of track collections (playlists and albums)
 /// Both types share similar UI as they are collections of tracks
@@ -230,7 +231,8 @@ class _CollectionPageState extends State<CollectionPage> {
         WebUtils.setDocumentTitle('Loading... | Cassette');
       });
 
-      final apiService = ApiService();
+      final authService = AuthService();
+      final apiService = ApiService(authService);
       final data = await apiService.fetchPostById(postId);
 
       if (mounted) {

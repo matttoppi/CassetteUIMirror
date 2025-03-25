@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:cassettefrontend/core/services/auth_service.dart';
 
 class ApiService {
   // API URLs for different environments
@@ -8,13 +9,16 @@ class ApiService {
       'https://nm2uheummh.us-east-1.awsapprunner.com';
   static const String _localBaseUrl = 'http://localhost:5173';
 
+  final AuthService _authService;
+
+  ApiService(this._authService);
+
   // Get the base URL from environment configuration
   static String get baseUrl {
     // Read the API_ENV from dart-define, default to 'prod' if not set
     const apiEnv = String.fromEnvironment('API_ENV', defaultValue: 'prod');
     print('Current API Environment: $apiEnv'); // Helpful for debugging
-    const baseDomain = apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
-    return '$baseDomain/api/v1';
+    return apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
   }
 
   // Base domain without path for connection testing
@@ -23,13 +27,31 @@ class ApiService {
     return apiEnv == 'local' ? _localBaseUrl : _prodBaseUrl;
   }
 
+  // Get the API URL with version
+  static String get apiUrl => '$baseUrl/api/v1';
+
+  // Normalize path to ensure it has /api/v1 prefix
+  String _normalizePath(String path) {
+    // Remove /api/v1 if it exists at the start
+    if (path.startsWith('/api/v1')) {
+      path = path.substring('/api/v1'.length);
+    }
+
+    // Ensure path starts with /
+    if (!path.startsWith('/')) {
+      path = '/$path';
+    }
+
+    return path;
+  }
+
   // Warm up Lambda functions
   Future<Map<String, bool>> warmupLambdas() async {
     print('🔥 Starting Lambda warmup');
     try {
       final response = await http
           .get(
-        Uri.parse('$baseUrl/warmup'),
+        Uri.parse('$apiUrl/warmup'),
         headers: getDefaultHeaders(),
       )
           .timeout(
@@ -64,7 +86,7 @@ class ApiService {
 
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/convert'),
+        Uri.parse('$apiUrl/convert'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'sourceLink': sourceLink}),
       );
@@ -107,7 +129,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> fetchTrackData(String trackId) async {
-    final response = await http.get(Uri.parse('$baseUrl/tracks/$trackId'));
+    final response = await http.get(Uri.parse('$apiUrl/tracks/$trackId'));
 
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -122,7 +144,7 @@ class ApiService {
 
     try {
       // Use the correct endpoint for fetching posts according to the API documentation
-      final endpoint = '$baseUrl/social/posts/$postId';
+      final endpoint = '$apiUrl/social/posts/$postId';
       print('Using endpoint: $endpoint');
 
       final response = await http.get(
@@ -155,11 +177,86 @@ class ApiService {
     }
   }
 
-  // Helper method to get default headers for API requests
+  // Get auth headers for API requests
   Map<String, String> getDefaultHeaders() {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+  }
+
+  Future<http.Response> get(String path,
+      {Map<String, String>? queryParameters}) async {
+    try {
+      // Get auth headers if available, otherwise use default headers
+      final headers = await _authService.authHeaders;
+
+      // Normalize the path and create full URL
+      final normalizedPath = _normalizePath(path);
+      final uri = Uri.parse('$apiUrl$normalizedPath')
+          .replace(queryParameters: queryParameters);
+
+      print('🔍 GET Request to: $uri'); // Debug log
+
+      final response = await http.get(uri, headers: headers);
+
+      // Handle common error cases
+      switch (response.statusCode) {
+        case 200:
+          return response;
+        case 401:
+          throw Exception('Unauthorized: Please sign in');
+        case 403:
+          throw Exception('Forbidden: You do not have access to this resource');
+        case 404:
+          throw Exception('Resource not found');
+        case >= 500:
+          throw Exception('Server error: Please try again later');
+        default:
+          throw Exception('API Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ API Error: $e'); // Log error for debugging
+      rethrow; // Rethrow to let caller handle specific error cases
+    }
+  }
+
+  Future<http.Response> post(String path,
+      {Map<String, String>? queryParameters, Object? body}) async {
+    try {
+      final headers = await _authService.authHeaders;
+
+      // Normalize the path and create full URL
+      final normalizedPath = _normalizePath(path);
+      final uri = Uri.parse('$apiUrl$normalizedPath')
+          .replace(queryParameters: queryParameters);
+
+      print('📮 POST Request to: $uri'); // Debug log
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: body != null ? json.encode(body) : null,
+      );
+
+      switch (response.statusCode) {
+        case 200:
+        case 201:
+          return response;
+        case 401:
+          throw Exception('Unauthorized: Please sign in');
+        case 403:
+          throw Exception('Forbidden: You do not have access to this resource');
+        case 404:
+          throw Exception('Resource not found');
+        case >= 500:
+          throw Exception('Server error: Please try again later');
+        default:
+          throw Exception('API Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ API Error: $e');
+      rethrow;
+    }
   }
 }
