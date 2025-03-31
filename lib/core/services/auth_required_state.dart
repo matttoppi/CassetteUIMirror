@@ -8,6 +8,33 @@ mixin AuthRequiredState<T extends StatefulWidget> on State<T> {
   bool _isCheckingAuth = false;
   StreamSubscription? _authSubscription;
 
+  // List of paths that should bypass authentication requirements
+  static final List<String> _publicPaths = [
+    '/signin',
+    '/signup',
+    '/track/',
+    '/artist/',
+    '/album/',
+    '/playlist/',
+    '/post',
+  ];
+
+  // Check if the current path is a public path that doesn't require authentication
+  bool _isPublicPath(BuildContext context) {
+    final GoRouter router = GoRouter.of(context);
+    final String location =
+        router.routeInformationProvider.value.uri.toString();
+
+    // Check if the current path matches any of the public paths
+    for (final path in _publicPaths) {
+      if (location.startsWith(path)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,7 +80,8 @@ mixin AuthRequiredState<T extends StatefulWidget> on State<T> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted &&
           ModalRoute.of(context)?.settings.name != '/signin' &&
-          !_isCheckingAuth) {
+          !_isCheckingAuth &&
+          !_isPublicPath(context)) {
         GoRouter.of(context).go('/signin');
       }
     });

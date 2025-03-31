@@ -1003,7 +1003,7 @@ class _EntityPageState extends State<EntityPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                "Save this page to share again? Showcase your\nfavorite tunes with your Cassette Profile!",
+                "Create a free account to save your favorite music,\nbuild your profile, and track your conversion history!",
                 style: AppStyles.trackBelowBtnStringTs.copyWith(
                   fontSize: 15,
                 ),

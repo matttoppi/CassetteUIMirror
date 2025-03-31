@@ -30,6 +30,17 @@ class AppRouter {
         final isSigningUp = state.matchedLocation == '/signup';
         final isHome = state.matchedLocation == '/';
 
+        // Check if the current route is a public route
+        final isPublicRoute = isHome ||
+            isSigningIn ||
+            isSigningUp ||
+            state.matchedLocation.startsWith('/track/') ||
+            state.matchedLocation.startsWith('/artist/') ||
+            state.matchedLocation.startsWith('/album/') ||
+            state.matchedLocation.startsWith('/playlist/') ||
+            state.matchedLocation.startsWith('/post') ||
+            state.matchedLocation.startsWith('/p/');
+
         // Get user data to check if profile is complete
         final userData = await _authService.getCurrentUser();
         final hasCompletedProfile = userData != null &&
@@ -39,7 +50,7 @@ class AppRouter {
         // Handle authentication redirects
         if (!isAuthenticated) {
           // Allow access to public routes
-          if (isSigningIn || isSigningUp || isHome) {
+          if (isPublicRoute) {
             return null;
           }
           // Redirect to signin for protected routes

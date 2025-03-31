@@ -1297,9 +1297,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Cancel any previous operations
     _cancelPreviousOperations();
 
-    // Mark this as a critical auth operation
-    _authService.beginCriticalOperation();
-
     // Batch all state changes together
     _updateStateWithBatchedChanges(() {
       isLoading = true;
@@ -1323,7 +1320,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final response = await _apiService.convertMusicLink(link);
 
       if (!mounted) {
-        _authService.endCriticalOperation();
         return;
       }
 
@@ -1336,11 +1332,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             false; // Re-enable auto focus for future interactions
       });
 
-      _authService.endCriticalOperation();
       context.go('/post', extra: response);
     } catch (e) {
       if (!mounted) {
-        _authService.endCriticalOperation();
         return;
       }
 
@@ -1350,8 +1344,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         isSearchActive = true;
         isShowingSearchResults = false; // Ensure results stay hidden on error
       });
-
-      _authService.endCriticalOperation();
 
       // Use a microtask to ensure animations start after the state changes are applied
       Future.microtask(() {

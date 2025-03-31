@@ -81,13 +81,18 @@ class ApiService {
   }
 
   // Convert a music link from one service to another
+  // No authentication required for conversion
   Future<Map<String, dynamic>> convertMusicLink(String sourceLink) async {
     print('🔄 Converting music link');
 
     try {
+      // Use default headers without authentication for public endpoint
       final response = await http.post(
         Uri.parse('$apiUrl/convert'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: json.encode({'sourceLink': sourceLink}),
       );
 
