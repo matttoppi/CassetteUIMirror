@@ -24,11 +24,18 @@ class AppRouter {
       debugLogDiagnostics: true,
       refreshListenable: _authService, // Listen to auth state changes
       redirect: (context, state) async {
+        print('🔄 [Router] Redirect called for ${state.matchedLocation}');
+
         // Get current auth state
         final isAuthenticated = await _authService.isAuthenticated();
+        print('🔐 [Router] isAuthenticated: $isAuthenticated');
+
         final isSigningIn = state.matchedLocation == '/signin';
         final isSigningUp = state.matchedLocation == '/signup';
         final isHome = state.matchedLocation == '/';
+
+        print(
+            '📍 [Router] Route info - isSigningIn: $isSigningIn, isSigningUp: $isSigningUp, isHome: $isHome');
 
         // Check if the current route is a public route
         final isPublicRoute = isHome ||
@@ -41,32 +48,45 @@ class AppRouter {
             state.matchedLocation.startsWith('/post') ||
             state.matchedLocation.startsWith('/p/');
 
+        print('🌐 [Router] isPublicRoute: $isPublicRoute');
+
         // Get user data to check if profile is complete
         final userData = await _authService.getCurrentUser();
         final hasCompletedProfile = userData != null &&
             userData['bio'] != null &&
             userData['bio'].toString().isNotEmpty;
 
+        print(
+            '👤 [Router] User data check - hasData: ${userData != null}, hasCompletedProfile: $hasCompletedProfile');
+
         // Handle authentication redirects
         if (!isAuthenticated) {
+          print('❌ [Router] User not authenticated');
           // Allow access to public routes
           if (isPublicRoute) {
+            print('✅ [Router] Allowing access to public route');
             return null;
           }
           // Redirect to signin for protected routes
+          print('🔒 [Router] Redirecting to signin');
           return '/signin';
         }
 
         // User is authenticated
         if (isSigningIn || isSigningUp || isHome) {
+          print('🔐 [Router] User is authenticated and on auth/home route');
           // If profile is not complete, redirect to edit profile
           if (!hasCompletedProfile) {
+            print(
+                '📝 [Router] Profile incomplete, redirecting to edit profile');
             return '/profile/edit';
           }
           // Otherwise go to profile
+          print('👤 [Router] Profile complete, redirecting to profile');
           return '/profile';
         }
 
+        print('✅ [Router] No redirect needed');
         // No redirect needed
         return null;
       },

@@ -286,6 +286,8 @@ class AuthService extends ChangeNotifier {
     required String password,
     required String username,
   }) async {
+    print(
+        '📝 [Auth] Starting sign up process for email: ${email.split('@')[0]}***');
     try {
       final response = await http.post(
         Uri.parse('${ApiService.apiUrl}/auth/signup'),
@@ -298,7 +300,10 @@ class AuthService extends ChangeNotifier {
       );
 
       final data = json.decode(response.body);
+      print('🔄 [Auth] Sign up response status: ${response.statusCode}');
+
       if (response.statusCode == 200 && data['success'] == true) {
+        print('✅ [Auth] Sign up successful');
         // Normalize and store user data
         final userData = data['user'];
         final normalizedData = {
@@ -307,14 +312,18 @@ class AuthService extends ChangeNotifier {
           'authUserId': userData['authUserId'],
         };
 
+        print('💾 [Auth] Saving auth data to storage');
         await _storage.write(key: _accessTokenKey, value: data['token']);
         await _storage.write(
             key: _refreshTokenKey, value: data['refreshToken']);
         await _storage.write(key: _userKey, value: json.encode(normalizedData));
+
+        print('📢 [Auth] Notifying listeners of auth state change');
         _authStateController.add(true);
         notifyListeners();
         return data;
       } else {
+        print('❌ [Auth] Sign up failed: ${data['message']}');
         throw Exception(data['message'] ?? 'Failed to sign up');
       }
     } catch (e) {
@@ -379,12 +388,15 @@ class AuthService extends ChangeNotifier {
 
   // Check if user is authenticated
   Future<bool> isAuthenticated() async {
+    print('🔍 [Auth] Checking authentication status');
     if (_isSessionValid()) {
+      print('✅ [Auth] Session is valid');
       return true;
     }
 
     final user = await getCurrentUser();
     final isAuth = user != null;
+    print('🔐 [Auth] Authentication check result: $isAuth');
     _authStateController.add(isAuth);
     return isAuth;
   }

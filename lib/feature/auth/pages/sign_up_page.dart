@@ -358,15 +358,7 @@ class _SignUpPageState extends State<SignUpPage> {
           context: context,
           title: "Account created successfully!",
         );
-
-        // Update global auth state
-        isAuthenticated = true;
-
-        // Add a small delay to allow the toast to be visible
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        if (!mounted) return;
-        context.go('/profile');
+        // Auth state change will trigger router redirect
       } else {
         AppUtils.showToast(
           context: context,
@@ -379,12 +371,21 @@ class _SignUpPageState extends State<SignUpPage> {
       if (!mounted) return;
 
       String errorMessage = error.toString();
-      if (errorMessage.contains('email already exists')) {
-        errorMessage =
-            'This email is already registered. Please sign in instead.';
-      } else if (errorMessage.contains('username already exists')) {
-        errorMessage =
-            'This username is already taken. Please choose another one.';
+      if (error is Exception && error.toString().contains('already exists')) {
+        // More specific error handling based on the exception message
+        if (error.toString().toLowerCase().contains('email')) {
+          errorMessage =
+              'This email is already registered. Please sign in instead.';
+        } else if (error.toString().toLowerCase().contains('username')) {
+          errorMessage =
+              'This username is already taken. Please choose another one.';
+        } else {
+          errorMessage =
+              'An account with this email or username already exists.';
+        }
+      } else {
+        // Generic fallback message
+        errorMessage = 'Sign up failed: ${error.toString()}';
       }
 
       AppUtils.showToast(
