@@ -33,9 +33,11 @@ class AppRouter {
         final isSigningIn = state.matchedLocation == '/signin';
         final isSigningUp = state.matchedLocation == '/signup';
         final isHome = state.matchedLocation == '/';
+        final isEditProfile = state.matchedLocation == '/profile/edit';
+        final isProfile = state.matchedLocation == '/profile';
 
         print(
-            '📍 [Router] Route info - isSigningIn: $isSigningIn, isSigningUp: $isSigningUp, isHome: $isHome');
+            '📍 [Router] Route info - isSigningIn: $isSigningIn, isSigningUp: $isSigningUp, isHome: $isHome, isEditProfile: $isEditProfile');
 
         // Check if the current route is a public route
         final isPublicRoute = isHome ||
@@ -50,16 +52,14 @@ class AppRouter {
 
         print('🌐 [Router] isPublicRoute: $isPublicRoute');
 
-        // Get user data to check if profile is complete
-        final userData = await _authService.getCurrentUser();
-        final hasCompletedProfile = userData != null &&
-            userData['bio'] != null &&
-            userData['bio'].toString().isNotEmpty;
+        // Special case: Always allow access to edit profile page if authenticated
+        if (isAuthenticated && isEditProfile) {
+          print(
+              '✏️ [Router] User is authenticated and accessing edit profile - allowing');
+          return null; // No redirect needed
+        }
 
-        print(
-            '👤 [Router] User data check - hasData: ${userData != null}, hasCompletedProfile: $hasCompletedProfile');
-
-        // Handle authentication redirects
+        // Handle unauthenticated user
         if (!isAuthenticated) {
           print('❌ [Router] User not authenticated');
           // Allow access to public routes
@@ -72,10 +72,26 @@ class AppRouter {
           return '/signin';
         }
 
+        // Get user data to check if profile is complete
+        final userData = await _authService.getCurrentUser();
+        final hasCompletedProfile = userData != null &&
+            userData['bio'] != null &&
+            userData['bio'].toString().isNotEmpty;
+
+        print(
+            '👤 [Router] User data check - hasData: ${userData != null}, hasCompletedProfile: $hasCompletedProfile');
+
+        // If profile is not complete and trying to access profile page, redirect to edit
+        if (!hasCompletedProfile && isProfile) {
+          print(
+              '📝 [Router] Profile incomplete and accessing profile, redirecting to edit');
+          return '/profile/edit';
+        }
+
         // User is authenticated
         if (isSigningIn || isSigningUp || isHome) {
           print('🔐 [Router] User is authenticated and on auth/home route');
-          // If profile is not complete, redirect to edit profile
+          // Always redirect to edit profile if profile is not complete
           if (!hasCompletedProfile) {
             print(
                 '📝 [Router] Profile incomplete, redirecting to edit profile');

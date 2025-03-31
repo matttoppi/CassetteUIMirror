@@ -168,6 +168,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
+    print('💾 [Profile] Attempting to save profile changes');
+
     if (!_validateUsername(userNameCtr.text)) {
       if (!mounted) return;
       AppUtils.showToast(context: context, title: _usernameError);
@@ -176,14 +178,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     try {
-      await _checkUsernameAvailability(userNameCtr.text);
-      if (!_isUsernameValid) {
-        if (!mounted) return;
-        AppUtils.showToast(context: context, title: _usernameError);
-        _startCooldown();
-        return;
+      if (userNameCtr.text != userData['username']) {
+        print('🔍 [Profile] Username changed, checking availability');
+        await _checkUsernameAvailability(userNameCtr.text);
+        if (!_isUsernameValid) {
+          if (!mounted) return;
+          AppUtils.showToast(context: context, title: _usernameError);
+          _startCooldown();
+          return;
+        }
       }
 
+      print('🔄 [Profile] Updating profile with bio: ${bioCtr.text}');
       await _updateProfile(
         username: userNameCtr.text,
         fullName: nameCtr.text,
@@ -196,9 +202,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
         context: context,
         title: "Profile updated successfully",
       );
+
+      print('✅ [Profile] Profile saved successfully, refreshing user data');
+      // Refresh user data to ensure it's up to date
+      final updatedUser = await _authService.getCurrentUser(forceRefresh: true);
+      print('👤 [Profile] Updated user data: $updatedUser');
+
+      if (!mounted) return;
+      print('🔄 [Profile] Navigating to profile page');
       context.go('/profile');
     } catch (e) {
       _logger.warning('Error saving profile changes: $e');
+      print('❌ [Profile] Error saving changes: $e');
       if (!mounted) return;
       AppUtils.showToast(
         context: context,

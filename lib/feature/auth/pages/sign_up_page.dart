@@ -350,15 +350,28 @@ class _SignUpPageState extends State<SignUpPage> {
         username: usernameController.text.trim(),
       );
 
-      if (!mounted) return;
-
       if (response['success'] == true) {
         // Show success message
         AppUtils.showToast(
           context: context,
-          title: "Account created successfully!",
+          title: "Account created successfully! Please complete your profile.",
         );
-        // Auth state change will trigger router redirect
+
+        // Wait a moment for auth state to fully update
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        // Fetch user data to confirm authentication
+        final userData = await _authService.getCurrentUser(forceRefresh: true);
+
+        // Only navigate if we're still mounted and user is authenticated
+        if (!mounted) return;
+
+        if (userData != null) {
+          print(
+              '✅ [Signup] Successfully authenticated, navigating to edit profile');
+          // Navigate directly to edit profile
+          context.go('/profile/edit');
+        }
       } else {
         AppUtils.showToast(
           context: context,
