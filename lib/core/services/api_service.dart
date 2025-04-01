@@ -133,6 +133,61 @@ class ApiService {
     }
   }
 
+  // Add music to the authenticated user's profile
+  Future<Map<String, dynamic>> addMusicToUserProfile(String sourceLink,
+      {Map<String, dynamic>? additionalData}) async {
+    print('🎵 Adding music to user profile');
+
+    try {
+      // Get authenticated headers including the JWT token
+      final headers = await _authService.authHeaders;
+
+      final Map<String, dynamic> requestBody = {
+        'sourceLink': sourceLink,
+      };
+
+      // Add any additional data if provided
+      if (additionalData != null && additionalData.isNotEmpty) {
+        requestBody.addAll(additionalData);
+      }
+
+      // Use the existing convert endpoint but include authentication headers
+      final response = await http.post(
+        Uri.parse('$apiUrl/convert'),
+        headers: headers,
+        body: json.encode(requestBody),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          print('✅ Successfully added music to user profile');
+
+          // Add the original link to the response data
+          data['originalLink'] = sourceLink;
+
+          return data;
+        } else {
+          final error =
+              data['errorMessage'] ?? 'Failed to add music to profile';
+          print('❌ API Error: $error');
+          throw Exception(error);
+        }
+      } else if (response.statusCode == 401) {
+        print('❌ Authentication error: User not authenticated');
+        throw Exception('You must be logged in to add music to your profile');
+      } else {
+        print('❌ HTTP Error: ${response.statusCode}');
+        throw Exception(
+            'Failed to add music to profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [AddMusic] Error: $e');
+      throw Exception('Failed to add music to profile: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> fetchTrackData(String trackId) async {
     final response = await http.get(Uri.parse('$apiUrl/tracks/$trackId'));
 

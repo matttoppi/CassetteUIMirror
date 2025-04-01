@@ -9,6 +9,7 @@ import 'package:cassettefrontend/core/utils/app_utils.dart';
 import 'package:cassettefrontend/core/services/api_service.dart';
 import 'package:cassettefrontend/core/services/music_search_service.dart';
 import 'package:cassettefrontend/core/services/auth_service.dart';
+import 'package:cassettefrontend/core/services/auth_required_state.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
@@ -25,7 +26,7 @@ class AddMusicPage extends StatefulWidget {
   State<AddMusicPage> createState() => _AddMusicPageState();
 }
 
-class _AddMusicPageState extends State<AddMusicPage> {
+class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
   // UI state
   bool isMenuVisible = false;
 
@@ -70,6 +71,9 @@ class _AddMusicPageState extends State<AddMusicPage> {
   void initState() {
     super.initState();
     _apiService = ApiService(_authService);
+
+    // Check authentication status
+    _checkAuthentication();
 
     // Add focus listener for search field
     _searchFocusNode.addListener(_onSearchFocusChanged);
@@ -247,8 +251,39 @@ class _AddMusicPageState extends State<AddMusicPage> {
     }
   }
 
+  // Method to check authentication status
+  Future<void> _checkAuthentication() async {
+    final isAuth = await _authService.isAuthenticated();
+    if (!isAuth && mounted) {
+      // If not authenticated, show message and redirect
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be signed in to add music to your profile'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      // AuthRequiredState will handle the redirection
+    }
+  }
+
   // Handle link conversion
   Future<void> _handleLinkConversion(String link) async {
+    // Check authentication first
+    final isAuth = await _authService.isAuthenticated();
+    if (!isAuth) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You must be signed in to add music to your profile'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     // Get the link from selectedItem if available, otherwise use the provided link
     final String linkToConvert =
         selectedItem != null ? selectedItem!['url'] as String : link;
@@ -268,20 +303,17 @@ class _AddMusicPageState extends State<AddMusicPage> {
     });
 
     try {
-      // Call API to convert the link
-      final response = await _apiService.convertMusicLink(linkToConvert);
+      // Create additional data map for optional fields
+      Map<String, dynamic> additionalData = {};
 
-      // Safety check in case component unmounted
-      if (!mounted) return;
-
-      // Add description and source item details to the response data if provided
+      // Add description if provided
       if (desCtr.text.isNotEmpty) {
-        response['description'] = desCtr.text;
+        additionalData['description'] = desCtr.text;
       }
 
       // Add selected item metadata if available
       if (selectedItem != null) {
-        response['originalItemDetails'] = {
+        additionalData['originalItemDetails'] = {
           'title': selectedItem!['title'],
           'artist': selectedItem!['artist'],
           'type': selectedItem!['type'],
@@ -289,25 +321,54 @@ class _AddMusicPageState extends State<AddMusicPage> {
         };
       }
 
-      setState(() {
-        isLoading = false;
-      });
+      // Call authenticated API to add music to user profile
+      final response = await _apiService.addMusicToUserProfile(linkToConvert,
+          additionalData: additionalData.isNotEmpty ? additionalData : null);
 
-      // Navigate to post page with the converted data
-      context.go('/post', extra: response);
-    } catch (e) {
       // Safety check in case component unmounted
       if (!mounted) return;
 
       setState(() {
         isLoading = false;
-        errorMessage = 'Error converting link: ${e.toString()}';
+      });
+
+      // The response has the same structure as convertMusicLink, containing elementType, postId, etc.
+      // The backend should handle associating it with the user's profile based on the JWT token
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully added to your profile!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Navigate back to profile page - this will refresh the profile content
+      context.go('/profile');
+    } catch (e) {
+      // Safety check in case component unmounted
+      if (!mounted) return;
+
+      // Check for authentication errors specifically
+      String errorMsg = e.toString();
+      if (errorMsg.contains('Unauthorized') ||
+          errorMsg.contains('must be logged in') ||
+          errorMsg.contains('401')) {
+        // Handle authentication errors
+        onUnauthenticated(); // Use AuthRequiredState method to handle auth errors
+        return;
+      }
+
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Error adding music to profile: ${e.toString()}';
       });
 
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error converting link: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
@@ -704,203 +765,272 @@ class _AddMusicPageState extends State<AddMusicPage> {
 
     debugPrint('shouldShowResults: $shouldShowResults');
 
-    return AppScaffold(
-      showGraphics: true,
-      onBurgerPop: () {
-        setState(() {
-          isMenuVisible = !isMenuVisible;
-        });
-      },
-      isMenuVisible: isMenuVisible,
-      body: Stack(
-        children: [
-          // Main content
-          Column(
-            children: [
-              const SizedBox(height: 18),
-              AppToolbar(burgerMenuFnc: () {
-                setState(() {
-                  isMenuVisible = !isMenuVisible;
-                });
-              }),
-              const SizedBox(height: 18),
-              profileTopView(),
-              const SizedBox(height: 38),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        Text(
-                            "Search or paste your link below to convert a\nsong or playlist that goes in your profile",
-                            textAlign: TextAlign.center,
-                            style: AppStyles.addMusicSubTitleTs),
-                        const SizedBox(height: 24),
-                        // Search bar (always visible)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Music link or search",
-                                textAlign: TextAlign.left,
-                                style: AppStyles.authTextFieldLabelTextStyle),
-                            const SizedBox(height: 10),
-                            // Only show search bar if no item is selected
-                            if (selectedItem == null)
-                              MusicSearchBar(
-                                hint: "Search or paste your music link here",
-                                controller: linkCtr,
-                                focusNode: _searchFocusNode,
-                                isLoading: isLoading || isSearching,
-                                onTap: () {
-                                  debugPrint('Search bar tapped on main page');
-                                  _showSearchUI();
-                                },
-                                onPaste: (value) {
-                                  debugPrint(
-                                      'Paste detected on main page: $value');
-                                  _handleUrlPaste(value);
-                                },
-                                onSearch: (query) {
-                                  debugPrint(
-                                      'Search triggered on main page with query: $query');
-                                  // Never initiate a new search if one is already in progress
-                                  if (!isLoading && !isSearching) {
-                                    _performSearch(query);
-                                  } else {
-                                    debugPrint(
-                                        'Search ignored - already in progress');
-                                  }
-                                },
-                                textInputAction: TextInputAction.search,
-                                onSubmitted: (value) {
-                                  debugPrint(
-                                      'Search submitted on main page with value: $value');
-                                  // When user hits enter/done, perform search if there's text
-                                  if (value.isNotEmpty) {
-                                    if (_isValidMusicUrl(value)) {
-                                      _handleUrlPaste(value);
-                                    } else {
-                                      _performSearch(value);
-                                    }
-                                  }
-                                },
-                              ),
+    return FutureBuilder<bool>(
+      future: _authService.isAuthenticated(),
+      builder: (context, snapshot) {
+        // Show loading indicator while checking auth
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return AppScaffold(
+            showGraphics: true,
+            body: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-                            // Display selected item or pasted link information
-                            _buildSelectedItemInfo(),
+        // Get authentication status
+        final bool isAuthenticated = snapshot.data ?? false;
+
+        return AppScaffold(
+          showGraphics: true,
+          onBurgerPop: () {
+            setState(() {
+              isMenuVisible = !isMenuVisible;
+            });
+          },
+          isMenuVisible: isMenuVisible,
+          body: Stack(
+            children: [
+              // Main content
+              Column(
+                children: [
+                  const SizedBox(height: 18),
+                  AppToolbar(burgerMenuFnc: () {
+                    setState(() {
+                      isMenuVisible = !isMenuVisible;
+                    });
+                  }),
+                  const SizedBox(height: 18),
+                  profileTopView(),
+                  const SizedBox(height: 38),
+
+                  // Show authentication warning if not authenticated
+                  if (!isAuthenticated)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded,
+                                color: Colors.red.shade700),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'You must be signed in to add music to your profile',
+                                style: TextStyle(color: Colors.red.shade900),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => context.go('/signin'),
+                              child: const Text('Sign In'),
+                            ),
                           ],
                         ),
+                      ),
+                    ),
 
-                        // Only show description field and convert button when not showing search results
-                        AnimatedOpacity(
-                          opacity: shouldShowResults ? 0.0 : 1.0,
-                          duration: const Duration(milliseconds: 200),
-                          child: IgnorePointer(
-                            ignoring: shouldShowResults,
-                            child: Column(
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            Text(
+                                "Search or paste a link below to add music to your profile",
+                                textAlign: TextAlign.center,
+                                style: AppStyles.addMusicSubTitleTs),
+                            const SizedBox(height: 24),
+                            // Search bar (always visible)
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const SizedBox(height: 24),
-                                Text("Description",
+                                Text("Music link or search",
                                     textAlign: TextAlign.left,
                                     style:
                                         AppStyles.authTextFieldLabelTextStyle),
                                 const SizedBox(height: 10),
-                                TextFieldWidget(
+                                // Only show search bar if no item is selected
+                                if (selectedItem == null)
+                                  MusicSearchBar(
                                     hint:
-                                        "Let us know a little bit about this song or playlist!",
-                                    maxLines: 6,
-                                    minLines: 6,
-                                    height: 160,
-                                    height2: 156,
-                                    controller: desCtr),
-                                const SizedBox(height: 32),
-                                AnimatedPrimaryButton(
-                                  text: isLoading ? "Converting..." : "Convert",
-                                  onTap: () {
-                                    // Skip the action if loading
-                                    if (isLoading) return;
-
-                                    Future.delayed(
-                                      const Duration(milliseconds: 180),
-                                      () {
-                                        // Check if we have a selected item or a link in the text field
-                                        if (selectedItem != null) {
-                                          debugPrint(
-                                              'Converting selected item: ${selectedItem!['title']}');
-                                          _handleLinkConversion("");
-                                        } else if (linkCtr.text.isNotEmpty) {
-                                          debugPrint(
-                                              'Converting link: ${linkCtr.text}');
-                                          _handleLinkConversion(linkCtr.text);
+                                        "Search or paste your music link here",
+                                    controller: linkCtr,
+                                    focusNode: _searchFocusNode,
+                                    isLoading: isLoading || isSearching,
+                                    onTap: () {
+                                      debugPrint(
+                                          'Search bar tapped on main page');
+                                      _showSearchUI();
+                                    },
+                                    onPaste: (value) {
+                                      debugPrint(
+                                          'Paste detected on main page: $value');
+                                      _handleUrlPaste(value);
+                                    },
+                                    onSearch: (query) {
+                                      debugPrint(
+                                          'Search triggered on main page with query: $query');
+                                      // Never initiate a new search if one is already in progress
+                                      if (!isLoading && !isSearching) {
+                                        _performSearch(query);
+                                      } else {
+                                        debugPrint(
+                                            'Search ignored - already in progress');
+                                      }
+                                    },
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (value) {
+                                      debugPrint(
+                                          'Search submitted on main page with value: $value');
+                                      // When user hits enter/done, perform search if there's text
+                                      if (value.isNotEmpty) {
+                                        if (_isValidMusicUrl(value)) {
+                                          _handleUrlPaste(value);
                                         } else {
-                                          debugPrint(
-                                              'No item or link to convert');
-                                          setState(() {
-                                            errorMessage =
-                                                'Please enter a music link or search for a song';
-                                          });
+                                          _performSearch(value);
                                         }
-                                      },
-                                    );
-                                  },
-                                  height: 40,
-                                  width: MediaQuery.of(context).size.width - 46,
-                                  radius: 10,
-                                  initialPos: 6,
-                                  topBorderWidth: 3,
-                                  bottomBorderWidth: 3,
-                                  colorTop:
-                                      AppColors.animatedBtnColorConvertTop,
-                                  textStyle:
-                                      AppStyles.animatedBtnFreeAccTextStyle,
-                                  borderColorTop:
-                                      AppColors.animatedBtnColorConvertTop,
-                                  colorBottom:
-                                      AppColors.animatedBtnColorConvertBottom,
-                                  borderColorBottom: AppColors
-                                      .animatedBtnColorConvertBottomBorder,
-                                ),
-                                const SizedBox(height: 8),
-                                if (errorMessage.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8),
-                                    child: Text(
-                                      errorMessage,
-                                      style: const TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 14,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
+                                      }
+                                    },
                                   ),
-                                const SizedBox(height: 48),
+
+                                // Display selected item or pasted link information
+                                _buildSelectedItemInfo(),
                               ],
                             ),
-                          ),
+
+                            // Only show description field and convert button when not showing search results
+                            AnimatedOpacity(
+                              opacity: shouldShowResults ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: IgnorePointer(
+                                ignoring: shouldShowResults,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 24),
+                                    Text("Description",
+                                        textAlign: TextAlign.left,
+                                        style: AppStyles
+                                            .authTextFieldLabelTextStyle),
+                                    const SizedBox(height: 10),
+                                    TextFieldWidget(
+                                        hint:
+                                            "Let us know a little bit about this song or playlist!",
+                                        maxLines: 6,
+                                        minLines: 6,
+                                        height: 160,
+                                        height2: 156,
+                                        controller: desCtr),
+                                    const SizedBox(height: 32),
+                                    AnimatedPrimaryButton(
+                                      text: isLoading
+                                          ? "Adding..."
+                                          : "Add to Profile",
+                                      onTap: () {
+                                        // Skip the action if loading or not authenticated
+                                        if (isLoading) return;
+                                        if (!isAuthenticated) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  'Please sign in to add music to your profile'),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        Future.delayed(
+                                          const Duration(milliseconds: 180),
+                                          () {
+                                            // Check if we have a selected item or a link in the text field
+                                            if (selectedItem != null) {
+                                              debugPrint(
+                                                  'Converting selected item: ${selectedItem!['title']}');
+                                              _handleLinkConversion("");
+                                            } else if (linkCtr
+                                                .text.isNotEmpty) {
+                                              debugPrint(
+                                                  'Converting link: ${linkCtr.text}');
+                                              _handleLinkConversion(
+                                                  linkCtr.text);
+                                            } else {
+                                              debugPrint(
+                                                  'No item or link to convert');
+                                              setState(() {
+                                                errorMessage =
+                                                    'Please enter a music link or search for a song';
+                                              });
+                                            }
+                                          },
+                                        );
+                                      },
+                                      height: 40,
+                                      width: MediaQuery.of(context).size.width -
+                                          46,
+                                      radius: 10,
+                                      initialPos: 6,
+                                      topBorderWidth: 3,
+                                      bottomBorderWidth: 3,
+                                      colorTop:
+                                          AppColors.animatedBtnColorConvertTop,
+                                      textStyle:
+                                          AppStyles.animatedBtnFreeAccTextStyle,
+                                      borderColorTop:
+                                          AppColors.animatedBtnColorConvertTop,
+                                      colorBottom: AppColors
+                                          .animatedBtnColorConvertBottom,
+                                      borderColorBottom: AppColors
+                                          .animatedBtnColorConvertBottomBorder,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (errorMessage.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8),
+                                        child: Text(
+                                          errorMessage,
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    const SizedBox(height: 48),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
+
+              // Search overlay - use Material for proper rendering and Positioned.fill to cover the entire screen
+              if (shouldShowResults)
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    elevation:
+                        8, // Add elevation to ensure it appears above other content
+                    child: _buildSearchOverlay(),
+                  ),
+                ),
             ],
           ),
-
-          // Search overlay - use Material for proper rendering and Positioned.fill to cover the entire screen
-          if (shouldShowResults)
-            Positioned.fill(
-              child: Material(
-                color: Colors.transparent,
-                elevation:
-                    8, // Add elevation to ensure it appears above other content
-                child: _buildSearchOverlay(),
-              ),
-            ),
-        ],
-      ),
+        );
+      },
     );
   }
 
