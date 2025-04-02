@@ -52,11 +52,36 @@ class _ProfilePageState extends State<ProfilePage>
     _apiService = ApiService(_authService);
     _profileService = ProfileService(_apiService);
     tabController = TabController(length: 4, vsync: this);
+
+    // Remove the initial element type setting since we'll fetch all types
     tabController.addListener(() {
-      setState(() {
-        selectedIndex = tabController.index;
-      });
+      if (!tabController.indexIsChanging &&
+          tabController.index != selectedIndex) {
+        String newElementType;
+        switch (tabController.index) {
+          case 0:
+            newElementType = 'Playlist';
+            break;
+          case 1:
+            newElementType = 'Track';
+            break;
+          case 2:
+            newElementType = 'Artist';
+            break;
+          case 3:
+            newElementType = 'Album';
+            break;
+          default:
+            newElementType = 'Playlist';
+        }
+
+        _safeSetState(() {
+          selectedIndex = tabController.index;
+          _selectedElementType = newElementType;
+        });
+      }
     });
+
     _loadProfile();
   }
 
@@ -115,17 +140,27 @@ class _ProfilePageState extends State<ProfilePage>
         throw Exception('You must be logged in to edit your profile');
       }
 
-      final data = await _profileService.fetchUserProfile(userIdToFetch);
+      // Fetch user bio
+      final userBio = await _profileService.fetchUserBio(userIdToFetch);
+      if (!_isMounted) return;
+
+      // Fetch all activity types initially
+      final activityData = await _profileService.fetchUserActivity(
+        userIdToFetch,
+        page: 1,
+        // Don't specify elementType to get all types
+      );
       if (!_isMounted) return;
 
       _safeSetState(() {
-        _userBio = data.bio;
-        _activityPosts = data.activity.items;
-        _totalItems = data.activity.totalItems;
-        _currentPage = data.activity.page;
+        _userBio = userBio;
+        _activityPosts = activityData.items;
+        _totalItems = activityData.totalItems;
+        _currentPage = activityData.page;
         _isLoading = false;
-        _isCurrentUser = isCurrentUser;
-        _lastLoadedUserId = userIdToFetch; // Update last loaded user ID
+        _isCurrentUser = userBio.isOwnProfile;
+        _lastLoadedUserId = userIdToFetch;
+        _selectedElementType = 'Playlist'; // Set default tab after loading data
       });
     } catch (e) {
       if (!_isMounted) return;
@@ -150,7 +185,7 @@ class _ProfilePageState extends State<ProfilePage>
       final moreActivity = await _profileService.fetchUserActivity(
         widget.userIdentifier,
         page: nextPage,
-        elementType: _selectedElementType,
+        // Don't specify elementType to get all types
       );
 
       if (!_isMounted) return;
@@ -175,37 +210,15 @@ class _ProfilePageState extends State<ProfilePage>
 
     // If selecting the same filter or clearing the current filter, do nothing
     if (_selectedElementType == type ||
-        (type == null && _selectedElementType == null)) return;
-
-    try {
-      _safeSetState(() {
-        _isLoading = true;
-        _error = null;
-        _selectedElementType = type;
-      });
-
-      final activity = await _profileService.fetchUserActivity(
-        widget.userIdentifier,
-        page: 1,
-        elementType: type,
-      );
-
-      if (!_isMounted) return;
-
-      _safeSetState(() {
-        _activityPosts = activity.items;
-        _totalItems = activity.totalItems;
-        _currentPage = activity.page;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!_isMounted) return;
-      print('❌ Error filtering activity: $e');
-      _safeSetState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+        (type == null && _selectedElementType == null)) {
+      return;
     }
+
+    // Just update the element type filter and rebuild the UI
+    // We don't need to fetch data again since we already have all posts
+    _safeSetState(() {
+      _selectedElementType = type;
+    });
   }
 
   @override
@@ -276,10 +289,10 @@ class _ProfilePageState extends State<ProfilePage>
         physics: const NeverScrollableScrollPhysics(),
         controller: tabController,
         children: [
-          _buildContentList(), // Playlists
-          _buildContentList(), // Songs
-          _buildContentList(), // Artists
-          _buildContentList(), // Albums
+          _buildContentList(elementType: 'Playlist'), // Playlists
+          _buildContentList(elementType: 'Track'), // Songs
+          _buildContentList(elementType: 'Artist'), // Artists
+          _buildContentList(elementType: 'Album'), // Albums
         ],
       ),
     );
@@ -357,7 +370,7 @@ class _ProfilePageState extends State<ProfilePage>
                     children: [
                       Expanded(
                         child: Text(
-                          _userBio!.fullName ?? '',
+                          _userBio!.username,
                           style: AppStyles.profileNameTs.copyWith(
                             fontSize:
                                 isSmallScreen ? 18 : (isLargeScreen ? 24 : 20),
@@ -365,22 +378,23 @@ class _ProfilePageState extends State<ProfilePage>
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => context.go("/edit_profile"),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Image.asset(icEdit,
-                                height: isSmallScreen ? 20 : 24),
+                      if (_isCurrentUser)
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => context.go("/edit_profile"),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Image.asset(icEdit,
+                                  height: isSmallScreen ? 20 : 24),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                   Text(
-                    _userBio!.username,
+                    '@${_userBio!.username}',
                     style: AppStyles.profileUserNameTs.copyWith(
                       fontSize: isSmallScreen ? 14 : 16,
                     ),
@@ -393,7 +407,7 @@ class _ProfilePageState extends State<ProfilePage>
         ),
         SizedBox(height: isSmallScreen ? 8 : 12),
         Text(
-          _userBio!.bio,
+          _userBio!.bio ?? '',
           style: AppStyles.profileBioTs.copyWith(
             fontSize: isSmallScreen ? 13 : 14,
           ),
@@ -403,17 +417,6 @@ class _ProfilePageState extends State<ProfilePage>
         SizedBox(height: isSmallScreen ? 12 : 16),
         Row(
           children: [
-            Image.asset(icLink, height: isSmallScreen ? 16 : 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                _userBio!.link ?? '',
-                style: AppStyles.profileLinkTs.copyWith(
-                  fontSize: isSmallScreen ? 12 : 14,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
             SizedBox(
               width: isSmallScreen ? 100 : (isLargeScreen ? 140 : 120),
               child: _buildServiceIcons(),
@@ -465,6 +468,9 @@ class _ProfilePageState extends State<ProfilePage>
     final buttonHeight = isSmallScreen ? 32.0 : (isLargeScreen ? 40.0 : 36.0);
     final fontSize = isSmallScreen ? 12.0 : (isLargeScreen ? 15.0 : 14.0);
 
+    // Conditionally show the Add Music button only for the current user's profile
+    final showAddMusicButton = _userBio?.isOwnProfile ?? false;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -483,35 +489,37 @@ class _ProfilePageState extends State<ProfilePage>
           ),
           width: buttonWidth,
           height: buttonHeight,
-          onTap: () => AppUtils.onShare(context, _userBio?.link ?? ''),
+          onTap: () => AppUtils.onShare(context, _userBio?.username ?? ''),
           radius: 12,
         ),
-        AnimatedPrimaryButton(
-          topBorderWidth: 2,
-          colorTop: AppColors.appBg,
-          colorBottom: AppColors.appBg,
-          borderColorTop: AppColors.textPrimary,
-          borderColorBottom: AppColors.textPrimary,
-          centerWidget: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(icMusic,
-                  fit: BoxFit.contain, height: isSmallScreen ? 16 : 18),
-              const SizedBox(width: 12),
-              Text(
-                "Add Music",
-                style: AppStyles.profileAddMusicTs.copyWith(fontSize: fontSize),
-              ),
-            ],
+        if (showAddMusicButton)
+          AnimatedPrimaryButton(
+            topBorderWidth: 2,
+            colorTop: AppColors.appBg,
+            colorBottom: AppColors.appBg,
+            borderColorTop: AppColors.textPrimary,
+            borderColorBottom: AppColors.textPrimary,
+            centerWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(icMusic,
+                    fit: BoxFit.contain, height: isSmallScreen ? 16 : 18),
+                const SizedBox(width: 12),
+                Text(
+                  "Add Music",
+                  style:
+                      AppStyles.profileAddMusicTs.copyWith(fontSize: fontSize),
+                ),
+              ],
+            ),
+            width: buttonWidth,
+            height: buttonHeight,
+            onTap: () => Future.delayed(
+              const Duration(milliseconds: 180),
+              () => context.go("/add_music"),
+            ),
+            radius: 10,
           ),
-          width: buttonWidth,
-          height: buttonHeight,
-          onTap: () => Future.delayed(
-            const Duration(milliseconds: 180),
-            () => context.go("/add_music"),
-          ),
-          radius: 10,
-        ),
       ],
     );
   }
@@ -544,8 +552,19 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  Widget _buildContentList() {
-    if (_activityPosts.isEmpty) {
+  Widget _buildContentList({String? elementType}) {
+    // Show loading indicator only if the entire profile is loading
+    // (handled by the build method's conditional)
+
+    // Filter posts by element type if specified
+    final filteredPosts = elementType != null
+        ? _activityPosts
+            .where((post) =>
+                post.elementType.toLowerCase() == elementType.toLowerCase())
+            .toList()
+        : _activityPosts;
+
+    if (filteredPosts.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -554,7 +573,7 @@ class _ProfilePageState extends State<ProfilePage>
                 size: 50, color: AppColors.textPrimary.withOpacity(0.5)),
             const SizedBox(height: 16),
             Text(
-              "No items to display",
+              "No ${elementType?.toLowerCase() ?? 'items'} to display",
               style: AppStyles.itemTitleTs.copyWith(
                 color: AppColors.textPrimary.withOpacity(0.5),
               ),
@@ -565,17 +584,20 @@ class _ProfilePageState extends State<ProfilePage>
     }
 
     return ListView.builder(
-      itemCount: _activityPosts.length,
+      itemCount: filteredPosts.length,
       shrinkWrap: true,
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(top: 5),
       itemBuilder: (context, index) {
-        return _buildActivityPostItem(_activityPosts[index]);
+        return _buildActivityPostItem(filteredPosts[index]);
       },
     );
   }
 
   Widget _buildActivityPostItem(ActivityPost post) {
+    // Add this print statement for debugging
+    print('DEBUG: Activity Post - ID: ${post.postId}, Title: ${post.title}');
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 400;
     final isLargeScreen = screenWidth > 800;
@@ -709,7 +731,7 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
                 SizedBox(height: isSmallScreen ? 6 : 8),
                 Text(
-                  post.description,
+                  post.subtitle ?? '',
                   style: AppStyles.itemDesTs.copyWith(
                     fontSize: isSmallScreen ? 12 : (isLargeScreen ? 14 : 13),
                     color: AppColors.textPrimary.withOpacity(0.7),

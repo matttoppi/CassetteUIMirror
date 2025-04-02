@@ -119,6 +119,9 @@ class ProfileService {
         queryParameters: queryParams,
       );
 
+      // Print the raw response body for debugging
+      print('RAW ACTIVITY RESPONSE for $userIdentifier: ${response.body}');
+
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         return PaginatedResponse<ActivityPost>.fromJson(

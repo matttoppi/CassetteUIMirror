@@ -52,13 +52,6 @@ class AppRouter {
 
         print('🌐 [Router] isPublicRoute: $isPublicRoute');
 
-        // Special case: Always allow access to edit profile page if authenticated
-        if (isAuthenticated && isEditProfile) {
-          print(
-              '✏️ [Router] User is authenticated and accessing edit profile - allowing');
-          return null; // No redirect needed
-        }
-
         // Handle unauthenticated user
         if (!isAuthenticated) {
           print('❌ [Router] User not authenticated');
@@ -72,33 +65,11 @@ class AppRouter {
           return '/signin';
         }
 
-        // Get user data to check if profile is complete
-        final userData = await _authService.getCurrentUser();
-        final hasCompletedProfile = userData != null &&
-            userData['bio'] != null &&
-            userData['bio'].toString().isNotEmpty;
-
-        print(
-            '👤 [Router] User data check - hasData: ${userData != null}, hasCompletedProfile: $hasCompletedProfile');
-
-        // If profile is not complete and trying to access profile page, redirect to edit
-        if (!hasCompletedProfile && isProfile) {
-          print(
-              '📝 [Router] Profile incomplete and accessing profile, redirecting to edit');
-          return '/profile/edit';
-        }
-
         // User is authenticated
         if (isSigningIn || isSigningUp || isHome) {
           print('🔐 [Router] User is authenticated and on auth/home route');
-          // Always redirect to edit profile if profile is not complete
-          if (!hasCompletedProfile) {
-            print(
-                '📝 [Router] Profile incomplete, redirecting to edit profile');
-            return '/profile/edit';
-          }
-          // Otherwise go to profile
-          print('👤 [Router] Profile complete, redirecting to profile');
+          // Go directly to profile
+          print('👤 [Router] Redirecting to profile');
           return '/profile';
         }
 

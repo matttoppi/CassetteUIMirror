@@ -83,7 +83,7 @@ class _PostHeaderToolbarState extends State<PostHeaderToolbar> {
                   child: CircleAvatar(
                     radius: 24.0,
                     backgroundImage:
-                        NetworkImage(AppUtils.userProfile.profilePath ?? ''),
+                        NetworkImage(AppUtils.userProfile.avatarUrl ?? ''),
                     backgroundColor: Colors.transparent,
                   ),
                 ),

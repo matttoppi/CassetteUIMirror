@@ -1043,8 +1043,7 @@ class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
         children: [
           CircleAvatar(
             radius: 30.0,
-            backgroundImage:
-                NetworkImage(AppUtils.userProfile.profilePath ?? ''),
+            backgroundImage: NetworkImage(AppUtils.userProfile.avatarUrl ?? ''),
             backgroundColor: Colors.transparent,
           ),
           const SizedBox(width: 22),

@@ -9,13 +9,9 @@ part of 'user_profile_models.dart';
 UserBio _$UserBioFromJson(Map<String, dynamic> json) => UserBio(
       userId: json['userId'] as String,
       username: json['username'] as String,
-      fullName: json['fullName'] as String?,
-      bio: json['bio'] as String,
+      bio: json['bio'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
-      profilePath: json['profilePath'] as String?,
-      link: json['link'] as String?,
-      conversionStats: ConversionStats.fromJson(
-          json['conversionStats'] as Map<String, dynamic>),
+      isOwnProfile: json['isOwnProfile'] as bool,
       connectedServices: (json['connectedServices'] as List<dynamic>)
           .map((e) => ConnectedService.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -24,29 +20,10 @@ UserBio _$UserBioFromJson(Map<String, dynamic> json) => UserBio(
 Map<String, dynamic> _$UserBioToJson(UserBio instance) => <String, dynamic>{
       'userId': instance.userId,
       'username': instance.username,
-      'fullName': instance.fullName,
       'bio': instance.bio,
       'avatarUrl': instance.avatarUrl,
-      'profilePath': instance.profilePath,
-      'link': instance.link,
-      'conversionStats': instance.conversionStats,
+      'isOwnProfile': instance.isOwnProfile,
       'connectedServices': instance.connectedServices,
-    };
-
-ConversionStats _$ConversionStatsFromJson(Map<String, dynamic> json) =>
-    ConversionStats(
-      tracksConverted: (json['tracksConverted'] as num).toInt(),
-      albumsConverted: (json['albumsConverted'] as num).toInt(),
-      artistsConverted: (json['artistsConverted'] as num).toInt(),
-      playlistsConverted: (json['playlistsConverted'] as num).toInt(),
-    );
-
-Map<String, dynamic> _$ConversionStatsToJson(ConversionStats instance) =>
-    <String, dynamic>{
-      'tracksConverted': instance.tracksConverted,
-      'albumsConverted': instance.albumsConverted,
-      'artistsConverted': instance.artistsConverted,
-      'playlistsConverted': instance.playlistsConverted,
     };
 
 ConnectedService _$ConnectedServiceFromJson(Map<String, dynamic> json) =>

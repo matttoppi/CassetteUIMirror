@@ -20,16 +20,10 @@ class AppUtils {
   static UserBio userProfile = UserBio(
     userId: "1",
     username: "@MattToppi280",
-    fullName: "Matt Toppi",
     bio: "Founder of Cassette. Lead developer and music lover at heart",
     avatarUrl:
         "https://images.unsplash.com/photo-1608008961553-0c83c2883ad2?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    link: "instragram.com/@MattToppi280",
-    conversionStats: ConversionStats(
-        tracksConverted: 0,
-        albumsConverted: 0,
-        artistsConverted: 0,
-        playlistsConverted: 0),
+    isOwnProfile: true,
     connectedServices: [
       ConnectedService(
         serviceType: "Spotify",

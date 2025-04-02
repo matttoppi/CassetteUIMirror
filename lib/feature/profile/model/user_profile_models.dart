@@ -6,48 +6,23 @@ part 'user_profile_models.g.dart';
 class UserBio {
   final String userId;
   final String username;
-  final String? fullName;
-  final String bio;
+  final String? bio;
   final String? avatarUrl;
-  final String? profilePath;
-  final String? link;
-  final ConversionStats conversionStats;
+  final bool isOwnProfile;
   final List<ConnectedService> connectedServices;
 
   UserBio({
     required this.userId,
     required this.username,
-    this.fullName,
-    required this.bio,
+    this.bio,
     this.avatarUrl,
-    this.profilePath,
-    this.link,
-    required this.conversionStats,
+    required this.isOwnProfile,
     required this.connectedServices,
   });
 
   factory UserBio.fromJson(Map<String, dynamic> json) =>
       _$UserBioFromJson(json);
   Map<String, dynamic> toJson() => _$UserBioToJson(this);
-}
-
-@JsonSerializable()
-class ConversionStats {
-  final int tracksConverted;
-  final int albumsConverted;
-  final int artistsConverted;
-  final int playlistsConverted;
-
-  ConversionStats({
-    required this.tracksConverted,
-    required this.albumsConverted,
-    required this.artistsConverted,
-    required this.playlistsConverted,
-  });
-
-  factory ConversionStats.fromJson(Map<String, dynamic> json) =>
-      _$ConversionStatsFromJson(json);
-  Map<String, dynamic> toJson() => _$ConversionStatsToJson(this);
 }
 
 @JsonSerializable()

@@ -354,7 +354,7 @@ class _SignUpPageState extends State<SignUpPage> {
         // Show success message
         AppUtils.showToast(
           context: context,
-          title: "Account created successfully! Please complete your profile.",
+          title: "Account created successfully!",
         );
 
         // Wait a moment for auth state to fully update
@@ -367,10 +367,9 @@ class _SignUpPageState extends State<SignUpPage> {
         if (!mounted) return;
 
         if (userData != null) {
-          print(
-              '✅ [Signup] Successfully authenticated, navigating to edit profile');
-          // Navigate directly to edit profile
-          context.go('/profile/edit');
+          print('✅ [Signup] Successfully authenticated, navigating to profile');
+          // Navigate to profile
+          context.go('/profile');
         }
       } else {
         AppUtils.showToast(
