@@ -1,0 +1,47 @@
+name: Sync from Organization Repo
+
+on:
+  repository_dispatch:
+    types: [sync]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT }}
+          fetch-depth: 0  # Fetch all history for all branches and tags
+
+      - name: Configure Git for commit
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify Git Configuration
+        run: |
+          echo "Git user.name: $(git config --global user.name)"
+          echo "Git user.email: $(git config --global user.email)"
+
+      - name: Add Upstream Repository
+        run: git remote add upstream https://github.com/CassetteTech/CassetteUI.git
+
+      - name: Sync with Upstream
+        run: |
+          # Save sync.yml before reset
+          cp .github/workflows/sync.yml /tmp/sync.yml
+
+          # Fetch and reset to upstream
+          git fetch upstream
+          git reset --hard upstream/main
+
+          # Restore sync.yml after reset
+          mkdir -p .github/workflows
+          mv /tmp/sync.yml .github/workflows/sync.yml
+
+          # Commit and push changes
+          git add .github/workflows/sync.yml
+          git commit -m "Restore sync workflow"
+          git push origin main --force
