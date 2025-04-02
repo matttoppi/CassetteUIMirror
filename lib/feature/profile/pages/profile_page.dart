@@ -16,6 +16,7 @@ import 'dart:convert';
 import 'package:cassettefrontend/feature/profile/services/profile_service.dart';
 import 'package:cassettefrontend/core/common_widgets/loading_widget.dart';
 import 'package:cassettefrontend/core/common_widgets/error_widget.dart';
+import 'package:cassettefrontend/core/env.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userIdentifier; // Can be either UUID or username
@@ -606,154 +607,184 @@ class _ProfilePageState extends State<ProfilePage>
     final horizontalPadding =
         isSmallScreen ? 6.0 : (isLargeScreen ? 16.0 : 12.0);
 
-    return Container(
-      margin: EdgeInsets.symmetric(
-          vertical: 4,
-          horizontal: isSmallScreen ? 4 : (isLargeScreen ? 16 : 8)),
-      padding: EdgeInsets.all(horizontalPadding),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-            color: AppColors.textPrimary.withOpacity(0.1), width: 0.5),
-        gradient: LinearGradient(
-            colors: [AppColors.colorWhite.withOpacity(0.51), AppColors.appBg],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.textPrimary.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: post.imageUrl != null
-                ? Image.network(
-                    post.imageUrl!,
-                    height: imageHeight,
-                    width: imageWidth,
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    height: imageHeight,
-                    width: imageWidth,
-                    color: AppColors.textPrimary.withOpacity(0.1),
-                    child: Icon(Icons.music_note,
-                        color: AppColors.textPrimary.withOpacity(0.5)),
-                  ),
-          ),
-          SizedBox(width: isSmallScreen ? 8 : 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 6),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: Colors.red.withOpacity(0.3),
-                                width: 1,
+    return InkWell(
+      onTap: () {
+        // Navigate based on element type
+        switch (post.elementType.toLowerCase()) {
+          case 'track':
+            context.go('/track/${post.postId}');
+            break;
+          case 'artist':
+            context.go('/artist/${post.postId}');
+            break;
+          case 'album':
+            context.go('/album/${post.postId}');
+            break;
+          case 'playlist':
+            context.go('/playlist/${post.postId}');
+            break;
+          default:
+            print('Unknown element type: ${post.elementType}');
+            break;
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(
+            vertical: 4,
+            horizontal: isSmallScreen ? 4 : (isLargeScreen ? 16 : 8)),
+        padding: EdgeInsets.all(horizontalPadding),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+              color: AppColors.textPrimary.withOpacity(0.1), width: 0.5),
+          gradient: LinearGradient(
+              colors: [AppColors.colorWhite.withOpacity(0.51), AppColors.appBg],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.textPrimary.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: post.imageUrl != null
+                  ? Image.network(
+                      post.imageUrl!,
+                      height: imageHeight,
+                      width: imageWidth,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      height: imageHeight,
+                      width: imageWidth,
+                      color: AppColors.textPrimary.withOpacity(0.1),
+                      child: Icon(Icons.music_note,
+                          color: AppColors.textPrimary.withOpacity(0.5)),
+                    ),
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: Colors.red.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _getTypeIcon(post.elementType),
+                                    size: 12,
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    post.elementType.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _getTypeIcon(post.elementType),
-                                  size: 12,
-                                  color: Colors.red,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  post.elementType.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              post.title,
+                              style: AppStyles.itemTitleTs.copyWith(
+                                fontSize: isSmallScreen
+                                    ? 14
+                                    : (isLargeScreen ? 18 : 16),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          Text(
-                            post.title,
-                            style: AppStyles.itemTitleTs.copyWith(
-                              fontSize: isSmallScreen
-                                  ? 14
-                                  : (isLargeScreen ? 18 : 16),
+                          ],
+                        ),
+                      ),
+                      AnimatedPrimaryButton(
+                        centerWidget: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              icShare,
+                              fit: BoxFit.contain,
+                              height: isSmallScreen ? 12 : 15,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                          ],
+                        ),
+                        colorBottom: AppColors.animatedBtnColorConvertBottom,
+                        borderColorTop: AppColors.textPrimary,
+                        colorTop: AppColors.textPrimary,
+                        borderColorBottom: AppColors.textPrimary,
+                        initialPos: 3,
+                        width: isSmallScreen ? 40 : 50,
+                        height: isSmallScreen ? 24 : 28,
+                        onTap: () {
+                          // Share the post URL
+                          final baseUrl = Uri.base.toString().isNotEmpty
+                              ? Uri.base.origin
+                              : Env.appDomain;
+                          final shareUrl =
+                              '$baseUrl/${post.elementType.toLowerCase()}/${post.postId}';
+                          AppUtils.onShare(context, shareUrl);
+                        },
+                        radius: 12,
                       ),
+                    ],
+                  ),
+                  SizedBox(height: isSmallScreen ? 6 : 8),
+                  Text(
+                    post.subtitle ?? '',
+                    style: AppStyles.itemDesTs.copyWith(
+                      fontSize: isSmallScreen ? 12 : (isLargeScreen ? 14 : 13),
+                      color: AppColors.textPrimary.withOpacity(0.7),
                     ),
-                    AnimatedPrimaryButton(
-                      centerWidget: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            icShare,
-                            fit: BoxFit.contain,
-                            height: isSmallScreen ? 12 : 15,
-                          ),
-                        ],
-                      ),
-                      colorBottom: AppColors.animatedBtnColorConvertBottom,
-                      borderColorTop: AppColors.textPrimary,
-                      colorTop: AppColors.textPrimary,
-                      borderColorBottom: AppColors.textPrimary,
-                      initialPos: 3,
-                      width: isSmallScreen ? 40 : 50,
-                      height: isSmallScreen ? 24 : 28,
-                      onTap: () {},
-                      radius: 12,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: isSmallScreen ? 8 : 10),
+                  _buildRichText(
+                    "from: ${post.username}",
+                    leadingText: "from: ",
+                    style: AppStyles.itemFromTs.copyWith(
+                      fontSize: isSmallScreen ? 11 : 12,
                     ),
-                  ],
-                ),
-                SizedBox(height: isSmallScreen ? 6 : 8),
-                Text(
-                  post.subtitle ?? '',
-                  style: AppStyles.itemDesTs.copyWith(
-                    fontSize: isSmallScreen ? 12 : (isLargeScreen ? 14 : 13),
-                    color: AppColors.textPrimary.withOpacity(0.7),
+                    style2: AppStyles.itemUsernameTs.copyWith(
+                      fontSize: isSmallScreen ? 11 : 12,
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: isSmallScreen ? 8 : 10),
-                _buildRichText(
-                  "from: ${post.username}",
-                  leadingText: "from: ",
-                  style: AppStyles.itemFromTs.copyWith(
-                    fontSize: isSmallScreen ? 11 : 12,
-                  ),
-                  style2: AppStyles.itemUsernameTs.copyWith(
-                    fontSize: isSmallScreen ? 11 : 12,
-                  ),
-                ),
-              ],
-            ),
-          )
-        ],
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
