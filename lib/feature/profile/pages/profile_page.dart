@@ -383,7 +383,7 @@ class _ProfilePageState extends State<ProfilePage>
                         Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () => context.go("/edit_profile"),
+                            onTap: () => context.go("/profile/edit"),
                             borderRadius: BorderRadius.circular(20),
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),

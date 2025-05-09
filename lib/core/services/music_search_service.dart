@@ -366,6 +366,7 @@ class MusicSearchService {
             'genres': attributes['genreNames'] ?? [],
             'ranking': ranking,
             'matchScore': _calculateSimilarity(name, query),
+            'url': attributes['url'],
           });
         }
       }
@@ -525,6 +526,7 @@ class MusicSearchService {
             'genres': item['genres'] ?? [],
             'popularity': item['popularity'],
             'matchScore': _calculateSimilarity(name, query),
+            'url': 'https://open.spotify.com/artist/${item['id']}',
           });
         }
       }
@@ -544,6 +546,7 @@ class MusicSearchService {
             'tracks': [],
             'total_tracks': item['total_tracks'],
             'matchScore': _calculateSimilarity(title, query),
+            'url': 'https://open.spotify.com/album/${item['id']}',
           });
         }
       }

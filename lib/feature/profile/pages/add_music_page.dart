@@ -63,6 +63,7 @@ class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
   late final ApiService _apiService;
   final MusicSearchService _musicSearchService = MusicSearchService();
   final FocusNode _searchFocusNode = FocusNode();
+  final FocusNode _overlaySearchFocusNode = FocusNode();
   TextEditingController linkCtr = TextEditingController();
   TextEditingController desCtr = TextEditingController();
   Timer? _searchDebounce;
@@ -96,6 +97,7 @@ class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
     linkCtr.dispose();
     desCtr.dispose();
     _searchFocusNode.dispose();
+    _overlaySearchFocusNode.dispose();
 
     super.dispose();
   }
@@ -555,8 +557,15 @@ class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
       _searchState = SearchState.resultsVisible;
     });
 
-    // Request focus on the search field
-    _searchFocusNode.requestFocus();
+    // Explicitly unfocus the main search bar first
+    _searchFocusNode.unfocus();
+
+    // Request focus on the OVERLAY search field *after* the build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _searchState == SearchState.resultsVisible) {
+        _overlaySearchFocusNode.requestFocus();
+      }
+    });
 
     // Always load top charts when showing search UI if no results are available
     if (searchResults == null && !isLoading && !_isChartLoadRequested) {
@@ -846,63 +855,65 @@ class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
                                 textAlign: TextAlign.center,
                                 style: AppStyles.addMusicSubTitleTs),
                             const SizedBox(height: 24),
-                            // Search bar (always visible)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("Music link or search",
-                                    textAlign: TextAlign.left,
-                                    style:
-                                        AppStyles.authTextFieldLabelTextStyle),
-                                const SizedBox(height: 10),
-                                // Only show search bar if no item is selected
-                                if (selectedItem == null)
-                                  MusicSearchBar(
-                                    hint:
-                                        "Search or paste your music link here",
-                                    controller: linkCtr,
-                                    focusNode: _searchFocusNode,
-                                    isLoading: isLoading || isSearching,
-                                    onTap: () {
-                                      debugPrint(
-                                          'Search bar tapped on main page');
-                                      _showSearchUI();
-                                    },
-                                    onPaste: (value) {
-                                      debugPrint(
-                                          'Paste detected on main page: $value');
-                                      _handleUrlPaste(value);
-                                    },
-                                    onSearch: (query) {
-                                      debugPrint(
-                                          'Search triggered on main page with query: $query');
-                                      // Never initiate a new search if one is already in progress
-                                      if (!isLoading && !isSearching) {
-                                        _performSearch(query);
-                                      } else {
+                            // Conditionally show search/selected item section only when overlay isn't visible
+                            if (!shouldShowResults)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Music link or search",
+                                      textAlign: TextAlign.left,
+                                      style: AppStyles
+                                          .authTextFieldLabelTextStyle),
+                                  const SizedBox(height: 10),
+                                  // Show search bar if no item is selected (now redundant with !shouldShowResults)
+                                  // Keep this structure for now, but focus is on the overlay's bar
+                                  if (selectedItem == null)
+                                    MusicSearchBar(
+                                      hint:
+                                          "Search or paste your music link here",
+                                      controller: linkCtr,
+                                      focusNode: _searchFocusNode,
+                                      isLoading: isLoading || isSearching,
+                                      onTap: () {
                                         debugPrint(
-                                            'Search ignored - already in progress');
-                                      }
-                                    },
-                                    textInputAction: TextInputAction.search,
-                                    onSubmitted: (value) {
-                                      debugPrint(
-                                          'Search submitted on main page with value: $value');
-                                      // When user hits enter/done, perform search if there's text
-                                      if (value.isNotEmpty) {
-                                        if (_isValidMusicUrl(value)) {
-                                          _handleUrlPaste(value);
+                                            'Search bar tapped on main page');
+                                        _showSearchUI();
+                                      },
+                                      onPaste: (value) {
+                                        debugPrint(
+                                            'Paste detected on main page: $value');
+                                        _handleUrlPaste(value);
+                                      },
+                                      onSearch: (query) {
+                                        debugPrint(
+                                            'Search triggered on main page with query: $query');
+                                        // Never initiate a new search if one is already in progress
+                                        if (!isLoading && !isSearching) {
+                                          _performSearch(query);
                                         } else {
-                                          _performSearch(value);
+                                          debugPrint(
+                                              'Search ignored - already in progress');
                                         }
-                                      }
-                                    },
-                                  ),
+                                      },
+                                      textInputAction: TextInputAction.search,
+                                      onSubmitted: (value) {
+                                        debugPrint(
+                                            'Search submitted on main page with value: $value');
+                                        // When user hits enter/done, perform search if there's text
+                                        if (value.isNotEmpty) {
+                                          if (_isValidMusicUrl(value)) {
+                                            _handleUrlPaste(value);
+                                          } else {
+                                            _performSearch(value);
+                                          }
+                                        }
+                                      },
+                                    ),
 
-                                // Display selected item or pasted link information
-                                _buildSelectedItemInfo(),
-                              ],
-                            ),
+                                  // Display selected item or pasted link information
+                                  _buildSelectedItemInfo(),
+                                ],
+                              ),
 
                             // Only show description field and convert button when not showing search results
                             AnimatedOpacity(
@@ -1100,10 +1111,11 @@ class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
                           ),
                           onPressed: () {
                             debugPrint('Back button pressed in search overlay');
+                            // Unfocus the overlay node *before* changing state
+                            _overlaySearchFocusNode.unfocus();
                             setState(() {
                               _searchState = SearchState.idle;
                             });
-                            _searchFocusNode.unfocus();
                           },
                         ),
                         Text(
@@ -1120,7 +1132,7 @@ class _AddMusicPageState extends State<AddMusicPage> with AuthRequiredState {
                     MusicSearchBar(
                       hint: "Search or paste your music link here",
                       controller: linkCtr,
-                      focusNode: _searchFocusNode,
+                      focusNode: _overlaySearchFocusNode,
                       isLoading: isLoading || isSearching,
                       onTap: () {
                         debugPrint('Search bar tapped in overlay');

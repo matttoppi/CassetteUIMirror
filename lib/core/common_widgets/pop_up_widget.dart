@@ -118,7 +118,7 @@ class _PopUpWidgetState extends State<PopUpWidget> {
                   }),
                 if (isAuthenticated)
                   popUpItemWidget("Edit Profile", () {
-                    context.go('/edit_profile');
+                    context.go('/profile/edit');
                   }),
                 if (isAuthenticated)
                   popUpItemWidget("Add Music", () {
